@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import Tester from '../components/Tester.vue'
+import Listing from '@/components/admin/Listing.vue';
 </script>
 
 <template>
   <main>
-    <Tester />
+    <Listing />
   </main>
 </template>

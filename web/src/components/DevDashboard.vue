@@ -128,7 +128,7 @@ button {
 }
 
 .response {
-  background: #f4f4f4;
+  background: #524f4f;
   padding: 1rem;
   overflow-x: auto;
 }

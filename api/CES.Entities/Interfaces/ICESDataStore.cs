@@ -11,6 +11,7 @@ namespace CES.Entities.Interfaces
     {
         int SaveChanges();
         Task<int> SaveChangesAsync();
+        public DbSet<ApplicationUser> ApplicationUser { get; }
         public DbSet<UserAuthToken> UserAuthTokens { get; }
     }
 }

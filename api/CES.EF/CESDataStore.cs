@@ -16,6 +16,8 @@ namespace CES.EF
             var context = this as DbContext;
         }
 
+    
+        public DbSet<ApplicationUser> ApplicationUser { get; set; }
         public DbSet<UserAuthToken> UserAuthTokens { get; set; }
         
         protected override void OnModelCreating(ModelBuilder modelBuilder)

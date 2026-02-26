@@ -30,8 +30,8 @@ namespace CES.Business.Extensions.Entities
             var claims = new[] // NOTE: could also use List<Claim> here
             {
                 new Claim(ClaimTypes.Name, user.Id.ToString()),
-                new Claim(ClaimTypes.UserData,user.EmailId.ToString()),
-                new Claim(ClaimTypes.Role,user.LastActiveRole.ToString())
+                new Claim(ClaimTypes.UserData,user.Email.ToString()),
+                // new Claim(ClaimTypes.Role,user.LastActiveRole.ToString())
 
             };
             var expiry = SystemDate.UtcNow().AddMinutes(authDuration);
@@ -48,8 +48,7 @@ namespace CES.Business.Extensions.Entities
                 UserName = user.GetFullName(),
                 UserId = user.Id,
                 TokenExpiryUTC = expiry.ToString(),
-                ChangePassword = false,
-                LastActiveRole = user.LastActiveRole
+                ChangePassword = false
             };
 
         }
@@ -72,7 +71,7 @@ namespace CES.Business.Extensions.Entities
             var user = new ApplicationUser();
             user.FirstName = model.FirstName;
             user.LastName = model.LastName;
-            user.EmailId = model.EmailId;
+            user.Email = model.Email;
 
             return user;
         }
@@ -81,7 +80,7 @@ namespace CES.Business.Extensions.Entities
         {
             user.FirstName = model.FirstName;
             user.LastName = model.LastName;
-            user.EmailId = model.EmailId;
+            user.Email = model.Email;
             
 
             return user;
@@ -93,8 +92,8 @@ namespace CES.Business.Extensions.Entities
             {
                 FirstName = user.FirstName,
                 LastName = user.LastName,
-                EmailId = user.EmailId,
-                RoleNames = string.Join(",", user.ApplicationUserRoles.Select(aur => aur.Role))
+                Email = user.Email,
+                //RoleNames = string.Join(",", user.ApplicationUserRoles.Select(aur => aur.Role))
             };
         }
     }

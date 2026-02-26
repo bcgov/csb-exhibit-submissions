@@ -69,7 +69,7 @@ builder.Services.AddSingleton<IMailConfiguration>(mailConfiguration);
 
 var dataStoreConnectionString = builder.Configuration.GetConnectionString("CESDataStore");
 builder.Services.AddDbContext<CESDataStore>(options =>
-    options.UseSqlServer(dataStoreConnectionString ?? throw new InvalidOperationException("Connection string 'CESDataStore' not found."), o => o.TranslateParameterizedCollectionsToConstants())
+    options.UseNpgsql(dataStoreConnectionString ?? throw new InvalidOperationException("Connection string 'CESDataStore' not found."))
 );
 
 // Add Individual services here, or check for classes implementing a to-be-created interface
