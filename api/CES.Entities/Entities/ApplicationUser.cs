@@ -1,12 +1,4 @@
-﻿using CES.Entities.Enums;
-using CES.Entities.Infrastructure;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using CES.Entities.Infrastructure;
 
 namespace CES.Entities
 {

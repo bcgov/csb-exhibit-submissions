@@ -19,6 +19,7 @@ namespace CES.EF
     
         public DbSet<ApplicationUser> ApplicationUser { get; set; }
         public DbSet<UserAuthToken> UserAuthTokens { get; set; }
+        public DbSet<Submission> Submissions { get; set; }
         
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

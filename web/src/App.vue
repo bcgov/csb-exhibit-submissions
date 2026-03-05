@@ -68,6 +68,8 @@ nav a:first-of-type {
     display: flex;
     place-items: flex-start;
     flex-wrap: wrap;
+    height: 100%;
+    width: 300px;
   }
 
   nav {
@@ -77,6 +79,9 @@ nav a:first-of-type {
 
     padding: 1rem 0;
     margin-top: 1rem;
+
+    display: flex;
+    flex-direction: column;
   }
 }
 </style>

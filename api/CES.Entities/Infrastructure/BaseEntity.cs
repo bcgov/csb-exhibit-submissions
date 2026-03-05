@@ -20,14 +20,14 @@ namespace CES.Entities.Infrastructure
         public BaseEntity()
         {
             CreatedBy = "0";
-            CreatedDateUTC = SystemDate.Now();
+            CreatedDateUTC = SystemDate.UtcNow();
             IsDeleted = false;
         }
 
         public void SetUpdateBy(string updator = "System")
         {
             UpdatedBy = updator;
-            UpdatedDateUTC = SystemDate.Now();
+            UpdatedDateUTC = SystemDate.UtcNow();
         }
     }
 }
