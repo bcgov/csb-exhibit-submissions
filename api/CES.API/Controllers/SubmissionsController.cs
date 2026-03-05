@@ -31,8 +31,8 @@ namespace CES.API.Controllers
                                                                 Content = f.OpenReadStream()
                                                             }).ToList();
 
-            // if(model.fileUploads.Count == 0)
-            //     return BadRequest("No files uploaded");
+            if(model.fileUploads.Count == 0)
+                return BadRequest("No files uploaded");
 
             var result = await _submissionService.SubmitEvidence(model);
 

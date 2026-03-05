@@ -1,15 +1,16 @@
-
 <script setup lang="ts">
+import type { ExhibitFormModel } from '@/models/ExhibitFormModel'
+import useSubmissionService from '@/services/SubmissionService'
+import { ref, reactive, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import FileDropZone from '../shared/FileDropZone.vue'
 
-import type { ExhibitFormModel } from '@/models/ExhibitFormModel';
-import useSubmissionService from '@/services/SubmissionService';
-import { ref, reactive, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-
-const route = useRoute();
-const router = useRouter();
-const { submitExhibits } = useSubmissionService();
-const caseId = Number(route.params.id);
+const route = useRoute()
+const router = useRouter()
+const { submitExhibits } = useSubmissionService()
+const caseId = Number(route.params.id)
+const uploading = ref(false)
+const errorMessage = ref('')
 
 // --- Mock Auto Fill ---
 const form = reactive<ExhibitFormModel>({
@@ -18,122 +19,98 @@ const form = reactive<ExhibitFormModel>({
   room: '',
   ticketNumber: '',
   disputantName: '',
-  officerNumber: ''
-});
+  officerNumber: '',
+})
 
 onMounted(() => {
   // Mock simulated API autofill
-  form.date = new Date().toISOString().split('T')[0] ?? "";
-  form.location = 'Victoria Courthouse';
-  form.room = `Room ${caseId % 5 || 1}`;
-  form.ticketNumber = `TK-${1000 + caseId}`;
-  form.disputantName = `Defendant ${caseId}`;
-  form.officerNumber = 'OF-1234';
+  form.date = new Date().toISOString().split('T')[0] ?? ''
+  form.location = 'Victoria Courthouse'
+  form.room = `Room ${caseId % 5 || 1}`
+  form.ticketNumber = `TK-${1000 + caseId}`
+  form.disputantName = `Defendant ${caseId}`
+  form.officerNumber = 'OF-1234'
 })
 
-// --- File Handling ---
-const files = ref<File[]>([]);
-const fileInput = ref<HTMLInputElement | null>(null);
+const files = ref<File[]>([])
 
-const MAX_FILES = 10;
-
-const addFiles = (newFiles: FileList | null) => {
-  if (!newFiles) return;
-
-  const fileArray = Array.from(newFiles);
-
-  if (files.value.length + fileArray.length > MAX_FILES) {
-    alert('Maximum 10 files allowed');
-    return
-  }
-
-  files.value.push(...fileArray);
-}
-
-const handleBrowse = (event: Event) => {
-  const target = event.target as HTMLInputElement;
-  addFiles(target.files);
-}
-
-const handleDrop = (event: DragEvent) => {
-  addFiles(event.dataTransfer?.files ?? null);
-}
-
-const triggerBrowse = () => {
-  fileInput.value?.click();
-}
-
-const removeFile = (index: number) => {
-  files.value.splice(index, 1);
+const handleFilesChanged = (newFiles: File[]) => {
+  files.value = newFiles
+  console.log("files changed", files.value);
 }
 
 const submitForm = async () => {
-  console.log('Submitting form:', form);
-  console.log('Files:', files.value);
-  const success = await submitExhibits(form);
-  console.log('api return:', success);
-  if(success)
-    router.push(`/officer/court-list`);
+  uploading.value = true
+  errorMessage.value = ''
+  console.log('Submitting form:', form)
+  console.log('Files:', files.value)
+  const success = await submitExhibits(form, files.value)
+
+  uploading.value = false
+  
+  console.log('api return:', success)
+  if (success) router.push(`/officer/court-list`)
+  else errorMessage.value = 'Upload failed. Please try again.'
 }
 </script>
 
 <style scoped>
-  .exhibit-page {
-    padding: 2rem;
-    max-width: 800px;
-    margin: auto;
-  }
+.exhibit-page {
+  padding: 2rem;
+  max-width: 800px;
+  margin: auto;
+}
 
-  .form-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1rem;
-  }
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
 
-  .form-field {
-    display: flex;
-    flex-direction: column;
-  }
+.form-field {
+  display: flex;
+  flex-direction: column;
+}
 
-  .form-field input {
-    padding: 0.5rem;
-  }
+.form-field input {
+  padding: 0.5rem;
+}
 
-  .dropzone {
-    margin-top: 2rem;
-    padding: 2rem;
-    border: 2px dashed #aaa;
-    text-align: center;
-    cursor: pointer;
-  }
+.dropzone {
+  margin-top: 2rem;
+  padding: 2rem;
+  border: 2px dashed #aaa;
+  text-align: center;
+  cursor: pointer;
+}
 
-  .dropzone:hover {
-    background: #f9f9f9;
-  }
+.dropzone:hover {
+  background: #f9f9f9;
+}
 
-  .small {
-    font-size: 0.8rem;
-    color: #666;
-  }
+.small {
+  font-size: 0.8rem;
+  color: #666;
+}
 
-  .file-list {
-    margin-top: 1rem;
-  }
+.file-list {
+  margin-top: 1rem;
+}
 
-  .file-list li {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 0.5rem;
-  }
+.file-list li {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
 
-  .actions {
-    margin-top: 2rem;
-    text-align: right;
-  }
+.actions {
+  margin-top: 2rem;
+  text-align: right;
+}
 
-  button {
-    padding: 0.5rem 1rem;
-  }
+button {
+  padding: 0.5rem 1rem;
+}
 </style>
 
 <template>
@@ -141,7 +118,6 @@ const submitForm = async () => {
     <h1>Exhibit Upload</h1>
 
     <form @submit.prevent="submitForm">
-
       <div class="form-grid">
         <div class="form-field">
           <label>Date</label>
@@ -175,31 +151,7 @@ const submitForm = async () => {
       </div>
 
       <!-- Dropzone -->
-      <div
-        class="dropzone"
-        @dragover.prevent
-        @drop.prevent="handleDrop"
-        @click="triggerBrowse"
-      >
-        <p>Drag & Drop files here or click to browse</p>
-        <p class="small">Maximum 10 files</p>
-
-        <input
-          type="file"
-          ref="fileInput"
-          multiple
-          hidden
-          @change="handleBrowse"
-        />
-      </div>
-
-      <!-- File List -->
-      <ul class="file-list" v-if="files.length">
-        <li v-for="(file, index) in files" :key="index">
-          {{ file.name }}
-          <button type="button" @click="removeFile(index)">Remove</button>
-        </li>
-      </ul>
+      <FileDropZone @filesChanged="handleFilesChanged" />
 
       <div class="actions">
         <button type="submit">Submit Exhibit</button>

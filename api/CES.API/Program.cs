@@ -3,10 +3,9 @@ using CES.Business;
 using CES.EF;
 using CES.Entities.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using CES.Entities.Enums;
 using Microsoft.OpenApi;
+using CES.Business.Interfaces;
+using CES.API.FileStorage;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,6 +13,11 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddScopedServiceCollection();
+
+//TODO: File storage service.  Change to adjust how files are saved at upload
+builder.Services.AddScoped<IFileStorage, LocalFileStorage>();
+builder.Services.Configure<StorageOptions>(
+    builder.Configuration.GetSection("FileStorage"));
 
 var corsPolicyName = "CESCorsPolicy";
 var corsSettings = builder.Configuration.GetSection("CORS").Get<CORSSettings>();
@@ -28,7 +32,7 @@ builder.Services.AddCors(options =>
             .SetIsOriginAllowedToAllowWildcardSubdomains()
             .AllowAnyHeader()
             .WithExposedHeaders("X-Pagination")
-            .AllowAnyMethod();                
+            .AllowAnyMethod();
         });
 });
 

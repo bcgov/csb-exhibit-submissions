@@ -8,9 +8,11 @@ namespace CES.Business.Services
     public class SubmissionService : ISubmissionService
     {
         private ICESDataStore _datastore;
-        public SubmissionService (ICESDataStore dataStore)
+        private readonly IFileStorage _fileStorage;
+        public SubmissionService (ICESDataStore dataStore, IFileStorage fileStorage)
         {
             _datastore = dataStore;
+            _fileStorage = fileStorage;
             
         }
         public async Task<bool> SubmitEvidence(EvidenceSubmissionModel model)
@@ -18,15 +20,13 @@ namespace CES.Business.Services
 
             var entity = model.ToEntity();
 
-            // foreach (var file in model.fileUploads)
-            // {
-            //     var path = Path.Combine("uploads", file.FileName);
+            foreach (var file in model.fileUploads)
+            {
+                var newFile = await _fileStorage.SaveAsync(file);
+                await _datastore.StoredFiles.AddAsync(newFile);
+            }
 
-            //     using var fileStream = new FileStream(path, FileMode.Create);
-            //     await file.Content.CopyToAsync(fileStream);
-            // }
-
-            _datastore.Submissions.Add(entity);
+            await _datastore.Submissions.AddAsync(entity);
             await _datastore.SaveChangesAsync();
 
             return true;

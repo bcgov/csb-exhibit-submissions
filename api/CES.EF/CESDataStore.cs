@@ -15,11 +15,11 @@ namespace CES.EF
         {            
             var context = this as DbContext;
         }
-
     
         public DbSet<ApplicationUser> ApplicationUser { get; set; }
         public DbSet<UserAuthToken> UserAuthTokens { get; set; }
         public DbSet<Submission> Submissions { get; set; }
+        public DbSet<StoredFiles> StoredFiles { get; set; }
         
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
