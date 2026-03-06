@@ -1,5 +1,6 @@
 import type { ExhibitFormModel } from '@/models/ExhibitFormModel'
 import httpClient from './httpClient'
+import type { SubmissionReviewModel } from '@/models/SubmissionReviewModel'
 
 export default function useSubmissionService() {
   const submitExhibits = async (
@@ -48,7 +49,36 @@ export default function useSubmissionService() {
     return retVal
   }
 
+  const retrieveSubmission = async (fileId: number): Promise<SubmissionReviewModel | undefined> => {
+    const url = `/submissions/retrieve/`
+    let apiReturn
+    try {
+      apiReturn = await httpClient.get<SubmissionReviewModel>(url, {
+        params: { fileId: fileId },
+      })
+    } catch (err) {
+      console.error(err)
+    }
+
+    return apiReturn?.data
+  }
+
+  const retrieveSubmissionListing = async (): Promise<SubmissionReviewModel[] | undefined> => {
+    const url = `/submissions/listing/`
+    let apiReturn = undefined
+    try {
+      apiReturn = await httpClient.get<SubmissionReviewModel[]>(url)
+    } catch (err) {
+      console.error(err)
+      return undefined
+    }
+
+    return apiReturn?.data
+  }
+
   return {
     submitExhibits,
+    retrieveSubmission,
+    retrieveSubmissionListing
   }
 }

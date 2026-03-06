@@ -39,5 +39,30 @@ namespace CES.API.Controllers
 
             return result ? Ok("Submission accepted") : BadRequest("Something failed");
         }
+
+        [HttpGet]
+        [Route("api/submissions/retrieve")]
+        public async Task<IActionResult> RetrieveSubmission([FromQuery]int fileId)
+        {
+            var model = await _submissionService.RetrieveSubmission(fileId);
+            if (model == null)
+            {
+                return NotFound();
+            }
+            return Ok(model);
+        }
+
+        [HttpGet]
+        [Route("api/submissions/listing")]
+        public async Task<IActionResult> RetrieveSubmissionListing()
+        {
+            
+            var model = await _submissionService.RetrieveSubmissionListing();
+            if (model == null)
+            {
+                return NotFound();
+            }
+            return Ok(model);
+        }
     }
 }

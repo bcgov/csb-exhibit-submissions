@@ -1,18 +1,5 @@
 using CES.Business.Models;
 using CES.Entities;
-using CES.Entities.Enums;
-using CES.Entities.Infrastructure;
-using CES.Entities.Interfaces;
-using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
-using System;
-using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Security.Claims;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace CES.Business.Extensions.Entities
 {
@@ -31,5 +18,32 @@ namespace CES.Business.Extensions.Entities
 
             return entity;
         }
+
+        public static SubmissionReviewModel ToReviewModel(this Submission entity)
+        {
+            return new SubmissionReviewModel
+            {
+                Date = entity.UploadDate,
+                DisputantName = entity.DisputantName,
+                Id = entity.Id,
+                Location = entity.Location,
+                OfficerNumber = entity.OfficerNumber,
+                Room = entity.Room,
+                TicketNumber = entity.TicketNumber,
+
+                Files = entity.Files.Select(f => new SubmissionFile
+                            {
+                                ContentType = f.ContentType,
+                                FileSize = f.FileSize,
+                                Id = f.Id,
+                                OriginalFileName = f.OriginalFileName,
+                                StorageProvider = f.StorageProvider,
+                                StoredFileName = f.StoredFileName,
+                                Url = "",
+                                
+                            }).ToList()
+            };
+        }
     }
+    
 }

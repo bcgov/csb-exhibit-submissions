@@ -1,9 +1,65 @@
+<script setup lang="ts">
+import type { SubmissionReviewModel, SubmissionFile } from '@/models/SubmissionReviewModel'
+import useSubmissionService from '@/services/SubmissionService'
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
+const route = useRoute()
+const router = useRouter()
+
+const submissionId = Number(route.params.id)
+
+const previewFile = ref<SubmissionFile | null>(null)
+
+const {retrieveSubmission} = useSubmissionService()
+const submission = ref<SubmissionReviewModel | undefined>(undefined)
+onMounted(async () => {
+  submission.value = await retrieveSubmission(submissionId)
+})
+
+const openPreview = (file: SubmissionFile) => {
+  previewFile.value = file
+}
+
+const closePreview = () => {
+  previewFile.value = null
+}
+
+const downloadFile = (file: SubmissionFile) => {
+  window.open(file.url, '_blank')
+}
+
+const acceptSubmission = async () => {
+  if (!confirm('Accept this submission?')) return
+
+  // await submissionService.accept(submissionId)
+
+  alert('Submission accepted (mock)')
+  router.push('/admin/submissions')
+}
+
+const removeSubmission = async () => {
+  if (!confirm('Reject and delete this submission?')) return
+
+  // await submissionService.reject(submissionId)
+
+  alert('Submission removed (mock)')
+  router.push('/admin/submissions')
+}
+
+const fileIcon = (type: string) => {
+  if (type.startsWith('image')) return '🖼'
+  if (type.startsWith('video')) return '🎬'
+  if (type === 'application/pdf') return '📄'
+  return '📁'
+}
+</script>
+
 <template>
   <div class="review-page">
     <h1>Submission Review</h1>
 
-    <div v-if="submission" class="submission-details">
-
+    <div v-if="submission">
       <div class="details-grid">
         <div><strong>Date:</strong> {{ submission.date }}</div>
         <div><strong>Location:</strong> {{ submission.location }}</div>
@@ -13,136 +69,141 @@
         <div><strong>Officer #:</strong> {{ submission.officerNumber }}</div>
       </div>
 
-      <h3>Submitted Files</h3>
+      <h3>Submitted Evidence</h3>
 
-      <ul class="file-list">
-        <li v-for="file in submission.files" :key="file.id">
-          {{ file.name }}
-          <button @click="viewFile(file)">View</button>
-          <button @click="downloadFile(file)">Download</button>
-        </li>
-      </ul>
+      <div class="file-grid">
+        <div class="file-card" v-for="file in submission.files" :key="file.id">
+          <div class="icon">{{ fileIcon(file.contentType) }}</div>
 
-      <div class="actions">
-        <button class="accept" @click="acceptSubmission">
-          Accept & Save
-        </button>
+          <div class="name">{{ file.originalFileName }}</div>
 
-        <button class="remove" @click="removeSubmission">
-          Remove Submission
-        </button>
+          <div class="actions">
+            <button @click="openPreview(file)">View</button>
+
+            <button @click="downloadFile(file)">Download</button>
+          </div>
+        </div>
       </div>
 
+      <div class="actions-main">
+        <button class="accept" @click="acceptSubmission">Accept & Save</button>
+
+        <button class="remove" @click="removeSubmission">Reject / Delete</button>
+      </div>
+    </div>
+
+    <!-- Preview Modal -->
+
+    <div v-if="previewFile" class="preview-modal">
+      <div class="modal-content">
+        <button class="close" @click="closePreview">✖</button>
+
+        <img v-if="previewFile.contentType.startsWith('image')" :src="previewFile.url" />
+
+        <video v-else-if="previewFile.contentType.startsWith('video')" controls :src="previewFile.url" />
+
+        <iframe v-else-if="previewFile.contentType === 'application/pdf'" :src="previewFile.url"></iframe>
+
+        <div v-else>
+          Unsupported preview type.
+          <a :href="previewFile.url" target="_blank">Download File</a>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-
-interface SubmissionFile {
-  id: number
-  name: string
-  url: string
-}
-
-interface SubmissionDetail {
-  id: number
-  date?: string
-  location: string
-  room: string
-  ticketNumber: string
-  disputantName: string
-  officerNumber: string
-  files: SubmissionFile[]
-}
-
-const route = useRoute();
-const router = useRouter();
-const submission = ref<SubmissionDetail | null>(null);
-
-const submissionId = Number(route.params.id);
-
-// --- Mock Load ---
-onMounted(() => {
-  submission.value = {
-    id: submissionId,
-    date: new Date().toISOString().split('T')[0],
-    location: 'Victoria Courthouse',
-    room: 'Room 2',
-    ticketNumber: `TK-${1000 + submissionId}`,
-    disputantName: `Defendant ${submissionId}`,
-    officerNumber: 'OF-1234',
-    files: [
-      { id: 1, name: 'photo1.jpg', url: '#' },
-      { id: 2, name: 'report.pdf', url: '#' }
-    ]
-  };
-})
-
-// --- File Actions (Mock) ---
-const viewFile = (file: SubmissionFile) => {
-  alert(`Viewing file: ${file.name}`);
-}
-
-const downloadFile = (file: SubmissionFile) => {
-  alert(`Downloading file: ${file.name}`);
-}
-
-// --- Admin Actions ---
-const acceptSubmission = () => {
-  alert('Submission accepted (mock)');
-  router.push('/admin/submissions');
-}
-
-const removeSubmission = () => {
-  const confirmed = confirm('Are you sure you want to remove this submission?');
-  if (confirmed) {
-    alert('Submission removed (mock)');
-    router.push('/admin/submissions');
-  }
-}
-</script>
-
 <style scoped>
 .review-page {
   padding: 2rem;
-  max-width: 800px;
+  max-width: 900px;
   margin: auto;
 }
 
 .details-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 2rem;
+  gap: 10px;
+  margin-bottom: 30px;
 }
 
-.file-list li {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 0.5rem;
+.file-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 180px);
+  gap: 15px;
 }
 
-.actions {
-  margin-top: 2rem;
+.file-card {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 10px;
+  background: white;
+  text-align: center;
+}
+
+.icon {
+  font-size: 40px;
+  margin-bottom: 5px;
+}
+
+.name {
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions button {
+  margin: 3px;
+}
+
+.actions-main {
+  margin-top: 30px;
   display: flex;
-  gap: 1rem;
+  gap: 10px;
 }
 
 .accept {
-  background-color: #4caf50;
+  background: #4caf50;
   color: white;
 }
 
 .remove {
-  background-color: #e53935;
+  background: #e53935;
   color: white;
 }
 
-button {
-  padding: 0.5rem 1rem;
-  cursor: pointer;
+.preview-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background: white;
+  padding: 20px;
+  max-width: 80%;
+  max-height: 80%;
+  position: relative;
+}
+
+.modal-content img,
+.modal-content video,
+.modal-content iframe {
+  max-width: 100%;
+  max-height: 70vh;
+}
+
+.close {
+  position: absolute;
+  top: 5px;
+  right: 5px;
 }
 </style>

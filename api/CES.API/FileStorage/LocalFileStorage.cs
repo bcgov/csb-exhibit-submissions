@@ -22,7 +22,9 @@ namespace CES.API.FileStorage
 
             Directory.CreateDirectory(_options.LocalPath);
 
-            var storedName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+            var fileGuid = Guid.NewGuid();
+
+            var storedName = $"{fileGuid}{Path.GetExtension(file.FileName)}";
 
             var path = Path.Combine(_options.LocalPath, storedName);
 
@@ -31,7 +33,7 @@ namespace CES.API.FileStorage
 
             return new StoredFiles
             {
-                Id = Guid.NewGuid(),
+                Id = fileGuid,
                 OriginalFileName = file.FileName,
                 StoredFileName = storedName,
                 ContentType = file.ContentType,
