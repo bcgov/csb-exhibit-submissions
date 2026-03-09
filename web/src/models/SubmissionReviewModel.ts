@@ -3,7 +3,8 @@ export interface SubmissionFile {
   id: string
   originalFileName: string
   storedFileName: string
-  url: string
+  viewUrl: string
+  downloadUrl: string
   contentType: string
   fileSize: number
   storageProvider: string

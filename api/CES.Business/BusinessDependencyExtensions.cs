@@ -18,6 +18,7 @@ namespace CES.Business
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IDeveloperService, DeveloperService>();
             services.AddScoped<ISubmissionService, SubmissionService>();
+            services.AddScoped<IFileService, FileService>();
 
             return services;
         }

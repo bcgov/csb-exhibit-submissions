@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { SubmissionReviewModel, SubmissionFile } from '@/models/SubmissionReviewModel'
 import useSubmissionService from '@/services/SubmissionService'
+import FileViewer from '../shared/FileViewer.vue'
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -11,10 +12,22 @@ const submissionId = Number(route.params.id)
 
 const previewFile = ref<SubmissionFile | null>(null)
 
-const {retrieveSubmission} = useSubmissionService()
+const { retrieveSubmission } = useSubmissionService()
+
 const submission = ref<SubmissionReviewModel | undefined>(undefined)
+
 onMounted(async () => {
-  submission.value = await retrieveSubmission(submissionId)
+  const data = await retrieveSubmission(submissionId)
+  if (!data) return
+
+  submission.value = {
+    ...data,
+    files: data.files.map((f: SubmissionFile) => ({
+      ...f,
+      viewUrl: `${import.meta.env.VITE_API_URL}/files/${f.id}/view`,
+      downloadUrl: `${import.meta.env.VITE_API_URL}/files/${f.id}/download`
+    }))
+  }
 })
 
 const openPreview = (file: SubmissionFile) => {
@@ -25,24 +38,30 @@ const closePreview = () => {
   previewFile.value = null
 }
 
-const downloadFile = (file: SubmissionFile) => {
-  window.open(file.url, '_blank')
+const downloadFile = async (file: SubmissionFile) => {
+  const response = await fetch(`/api/files/${file.id}/download`)
+  const blob = await response.blob()
+
+  const url = window.URL.createObjectURL(blob)
+
+  const a = document.createElement('a')
+  a.href = url
+  a.download = file.originalFileName
+  document.body.appendChild(a)
+  a.click()
+
+  a.remove()
+  window.URL.revokeObjectURL(url)
 }
 
 const acceptSubmission = async () => {
   if (!confirm('Accept this submission?')) return
-
-  // await submissionService.accept(submissionId)
-
   alert('Submission accepted (mock)')
   router.push('/admin/submissions')
 }
 
 const removeSubmission = async () => {
   if (!confirm('Reject and delete this submission?')) return
-
-  // await submissionService.reject(submissionId)
-
   alert('Submission removed (mock)')
   router.push('/admin/submissions')
 }
@@ -50,7 +69,7 @@ const removeSubmission = async () => {
 const fileIcon = (type: string) => {
   if (type.startsWith('image')) return '🖼'
   if (type.startsWith('video')) return '🎬'
-  if (type === 'application/pdf') return '📄'
+  if (type.includes('pdf')) return '📄'
   return '📁'
 }
 </script>
@@ -92,22 +111,16 @@ const fileIcon = (type: string) => {
       </div>
     </div>
 
-    <!-- Preview Modal -->
-
     <div v-if="previewFile" class="preview-modal">
       <div class="modal-content">
+
         <button class="close" @click="closePreview">✖</button>
 
-        <img v-if="previewFile.contentType.startsWith('image')" :src="previewFile.url" />
+        <FileViewer
+          :fileUrl="previewFile.viewUrl"
+          :mimeType="previewFile.contentType"
+        />
 
-        <video v-else-if="previewFile.contentType.startsWith('video')" controls :src="previewFile.url" />
-
-        <iframe v-else-if="previewFile.contentType === 'application/pdf'" :src="previewFile.url"></iframe>
-
-        <div v-else>
-          Unsupported preview type.
-          <a :href="previewFile.url" target="_blank">Download File</a>
-        </div>
       </div>
     </div>
   </div>
@@ -189,8 +202,9 @@ const fileIcon = (type: string) => {
 .modal-content {
   background: white;
   padding: 20px;
-  max-width: 80%;
-  max-height: 80%;
+  max-width: 1000px;
+  width: 90%;
+  max-height: 90vh;
   position: relative;
 }
 
