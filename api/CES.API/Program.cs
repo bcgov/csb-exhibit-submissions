@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 using CES.Business.Interfaces;
 using CES.API.FileStorage;
+using CES.API.Middleware;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -111,6 +112,9 @@ app.UseHttpsRedirection();
 app.UseCors(corsPolicyName);
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Register custom middleware for error handling
+app.UseMiddleware<ApiExceptionMiddleware>();
 
 app.MapControllers();
 using (var scope = app.Services.CreateScope())

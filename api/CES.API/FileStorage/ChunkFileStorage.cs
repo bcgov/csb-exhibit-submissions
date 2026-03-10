@@ -14,7 +14,7 @@ namespace CES.API.FileStorage
             _options = options.Value;
         }
 
-        public Task DeleteAsync(string storedFileName)
+        public Task DeleteAsync(string storedFileName, string ticketNumber)
         {
             throw new NotImplementedException();
         }

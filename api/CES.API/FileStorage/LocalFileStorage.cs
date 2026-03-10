@@ -49,7 +49,7 @@ namespace CES.API.FileStorage
             return Task.FromResult(stream);
         }
 
-        public Task DeleteAsync(string storedFileName)
+        public Task DeleteAsync(string storedFileName, string ticketNumber)
         {
             var path = Path.Combine(_options.LocalPath, storedFileName);
             File.Delete(path);
@@ -61,13 +61,15 @@ namespace CES.API.FileStorage
             var sourcePath = Path.Combine(_options.LocalPath, ticketNumber, file.StoredFileName);
 
             if (!File.Exists(sourcePath))
-                throw new FileNotFoundException("Stored file not found", sourcePath);
+                throw new FileNotFoundException($"Stored file {file.OriginalFileName} not found", sourcePath);
 
             var acceptedPath = Path.Combine(_options.AcceptedPath, ticketNumber);
             Directory.CreateDirectory(acceptedPath);
 
             var zipName = $"{file.CreatedDateUTC:yyyyMMdd}_{file.Id}.zip";
             var zipPath = Path.Combine(acceptedPath, zipName);
+
+            var hash = await CES.Business.Services.CryptographyService.ComputeSHA256Async(sourcePath);
 
             using var zipStream = new FileStream(zipPath, FileMode.Create);
             using var archive = new ZipArchive(zipStream, ZipArchiveMode.Create);
@@ -84,11 +86,28 @@ namespace CES.API.FileStorage
             // Create metadata.json
             var metadataEntry = archive.CreateEntry("metadata.json");
 
+            var metadata = new {
+                                    TicketNumber = ticketNumber,
+                                    File = file,
+                                    HashAlgorithm = "SHA256",
+                                    FileHash = hash
+                                };
             using (var entryStream = metadataEntry.Open())
-                await JsonSerializer.SerializeAsync(entryStream, file, new JsonSerializerOptions
+            {
+                await JsonSerializer.SerializeAsync(entryStream, metadata, new JsonSerializerOptions
                 {
                     WriteIndented = true
                 });
+            }
+
+            // sha256.txt
+            var hashEntry = archive.CreateEntry("sha256.txt");
+
+            using (var entryStream = new StreamWriter(hashEntry.Open()))
+            {
+                await entryStream.WriteLineAsync($"File: {file.OriginalFileName}");
+                await entryStream.WriteLineAsync($"SHA256: {hash}");
+            }
         
         }
     }

@@ -31,6 +31,8 @@ onMounted(async () => {
       downloadUrl: `${import.meta.env.VITE_API_URL}/files/${f.id}/download`
     }))
   }
+
+  selectedFiles.value = submission.value.files.map(f => f.id)
 })
 
 const openPreview = (file: SubmissionFile) => {
