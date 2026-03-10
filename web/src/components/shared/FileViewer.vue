@@ -6,6 +6,10 @@ const props = defineProps({
     type: String,
     required: true
   },
+  downloadUrl: {
+    type: String,
+    required: true
+  },
   mimeType: {
     type: String,
     default: ''
@@ -60,7 +64,7 @@ const isPdf = computed(() =>
 
     <!-- ACTION BAR -->
     <div class="actions">
-      <a :href="fileUrl" download class="download-btn">
+      <a :href="downloadUrl" download class="download-btn">
         Download File
       </a>
     </div>
@@ -79,6 +83,7 @@ const isPdf = computed(() =>
   max-height: 600px;
   border: 1px solid #ddd;
   border-radius: 6px;
+  object-fit: scale-down;
 }
 
 iframe.viewer {

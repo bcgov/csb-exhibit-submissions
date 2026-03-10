@@ -2,7 +2,8 @@ using CES.Business.Interfaces;
 using CES.Business.Models;
 using CES.Entities;
 using Microsoft.Extensions.Options;
-
+using System.IO.Compression;
+using System.Text.Json;
 
 namespace CES.API.FileStorage
 {
@@ -15,20 +16,19 @@ namespace CES.API.FileStorage
             _options = options.Value;
         }
 
-        public async Task<StoredFiles> SaveAsync(FileUpload file)
+        public async Task<StoredFiles> SaveAsync(FileUpload file, string ticketNumber)
         {
             if (file.Length > _options.MaxFileSize)
                 throw new Exception("File too large");
+            var path = Path.Combine(_options.LocalPath, ticketNumber);
 
-            Directory.CreateDirectory(_options.LocalPath);
+            Directory.CreateDirectory(path);
 
             var fileGuid = Guid.NewGuid();
 
             var storedName = $"{fileGuid}{Path.GetExtension(file.FileName)}";
 
-            var path = Path.Combine(_options.LocalPath, storedName);
-
-            using var fs = new FileStream(path, FileMode.Create);
+            using var fs = new FileStream(Path.Combine(path, storedName), FileMode.Create);
             await file.Content.CopyToAsync(fs);
 
             return new StoredFiles
@@ -54,6 +54,42 @@ namespace CES.API.FileStorage
             var path = Path.Combine(_options.LocalPath, storedFileName);
             File.Delete(path);
             return Task.CompletedTask;
+        }
+
+        public async Task AcceptAsync(StoredFiles file, string ticketNumber)
+        {
+            var sourcePath = Path.Combine(_options.LocalPath, ticketNumber, file.StoredFileName);
+
+            if (!File.Exists(sourcePath))
+                throw new FileNotFoundException("Stored file not found", sourcePath);
+
+            var acceptedPath = Path.Combine(_options.AcceptedPath, ticketNumber);
+            Directory.CreateDirectory(acceptedPath);
+
+            var zipName = $"{file.CreatedDateUTC:yyyyMMdd}_{file.Id}.zip";
+            var zipPath = Path.Combine(acceptedPath, zipName);
+
+            using var zipStream = new FileStream(zipPath, FileMode.Create);
+            using var archive = new ZipArchive(zipStream, ZipArchiveMode.Create);
+
+            // Add original file
+            var fileEntry = archive.CreateEntry(file.OriginalFileName);
+
+            using (var entryStream = fileEntry.Open())
+            using (var fileStream = new FileStream(sourcePath, FileMode.Open, FileAccess.Read))
+            {
+                await fileStream.CopyToAsync(entryStream);
+            }
+
+            // Create metadata.json
+            var metadataEntry = archive.CreateEntry("metadata.json");
+
+            using (var entryStream = metadataEntry.Open())
+                await JsonSerializer.SerializeAsync(entryStream, file, new JsonSerializerOptions
+                {
+                    WriteIndented = true
+                });
+        
         }
     }
 }

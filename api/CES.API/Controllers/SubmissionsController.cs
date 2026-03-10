@@ -28,6 +28,7 @@ namespace CES.API.Controllers
                                                             {
                                                                 FileName = f.FileName,
                                                                 ContentType = f.ContentType,
+                                                                Length = f.Length,
                                                                 Content = f.OpenReadStream()
                                                             }).ToList();
 
@@ -63,6 +64,24 @@ namespace CES.API.Controllers
                 return NotFound();
             }
             return Ok(model);
+        }
+        
+        [HttpPost]
+        [Route("api/submissions/accept")]
+        public async Task<IActionResult> AcceptSubmissions([FromBody] EvidenceAcceptanceModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if(model.acceptedFiles.Count == 0 || model.FileId == 0)
+                return BadRequest("No files accepted");
+
+            var result = await _submissionService.AcceptSubmissions(model);
+
+
+            return result ? Ok("Submission accepted") : BadRequest("Something failed");
         }
     }
 }

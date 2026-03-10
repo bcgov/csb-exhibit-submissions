@@ -33,7 +33,8 @@ namespace CES.API.Controllers
             return new FileStreamResult(stream, file.ContentType) { EnableRangeProcessing = true };
         }
 
-        [HttpGet("api/files/{fileId}/download")]
+        [HttpGet]
+        [Route("api/files/{fileId}/download")]
         public async Task<IActionResult> Download(Guid fileId)
         {
             var file = await _fileService.RetrieveFileMetaData(fileId);

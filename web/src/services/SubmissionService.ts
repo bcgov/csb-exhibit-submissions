@@ -1,6 +1,7 @@
 import type { ExhibitFormModel } from '@/models/ExhibitFormModel'
 import httpClient from './httpClient'
 import type { SubmissionReviewModel } from '@/models/SubmissionReviewModel'
+import type { SubmissionAcceptanceModel } from '@/models/SubmissionAcceptanceModel'
 
 export default function useSubmissionService() {
   const submitExhibits = async (
@@ -76,9 +77,23 @@ export default function useSubmissionService() {
     return apiReturn?.data
   }
 
+  const acceptSubmissionFiles = async (model: SubmissionAcceptanceModel): Promise<Boolean> => {
+
+    const url = `/submissions/accept/`
+    let retVal = false
+    try {
+      const apiReturn = await httpClient.post(url, model)
+      retVal = apiReturn.data ?? false
+    } catch (err) {
+      console.error(err)
+    }
+    return retVal
+  }
+
   return {
     submitExhibits,
     retrieveSubmission,
-    retrieveSubmissionListing
+    retrieveSubmissionListing,
+    acceptSubmissionFiles
   }
 }

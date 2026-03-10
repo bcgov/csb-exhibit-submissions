@@ -24,7 +24,7 @@ namespace CES.API.FileStorage
             throw new NotImplementedException();
         }
 
-        public Task<StoredFiles> SaveAsync(FileUpload file)
+        public Task<StoredFiles> SaveAsync(FileUpload file, string ticketNumber)
         {
             throw new NotImplementedException();
         }
@@ -33,5 +33,10 @@ namespace CES.API.FileStorage
         {
             return "";
         }
-    }
+        
+        public async Task AcceptAsync(StoredFiles file, string ticketNumber)
+        {
+            return;
+        }
+        }
 }

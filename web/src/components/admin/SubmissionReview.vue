@@ -4,6 +4,8 @@ import useSubmissionService from '@/services/SubmissionService'
 import FileViewer from '../shared/FileViewer.vue'
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { formatFileSize, shortenString } from '@/helpers/formatters'
+import type { SubmissionAcceptanceModel } from '@/models/SubmissionAcceptanceModel'
 
 const route = useRoute()
 const router = useRouter()
@@ -12,9 +14,10 @@ const submissionId = Number(route.params.id)
 
 const previewFile = ref<SubmissionFile | null>(null)
 
-const { retrieveSubmission } = useSubmissionService()
+const { retrieveSubmission, acceptSubmissionFiles } = useSubmissionService()
 
 const submission = ref<SubmissionReviewModel | undefined>(undefined)
+const selectedFiles = ref<string[]>([])
 
 onMounted(async () => {
   const data = await retrieveSubmission(submissionId)
@@ -39,7 +42,7 @@ const closePreview = () => {
 }
 
 const downloadFile = async (file: SubmissionFile) => {
-  const response = await fetch(`/api/files/${file.id}/download`)
+  const response = await fetch(file.downloadUrl)
   const blob = await response.blob()
 
   const url = window.URL.createObjectURL(blob)
@@ -55,9 +58,30 @@ const downloadFile = async (file: SubmissionFile) => {
 }
 
 const acceptSubmission = async () => {
-  if (!confirm('Accept this submission?')) return
-  alert('Submission accepted (mock)')
-  router.push('/admin/submissions')
+
+  if (selectedFiles.value.length === 0) {
+    alert('Please select at least one file.')
+    return
+  }
+
+  if (!confirm('Accept selected files?')) return
+
+  const payload:SubmissionAcceptanceModel = {
+    fileId: submissionId,
+    acceptedFiles: selectedFiles.value
+  }
+
+  console.log(payload)
+
+  const returnvalue = await acceptSubmissionFiles(payload);
+  console.log(returnvalue, "return value")
+  // await axios.post('/api/submissions/accept', payload)
+
+  // router.push('/admin/submissions')
+
+  // if (!confirm('Accept this submission?')) return
+  // alert('Submission accepted (mock)')
+  // router.push('/admin/submissions')
 }
 
 const removeSubmission = async () => {
@@ -72,6 +96,7 @@ const fileIcon = (type: string) => {
   if (type.includes('pdf')) return '📄'
   return '📁'
 }
+
 </script>
 
 <template>
@@ -90,24 +115,39 @@ const fileIcon = (type: string) => {
 
       <h3>Submitted Evidence</h3>
 
-      <div class="file-grid">
-        <div class="file-card" v-for="file in submission.files" :key="file.id">
-          <div class="icon">{{ fileIcon(file.contentType) }}</div>
+      <div class="file-list">
+        <div class="file-row" v-for="file in submission.files" :key="file.id">
 
-          <div class="name">{{ file.originalFileName }}</div>
+          <div class="file-accept">
+            <input
+              type="checkbox"
+              :value="file.id"
+              v-model="selectedFiles"
+            >
+          </div>
+          <div class="file-left">
+            <span class="icon">{{ fileIcon(file.contentType) }}</span>
 
-          <div class="actions">
+            <span class="name">
+              {{ shortenString(file.originalFileName) }}
+            </span>
+          </div>
+
+          <div class="file-size">
+            {{ formatFileSize(file.fileSize) }}
+          </div>
+          <div class="file-actions">
             <button @click="openPreview(file)">View</button>
-
             <button @click="downloadFile(file)">Download</button>
           </div>
+
         </div>
       </div>
 
       <div class="actions-main">
-        <button class="accept" @click="acceptSubmission">Accept & Save</button>
+        <button class="accept" @click="acceptSubmission">Accept Selected</button>
 
-        <button class="remove" @click="removeSubmission">Reject / Delete</button>
+        <button class="remove" @click="removeSubmission">Reject / Delete All</button>
       </div>
     </div>
 
@@ -118,6 +158,7 @@ const fileIcon = (type: string) => {
 
         <FileViewer
           :fileUrl="previewFile.viewUrl"
+          :download-url="previewFile.downloadUrl"
           :mimeType="previewFile.contentType"
         />
 
@@ -138,20 +179,6 @@ const fileIcon = (type: string) => {
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 10px;
   margin-bottom: 30px;
-}
-
-.file-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, 180px);
-  gap: 15px;
-}
-
-.file-card {
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  padding: 10px;
-  background: white;
-  text-align: center;
 }
 
 .icon {
@@ -219,5 +246,58 @@ const fileIcon = (type: string) => {
   position: absolute;
   top: 5px;
   right: 5px;
+}
+
+.file-list {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  /* overflow: hidden; */
+}
+
+.file-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid #eee;
+  column-gap: 20px;
+}
+
+.file-row:hover {
+  background: #f7f7f7;
+}
+
+.file-row:last-child {
+  border-bottom: none;
+}
+
+.file-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.icon {
+  font-size: 22px;
+  width: 26px;
+  text-align: center;
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.file-actions button {
+  padding: 4px 10px;
+  font-size: 0.85rem;
 }
 </style>
