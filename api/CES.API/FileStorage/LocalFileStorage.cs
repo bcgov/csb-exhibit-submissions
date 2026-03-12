@@ -16,11 +16,11 @@ namespace CES.API.FileStorage
             _options = options.Value;
         }
 
-        public async Task<StoredFiles> SaveAsync(FileUpload file, string ticketNumber)
+        public async Task<StoredFiles> SaveAsync(FileUpload file, string storagePath)
         {
             if (file.Length > _options.MaxFileSize)
                 throw new Exception("File too large");
-            var path = Path.Combine(_options.LocalPath, ticketNumber);
+            var path = Path.Combine(_options.LocalPath, storagePath);
 
             Directory.CreateDirectory(path);
 
@@ -36,34 +36,35 @@ namespace CES.API.FileStorage
                 Id = fileGuid,
                 OriginalFileName = file.FileName,
                 StoredFileName = storedName,
+                StoredPath = $"{storagePath}",
                 ContentType = file.ContentType,
                 FileSize = file.Length,
                 StorageProvider = "Local"
             };
         }
 
-        public Task<Stream> GetAsync(string storedFileName)
+        public Task<Stream> GetAsync(StoredFiles storedFile)
         {
-            var path = Path.Combine(_options.LocalPath, storedFileName);
+            var path = Path.Combine(_options.LocalPath, storedFile.StoredPath, storedFile.StoredFileName);
             Stream stream = new FileStream(path, FileMode.Open, FileAccess.Read);
             return Task.FromResult(stream);
         }
 
-        public Task DeleteAsync(string storedFileName, string ticketNumber)
+        public Task DeleteAsync(StoredFiles storedFile)
         {
-            var path = Path.Combine(_options.LocalPath, storedFileName);
+            var path = Path.Combine(_options.LocalPath, storedFile.StoredPath, storedFile.StoredFileName);
             File.Delete(path);
             return Task.CompletedTask;
         }
 
-        public async Task AcceptAsync(StoredFiles file, string ticketNumber)
+        public async Task AcceptAsync(StoredFiles file)
         {
-            var sourcePath = Path.Combine(_options.LocalPath, ticketNumber, file.StoredFileName);
+            var sourcePath = Path.Combine(_options.LocalPath, file.StoredPath, file.StoredFileName);
 
             if (!File.Exists(sourcePath))
                 throw new FileNotFoundException($"Stored file {file.OriginalFileName} not found", sourcePath);
 
-            var acceptedPath = Path.Combine(_options.AcceptedPath, ticketNumber);
+            var acceptedPath = Path.Combine(_options.AcceptedPath, file.StoredPath);
             Directory.CreateDirectory(acceptedPath);
 
             var zipName = $"{file.CreatedDateUTC:yyyyMMdd}_{file.Id}.zip";
@@ -87,7 +88,7 @@ namespace CES.API.FileStorage
             var metadataEntry = archive.CreateEntry("metadata.json");
 
             var metadata = new {
-                                    TicketNumber = ticketNumber,
+                                    Path = file.StoredPath,
                                     File = file,
                                     HashAlgorithm = "SHA256",
                                     FileHash = hash

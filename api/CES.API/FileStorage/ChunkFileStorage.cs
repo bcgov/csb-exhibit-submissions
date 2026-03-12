@@ -14,27 +14,22 @@ namespace CES.API.FileStorage
             _options = options.Value;
         }
 
-        public Task DeleteAsync(string storedFileName, string ticketNumber)
+        public Task<StoredFiles> SaveAsync(FileUpload file, string storagePath)
         {
             throw new NotImplementedException();
         }
 
-        public Task<Stream> GetAsync(string storedFileName)
+        public Task<Stream> GetAsync(StoredFiles storedFile)
         {
             throw new NotImplementedException();
         }
 
-        public Task<StoredFiles> SaveAsync(FileUpload file, string ticketNumber)
+        public Task DeleteAsync(StoredFiles storedFile)
         {
             throw new NotImplementedException();
-        }
-
-        public async Task<string> SaveFileAsync(Stream fileStream, string fileName, string contentType)
-        {
-            return "";
         }
         
-        public async Task AcceptAsync(StoredFiles file, string ticketNumber)
+        public async Task AcceptAsync(StoredFiles file)
         {
             return;
         }

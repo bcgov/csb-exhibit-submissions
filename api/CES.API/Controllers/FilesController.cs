@@ -27,7 +27,7 @@ namespace CES.API.Controllers
             if (file == null)
                 return NotFound();
 
-            var stream = await _fileStorage.GetAsync(file.StoredFileName);
+            var stream = await _fileStorage.GetAsync(file);
 
             // return File(stream, file.ContentType, enableRangeProcessing: true);
             return new FileStreamResult(stream, file.ContentType) { EnableRangeProcessing = true };
@@ -42,7 +42,7 @@ namespace CES.API.Controllers
             if (file == null)
                 return NotFound();
 
-            var stream = await _fileStorage.GetAsync(file.StoredFileName);
+            var stream = await _fileStorage.GetAsync(file);
 
             return File(stream, file.ContentType, file.OriginalFileName);
         }

@@ -6,9 +6,9 @@ namespace CES.Business.Interfaces
 {
     public interface IFileStorage
     {
-        Task<StoredFiles> SaveAsync(FileUpload file, string ticketNumber);
-        Task<Stream> GetAsync(string storedFileName);
-        Task DeleteAsync(string storedFileName, string ticketNumber);
-        Task AcceptAsync(StoredFiles file, string ticketNumber);
+        Task<StoredFiles> SaveAsync(FileUpload file, string storagePath);
+        Task<Stream> GetAsync(StoredFiles storedFile);
+        Task DeleteAsync(StoredFiles storedFile);
+        Task AcceptAsync(StoredFiles file);
     }
 }

@@ -65,7 +65,7 @@ namespace CES.Business.Services
                 if(storedfile == null)
                     return false;
 
-                await _fileStorage.AcceptAsync(storedfile, submission.TicketNumber);
+                await _fileStorage.AcceptAsync(storedfile);
                 storedfile.IsDeleted = true;
                 processedCount += 1;
             }

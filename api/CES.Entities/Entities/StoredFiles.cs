@@ -7,6 +7,7 @@ namespace CES.Entities
         public Guid Id { get; set; } = new Guid();
         public string OriginalFileName { get; set; } = string.Empty;
         public string StoredFileName { get; set; } = string.Empty;
+        public string StoredPath { get; set; } = string.Empty;
         public string ContentType { get; set; } = string.Empty;
         public long FileSize { get; set; }
         public string StorageProvider { get; set; } = string.Empty;
