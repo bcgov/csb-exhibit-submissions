@@ -14,7 +14,7 @@ const submissionId = Number(route.params.id)
 
 const previewFile = ref<SubmissionFile | null>(null)
 
-const { retrieveSubmission, acceptSubmissionFiles } = useSubmissionService()
+const { retrieveSubmission, acceptSubmissionFiles, rejectAndCloseSubmission } = useSubmissionService()
 
 const submission = ref<SubmissionReviewModel | undefined>(undefined)
 const selectedFiles = ref<string[]>([])
@@ -44,19 +44,35 @@ const closePreview = () => {
 }
 
 const downloadFile = async (file: SubmissionFile) => {
-  const response = await fetch(file.downloadUrl)
-  const blob = await response.blob()
+  try {
+    const response = await fetch(file.downloadUrl)
 
-  const url = window.URL.createObjectURL(blob)
+    if (response.status === 404) {
+      console.warn("File not found")
+      return
+    }
 
-  const a = document.createElement('a')
-  a.href = url
-  a.download = file.originalFileName
-  document.body.appendChild(a)
-  a.click()
+    if (!response.ok) {
+      console.error(`File not found (${response.status})`)
+      // throw new Error(`Download failed (${response.status})`)
+      return
+    }
 
-  a.remove()
-  window.URL.revokeObjectURL(url)
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+
+    const a = document.createElement('a')
+    a.href = url
+    a.download = file.originalFileName
+
+    document.body.appendChild(a)
+    a.click()
+
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (err) {
+    console.error("Download error:", err)
+  }
 }
 
 const acceptSubmission = async () => {
@@ -75,21 +91,19 @@ const acceptSubmission = async () => {
 
   console.log(payload)
 
-  const returnvalue = await acceptSubmissionFiles(payload);
+  const returnvalue = await acceptSubmissionFiles(payload)
   console.log(returnvalue, "return value")
-  // await axios.post('/api/submissions/accept', payload)
-
-  // router.push('/admin/submissions')
-
-  // if (!confirm('Accept this submission?')) return
-  // alert('Submission accepted (mock)')
-  // router.push('/admin/submissions')
+  router.push('/admin/list')
 }
 
 const removeSubmission = async () => {
   if (!confirm('Reject and delete this submission?')) return
-  alert('Submission removed (mock)')
-  router.push('/admin/submissions')
+  const payload:SubmissionAcceptanceModel = {
+    fileId: submissionId,
+    acceptedFiles: selectedFiles.value
+  }
+  const returnvalue = await rejectAndCloseSubmission(payload);
+  router.push('/admin/list')
 }
 
 const fileIcon = (type: string) => {

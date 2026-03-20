@@ -27,11 +27,8 @@ export const formatFileSize = (bytes: number, decimals: number = 2): string => {
  * thanks ChatGPT
  */
 export const shortenString = (value: string, maxLength = 30): string => {
-  const extIndex = value.lastIndexOf('.')
-  
-//   if (extIndex === -1) return filename
-
-  
+  const extIndex = value.lastIndexOf('.')  
+//   if (extIndex === -1) return filename  
   const name = extIndex === -1 ? value : value.substring(0, extIndex)
   const ext = extIndex !== -1 ? value.substring(extIndex) : ""
   if (name.length <= maxLength) return value
@@ -42,3 +39,39 @@ export const shortenString = (value: string, maxLength = 30): string => {
 
   return `${start}...${end}${ext}`
 }
+
+export const formatDate = (dateInput: string | Date): string => {
+		const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+
+		return date.toLocaleDateString("en-US", {
+			year: "numeric",
+			month: "short",
+			day: "numeric",
+		});
+	};
+
+	export const formatDateTime = (dateInput: string | Date): string => {
+		const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+
+		return date.toLocaleString("en-US", {
+			year: "numeric",
+			month: "short",
+			day: "numeric",
+			hour: "2-digit",
+			minute: "2-digit",
+		});
+	};
+
+	export const localDateToUtc = (date: string, endOfDay: boolean = false): string | undefined => {
+		if (!date) return undefined;
+
+		const [year, month, day] = date.split("-").map(Number);
+
+		if (!year || !month || !day) return undefined;
+
+		const localDate = endOfDay
+			? new Date(year, month - 1, day, 23, 59, 59, 999)
+			: new Date(year, month - 1, day, 0, 0, 0, 0);
+
+		return localDate.toISOString();
+	};

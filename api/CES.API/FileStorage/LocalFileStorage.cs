@@ -53,6 +53,10 @@ namespace CES.API.FileStorage
         public Task DeleteAsync(StoredFiles storedFile)
         {
             var path = Path.Combine(_options.LocalPath, storedFile.StoredPath, storedFile.StoredFileName);
+            
+            if (!File.Exists(path))
+                throw new FileNotFoundException($"Stored file {storedFile.OriginalFileName} not found", path);
+
             File.Delete(path);
             return Task.CompletedTask;
         }

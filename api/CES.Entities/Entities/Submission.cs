@@ -11,5 +11,11 @@ namespace CES.Entities
         public string DisputantName {get;set;} = string.Empty;
         public string OfficerNumber {get;set;} = string.Empty;
         public List<StoredFiles> Files {get;set;} = new List<StoredFiles>();
+
+        
+        public Submission()
+        {
+            UploadDate = SystemDate.UtcNow();
+        }
     }
 }

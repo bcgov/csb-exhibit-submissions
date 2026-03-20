@@ -78,5 +78,29 @@ namespace CES.Business.Services
             return true;
         }
 
+
+        public async Task<bool> RejectSubmissions(EvidenceAcceptanceModel model)
+        {
+            var submission = await _datastore.Submissions.Include(s => s.Files.Where(f => !f.IsDeleted))
+                                    .FirstOrDefaultAsync(s => s.Id == model.FileId);
+
+            if(submission == null)
+                return false;
+            int processedCount = 0;
+            foreach(var file in submission.Files)
+            {
+                await _fileStorage.DeleteAsync(file);
+                file.IsDeleted = true;
+                processedCount += 1;
+            }
+            submission.IsDeleted = true;
+
+            // if(processedCount == submission.Files.Count())
+            // {
+            //     submission.IsDeleted = true;
+            // }
+            await _datastore.SaveChangesAsync();
+            return true;
+        }
     }
 }

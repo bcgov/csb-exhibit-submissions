@@ -13,7 +13,7 @@ const selectedTab = ref('/officer/court-list')
       <v-app-bar app>
         <v-app-bar-title class="mr-4">
           <router-link to="/">
-            <img class="logo" :src="logo" alt="logo" width="63" />
+            <img class="logo" :src="logo" alt="logo" width="150" />
           </router-link>
         </v-app-bar-title>
         <v-tabs align-tabs="start" v-model="selectedTab">

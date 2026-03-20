@@ -83,5 +83,20 @@ namespace CES.API.Controllers
 
             return result ? Ok("Submission accepted") : BadRequest("Something failed");
         }
+        
+        [HttpPost]
+        [Route("api/submissions/reject")]
+        public async Task<IActionResult> RejectSubmissions([FromBody] EvidenceAcceptanceModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var result = await _submissionService.RejectSubmissions(model);
+
+
+            return result ? Ok("Submission accepted") : BadRequest("Something failed");
+        }
     }
 }

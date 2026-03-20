@@ -90,10 +90,24 @@ export default function useSubmissionService() {
     return retVal
   }
 
+  const rejectAndCloseSubmission = async (model: SubmissionAcceptanceModel): Promise<Boolean> => {
+
+    const url = `/submissions/reject/`
+    let retVal = false
+    try {
+      const apiReturn = await httpClient.post(url, model)
+      retVal = apiReturn.data ?? false
+    } catch (err) {
+      console.error(err)
+    }
+    return retVal
+  }
+
   return {
     submitExhibits,
     retrieveSubmission,
     retrieveSubmissionListing,
-    acceptSubmissionFiles
+    acceptSubmissionFiles,
+    rejectAndCloseSubmission
   }
 }

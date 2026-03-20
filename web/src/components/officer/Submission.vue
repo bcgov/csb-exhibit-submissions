@@ -42,8 +42,8 @@ const handleFilesChanged = (newFiles: File[]) => {
 const submitForm = async () => {
   uploading.value = true
   errorMessage.value = ''
-  console.log('Submitting form:', form)
-  console.log('Files:', files.value)
+  // console.log('Submitting form:', form)
+  // console.log('Files:', files.value)
   const success = await submitExhibits(form, files.value)
 
   uploading.value = false
