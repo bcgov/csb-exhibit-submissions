@@ -1,0 +1,475 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+
+namespace CES.API.Authentication
+{
+    public static class AuthenticationKeycloakExtensions
+    {
+        // Code copied from project bcgov-jasper for authentication setup
+        // Would need to still be cleaned up and properly implimented into this system
+
+
+//          public static IServiceCollection AddScvAuthentication(this IServiceCollection services,
+//             IWebHostEnvironment env, IConfiguration configuration)
+//         {
+//             services.AddOptions<KeycloakOptions>()
+//                 .Bind(configuration.GetSection("CsoKeycloak"))
+//                 .ValidateDataAnnotations();
+
+//             services.AddAuthentication(options =>
+//             {
+//                 options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+//                 options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+//                 options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+//             })
+//             .AddCookie(options =>
+//             {
+//                 options.Cookie.Name = "SCV";
+//                 if (env.IsDevelopment())
+//                     options.Cookie.Name += ".Development";
+//                 options.Cookie.HttpOnly = true;
+//                 options.Cookie.SameSite = SameSiteMode.None;
+//                 options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+//                 options.Events = new CookieAuthenticationEvents
+//                 {
+//                     OnRedirectToAccessDenied = context =>
+//                     {
+//                         context.Response.StatusCode = StatusCodes.Status403Forbidden;
+//                         return context.Response.CompleteAsync();
+//                     },
+//                     OnValidatePrincipal = async cookieCtx =>
+//                     {
+//                         if (cookieCtx.Principal.Identity.AuthenticationType ==
+//                             SiteMinderAuthenticationHandler.SiteMinder)
+//                             return;
+
+//                         var accessTokenExpiration = DateTimeOffset.Parse(cookieCtx.Properties.GetTokenValue("expires_at"), CultureInfo.InvariantCulture);
+//                         var timeRemaining = accessTokenExpiration.Subtract(DateTimeOffset.UtcNow);
+//                         var refreshThreshold = TimeSpan.Parse(configuration.GetNonEmptyValue("TokenRefreshThreshold"), CultureInfo.InvariantCulture);
+
+//                         if (timeRemaining > refreshThreshold)
+//                             return;
+
+//                         var refreshToken = cookieCtx.Properties.GetTokenValue("refresh_token");
+//                         var httpClientFactory = cookieCtx.HttpContext.RequestServices.GetRequiredService<IHttpClientFactory>();
+//                         var httpClient = httpClientFactory.CreateClient(nameof(CookieAuthenticationEvents));
+//                         var response = await httpClient.RequestRefreshTokenAsync(new RefreshTokenRequest
+//                         {
+//                             Address = configuration.GetNonEmptyValue("Keycloak:Authority") + "/protocol/openid-connect/token",
+//                             ClientId = configuration.GetNonEmptyValue("Keycloak:Client"),
+//                             ClientSecret = configuration.GetNonEmptyValue("Keycloak:Secret"),
+//                             RefreshToken = refreshToken
+//                         });
+
+//                         if (response.IsError)
+//                         {
+//                             cookieCtx.RejectPrincipal();
+//                             await cookieCtx.HttpContext.SignOutAsync(CookieAuthenticationDefaults
+//                                 .AuthenticationScheme);
+//                         }
+//                         else
+//                         {
+//                             var expiresInSeconds = response.ExpiresIn;
+//                             var updatedExpiresAt = DateTimeOffset.UtcNow.AddSeconds(expiresInSeconds);
+//                             cookieCtx.Properties.UpdateTokenValue("expires_at", updatedExpiresAt.ToString(CultureInfo.InvariantCulture));
+//                             cookieCtx.Properties.UpdateTokenValue("refresh_token", response.RefreshToken);
+
+//                             // Indicate to the cookie middleware that the cookie should be remade (since we have updated it)
+//                             cookieCtx.ShouldRenew = true;
+//                         }
+//                     }
+//                 };
+//             }
+//             )
+//             .AddOpenIdConnect(OpenIdConnectDefaults.AuthenticationScheme, options =>
+//             {
+//                 options.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+//                 options.Authority = configuration.GetNonEmptyValue("Keycloak:Authority");
+//                 options.ClientId = configuration.GetNonEmptyValue("Keycloak:Client");
+//                 options.ClientSecret = configuration.GetNonEmptyValue("Keycloak:Secret");
+//                 options.RequireHttpsMetadata = true;
+//                 options.GetClaimsFromUserInfoEndpoint = true;
+//                 options.ResponseType = OpenIdConnectResponseType.Code;
+//                 options.UsePkce = true;
+//                 options.SaveTokens = true;
+//                 options.CallbackPath = "/api/auth/signin-oidc";
+//                 options.Scope.Add("groups");
+//                 options.Events = new OpenIdConnectEvents
+//                 {
+//                     OnTicketReceived = context =>
+//                     {
+//                         context.Properties.Items.Remove(".Token.id_token");
+//                         context.Properties.Items.Remove(".Token.access_token");
+//                         context.Properties.Items[".TokenNames"] = "refresh_token;token_type;expires_at";
+//                         return Task.CompletedTask;
+//                     },
+// #pragma warning disable 1998
+//                     OnTokenValidated = async context =>
+// #pragma warning restore 1998
+//                     {
+//                         if (!(context.Principal.Identity is ClaimsIdentity identity)) return;
+
+//                         var loggerFactory = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>();
+//                         var logger = loggerFactory.CreateLogger("OnTokenValidated");
+//                         logger.LogInformation("OpenIdConnect UserId - {ExternalUserId} - logged in.", context.Principal.ExternalUserId());
+
+//                         //Cleanup keycloak claims, that are unused.
+//                         foreach (var claim in identity.Claims.WhereToList(c =>
+//                             !CustomClaimTypes.UsedKeycloakClaimTypes.Contains(c.Type)))
+//                             identity.RemoveClaim(claim);
+
+//                         var partId = configuration.GetNonEmptyValue("Request:PartId");
+//                         var agencyId = configuration.GetNonEmptyValue("Request:AgencyIdentifierId");
+//                         var isSupremeUser = false;
+
+//                         if (context.Principal.IsIdirUser() && context.Principal.Groups().Contains("court-viewer-supreme"))
+//                         {
+//                             isSupremeUser = true;
+//                         }
+
+//                         var claims = new List<Claim>();
+//                         claims.AddRange(new[] {
+//                             new Claim(CustomClaimTypes.JcParticipantId, partId),
+//                             new Claim(CustomClaimTypes.JcAgencyCode, agencyId),
+//                             new Claim(CustomClaimTypes.IsSupremeUser, isSupremeUser.ToString()),
+//                         });
+
+//                         await OnPostAuthSuccess(configuration, context, logger, claims);
+
+//                         identity.AddClaims(claims);
+//                     },
+//                     OnRedirectToIdentityProvider = context =>
+//                     {
+//                         if (context.ProtocolMessage.RequestType == OpenIdConnectRequestType.Authentication && !context.Request.Path.StartsWithSegments("/api/auth/login"))
+//                         {
+//                             context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+//                             context.HandleResponse();
+//                             return Task.CompletedTask;
+//                         }
+
+//                         context.ProtocolMessage.SetParameter("kc_idp_hint",
+//                             context.Request.Query["redirectUri"].ToString().Contains("fromA2A=true")
+//                                 ? configuration.GetNonEmptyValue("Keycloak:VcIdpHint")
+//                                 : "idir");
+
+//                         context.ProtocolMessage.SetParameter("pres_req_conf_id", configuration.GetNonEmptyValue("Keycloak:PresReqConfId"));
+//                         if (context.HttpContext.Request.Headers["X-Forwarded-Host"].Count > 0)
+//                         {
+//                             var forwardedHost = context.HttpContext.Request.Headers["X-Forwarded-Host"];
+//                             var forwardedPort = context.HttpContext.Request.Headers["X-Forwarded-Port"];
+//                             var baseUrl = context.HttpContext.Request.Headers["X-Base-Href"];
+//                             context.ProtocolMessage.RedirectUri = XForwardedForHelper.BuildUrlString(
+//                                 forwardedHost,
+//                                 forwardedPort,
+//                                 baseUrl,
+//                                 options.CallbackPath);
+//                         }
+//                         return Task.CompletedTask;
+//                     }
+//                 };
+//             })
+//             .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+//             {
+//                 var key = Encoding.ASCII.GetBytes(configuration.GetNonEmptyValue("Keycloak:Secret"));
+//                 options.Authority = configuration.GetNonEmptyValue("Keycloak:Authority");
+//                 options.Audience = configuration.GetNonEmptyValue("Keycloak:Audience");
+//                 options.RequireHttpsMetadata = true;
+//                 options.SaveToken = true;
+//                 options.TokenValidationParameters = new TokenValidationParameters
+//                 {
+//                     ValidateIssuerSigningKey = true,
+//                     ValidateIssuer = false,
+//                     ValidateAudience = false,
+//                     ClockSkew = TimeSpan.FromSeconds(5)
+//                 };
+//                 if (key.Length > 0) options.TokenValidationParameters.IssuerSigningKey = new SymmetricSecurityKey(key);
+//                 options.Events = new JwtBearerEvents
+//                 {
+//                     OnAuthenticationFailed = context =>
+//                     {
+//                         context.NoResult();
+//                         context.Response.StatusCode = 401;
+//                         return Task.CompletedTask;
+//                     },
+//                     OnForbidden = context =>
+//                     {
+//                         context.NoResult();
+//                         context.Response.StatusCode = 403;
+//                         return Task.CompletedTask;
+//                     }
+//                 };
+//             })
+//             .AddJwtBearer(CsoPolicies.AuthenticationScheme, options =>
+//             {
+//                 var csoOptions = new KeycloakOptions();
+//                 configuration.GetSection("CsoKeycloak").Bind(csoOptions);
+
+//                 options.Authority = csoOptions.Authority;
+//                 options.Audience = csoOptions.Audience;
+//                 options.RequireHttpsMetadata = csoOptions.RequireHttpsMetadata;
+//                 options.SaveToken = true;
+//                 options.TokenValidationParameters = new TokenValidationParameters
+//                 {
+//                     ValidateIssuer = csoOptions.ValidateIssuer,
+//                     ValidIssuer = csoOptions.Authority,
+//                     ValidateAudience = true,
+//                     ValidateIssuerSigningKey = csoOptions.ValidateIssuer,
+//                     ValidAudience = csoOptions.Audience,
+//                     ClockSkew = TimeSpan.FromSeconds(5)
+//                 };
+//             })
+//             .AddScheme<AuthenticationSchemeOptions, SiteMinderAuthenticationHandler>(
+//                 SiteMinderAuthenticationHandler.SiteMinder, null);
+
+//             return services;
+//         }
+
+//         private static async Task OnPostAuthSuccess(
+//             IConfiguration configuration,
+//             Microsoft.AspNetCore.Authentication.OpenIdConnect.TokenValidatedContext context,
+//             ILogger logger,
+//             List<Claim> claims)
+//         {
+//             PersonSearchItem judge = null;
+//             try
+//             {
+//                 if (int.TryParse(context.Principal.ExternalJudgeId(), out int externalJudgeId))
+//                 {
+//                     judge = await GetJudgeById(context, externalJudgeId);
+//                 }
+//                 else
+//                 {
+//                     logger.LogWarning("Failed to parse external judge id: {ExternalJudgeId}", context.Principal.ExternalJudgeId());
+//                 }
+
+//                 if (IsMongoDbConfigured(configuration))
+//                 {
+//                     var userDto = await HandleMongoDbUser(context, logger, claims);
+
+//                     if (userDto?.JudgeId.HasValue == true)
+//                     {
+//                         judge = (await GetJudgeById(context, userDto.JudgeId.Value)) ?? judge; // Attempt to override the default Judge Id and HomeLocationId if the current user has been mapped.
+//                     }
+//                 }
+//             }
+//             finally
+//             {
+//                 var judgeId = judge?.PersonId.ToString() ?? configuration.GetNonEmptyValue("PCSS:JudgeId");
+//                 var homeLocationId = judge?.HomeLocationId.ToString() ?? configuration.GetNonEmptyValue("PCSS:JudgeHomeLocationId");
+//                 logger.LogDebug("Logged user in with judge person id: {JudgePersonId}, judge home location id: {JudgeLocationId}", judge?.PersonId, judge?.HomeLocationId);
+//                 AddDefaultJudgeClaims(logger, claims, judgeId, homeLocationId);
+//             }
+//         }
+
+//         private static async Task<UserDto> HandleMongoDbUser(
+//             Microsoft.AspNetCore.Authentication.OpenIdConnect.TokenValidatedContext context,
+//             ILogger logger,
+//             List<Claim> claims)
+//         {
+//             UserDto userDto = null;
+//             try
+//             {
+//                 var userService = context.HttpContext.RequestServices.GetRequiredService<IUserService>();
+//                 var pcssSyncService = context.HttpContext.RequestServices.GetRequiredService<IPcssSyncService>();
+//                 var provjudUserGuid = context.Principal.ProvjudUserGuid();
+
+//                 if (string.IsNullOrWhiteSpace(provjudUserGuid) && IsProvincialCourtEmail(context.Principal.Email()))
+//                 {
+//                     logger.LogInformation("provjud user unexpectedly missing guid - retrying. User {Email}", context.Principal.Email());
+//                     try
+//                     {
+//                         await RefreshKeycloakUserInfoAsync(context, logger); // When a new user is created in keycloak, the IDP mapper runs after initial login, so re-request user info in order to populate the user object GUID.
+//                     }
+//                     catch (Exception ex)
+//                     {
+//                         logger.LogWarning(ex, "Failed to refresh Keycloak userinfo; continuing with existing claims.");
+//                     }
+//                     provjudUserGuid = context.Principal.ProvjudUserGuid();
+//                 }
+
+//                 userDto = null;
+//                 if (!string.IsNullOrWhiteSpace(provjudUserGuid))
+//                 {
+//                     userDto = await userService.GetByGuidWithPermissionsAsync(provjudUserGuid);
+//                 }
+
+//                 var email = context.Principal.Email();
+
+//                 if (userDto == null && !string.IsNullOrWhiteSpace(email))
+//                 {
+//                     userDto = await userService.GetWithPermissionsAsync(email);
+//                 }
+//                 if (userDto == null)
+//                 {
+//                     var newUser = await BuildNewUser(context, pcssSyncService);
+//                     logger.LogInformation("Creating new user in JASPER database: {NewUser}", JsonConvert.SerializeObject(newUser));
+//                     var result = await userService.AddAsync(newUser);
+//                     if (result.Payload == null || result.Errors.Any())
+//                     {
+//                         logger.LogError("Error creating new user in JASPER database: {Errors}", string.Join(", ", result.Errors));
+//                         return null;
+//                     }
+//                     userDto = await userService.GetByIdWithPermissionsAsync(result.Payload.Id); // re-fetch to get permissions and roles;
+//                 }
+//                 else if (provjudUserGuid != null)
+//                 {
+//                     if (string.IsNullOrEmpty(userDto.NativeGuid))
+//                     {
+//                         userDto.NativeGuid = provjudUserGuid; // For new keycloak users, the initial logon may not have the ProvjudUserGuid claim populated. If we have it now, add it for more reliable mapping.
+//                     }
+//                     else if (userDto.NativeGuid != provjudUserGuid)
+//                     {
+//                         logger.LogWarning("User with keycloak guid returned mismatched guid from JASPER database. {NativeGuid} {ProvjudUserGuid}", userDto.NativeGuid, provjudUserGuid);
+//                         return userDto;
+//                     }
+//                     // Update existing user with latest PCSS data
+//                     logger.LogInformation("Updating existing user {Email} with latest PCSS data", userDto.Email);
+//                     var updated = await pcssSyncService.UpdateUserFromPcss(userDto);
+//                     if (updated)
+//                     {
+//                         var updateResult = await userService.UpdateAsync(userDto);
+//                         if (updateResult.Errors.Any())
+//                         {
+//                             logger.LogError("Error updating user in JASPER database: {Errors}", string.Join(", ", updateResult.Errors));
+//                         }
+//                         else
+//                         {
+//                             userDto = await userService.GetByIdWithPermissionsAsync(userDto.Id); // re-fetch to get updated permissions and roles
+//                         }
+//                     }
+//                 }
+//                 AddUserClaims(claims, userDto);
+//             }
+//             catch (Exception ex)
+//             {
+//                 logger.LogError(ex, "Something went wrong during post authentication process: {Exception}", ex);
+//             }
+//             return userDto;
+//         }
+
+//         private static async Task<UserDto> BuildNewUser(
+//             Microsoft.AspNetCore.Authentication.OpenIdConnect.TokenValidatedContext context,
+//             IPcssSyncService pcssSyncService)
+//         {
+//             UserDto userDto = new()
+//             {
+//                 FirstName = context.Principal.FindFirstValue(ClaimTypes.GivenName),
+//                 LastName = context.Principal.FindFirstValue(ClaimTypes.Surname),
+//                 Email = context.Principal.Email(),
+//                 UserGuid = context.Principal.IdirUserGuid(),
+//                 NativeGuid = context.Principal.ProvjudUserGuid(),
+//                 IsActive = false,
+//             };
+
+//             await pcssSyncService.UpdateUserFromPcss(userDto, true);
+
+//             return userDto;
+//         }
+
+//         private static async Task<PersonSearchItem> GetJudgeById(Microsoft.AspNetCore.Authentication.OpenIdConnect.TokenValidatedContext context, int judgeId)
+//         {
+//             var judgeService = context.HttpContext.RequestServices.GetRequiredService<IJudgeService>();
+//             var judges = await judgeService.GetJudges();
+
+//             return judges.FirstOrDefault(j => j.PersonId == judgeId);
+//         }
+
+//         private static bool IsMongoDbConfigured(IConfiguration configuration)
+//         {
+//             var connectionString = configuration.GetValue<string>("MONGODB_CONNECTION_STRING");
+//             return !string.IsNullOrWhiteSpace(connectionString);
+//         }
+
+//         private static void AddDefaultJudgeClaims(ILogger logger, List<Claim> claims, string judgeId, string homeLocationId)
+//         {
+//             logger.LogInformation("Acting as Judge Id - {JudgeId} with Home Location Id - {HomeLocationId}.", judgeId, homeLocationId);
+//             if (!string.IsNullOrEmpty(judgeId))
+//             {
+//                 claims.Add(new Claim(CustomClaimTypes.JudgeId, judgeId));
+//             }
+//             if (!string.IsNullOrEmpty(homeLocationId))
+//             {
+//                 claims.Add(new Claim(CustomClaimTypes.JudgeHomeLocationId, homeLocationId));
+//             }
+//         }
+
+//         private static void AddUserClaims(List<Claim> claims, UserDto userDto)
+//         {
+//             claims.Add(new Claim(CustomClaimTypes.UserId, userDto.Id));
+//             claims.Add(new Claim(CustomClaimTypes.IsActive, userDto.IsActive.ToString()));
+
+//             claims.AddRange(userDto.Permissions.Select(p => new Claim(CustomClaimTypes.Permission, p)));
+//             claims.AddRange(userDto.Roles.Select(r => new Claim(CustomClaimTypes.Role, r)));
+//             claims.AddRange(userDto.GroupIds.Select(g => new Claim(CustomClaimTypes.Groups, g)));
+//         }
+
+//         private static bool IsProvincialCourtEmail(string email)
+//             => !string.IsNullOrWhiteSpace(email)
+//                 && email.EndsWith("@provincialcourt.bc.ca", StringComparison.OrdinalIgnoreCase);
+
+//         private static async Task RefreshKeycloakUserInfoAsync(
+//             Microsoft.AspNetCore.Authentication.OpenIdConnect.TokenValidatedContext context,
+//             ILogger logger)
+//         {
+//             if (context.Principal?.Identity is not ClaimsIdentity identity)
+//             {
+//                 return;
+//             }
+
+//             var accessToken = context.TokenEndpointResponse?.AccessToken
+//                 ?? context.Properties.GetTokenValue("access_token");
+
+//             if (string.IsNullOrWhiteSpace(accessToken))
+//             {
+//                 logger.LogWarning("Unable to refresh Keycloak userinfo because access token is missing.");
+//                 return;
+//             }
+
+//             var configuration = context.HttpContext.RequestServices.GetRequiredService<IConfiguration>();
+//             var httpClientFactory = context.HttpContext.RequestServices.GetRequiredService<IHttpClientFactory>();
+//             var httpClient = httpClientFactory.CreateClient(nameof(OpenIdConnectEvents));
+//             var userInfoEndpoint = configuration.GetNonEmptyValue("Keycloak:Authority") + "/protocol/openid-connect/userinfo";
+
+//             var policy = Policy<UserInfoResponse>
+//                 .Handle<Exception>()
+//                 .OrResult(result => result.IsError)
+//                 .WaitAndRetryAsync(
+//                     2,
+//                     attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt)),
+//                     (outcome, delay, attempt, _) =>
+//                     {
+//                         var reason = outcome.Exception?.Message ?? outcome.Result?.Error;
+//                         logger.LogWarning(
+//                             "Retrying Keycloak userinfo request (attempt {Attempt}) after {Delay}s. Reason: {Reason}",
+//                             attempt,
+//                             delay.TotalSeconds,
+//                             reason);
+//                     });
+
+//             var response = await policy.ExecuteAsync(ct => httpClient.GetUserInfoAsync(
+//                 new UserInfoRequest
+//                 {
+//                     Address = userInfoEndpoint,
+//                     Token = accessToken
+//                 }, ct),
+//                 CancellationToken.None);
+
+//             if (response.IsError)
+//             {
+//                 logger.LogWarning("Failed to refresh Keycloak userinfo: {Error}", response.Error);
+//                 return;
+//             }
+
+//             if (string.IsNullOrWhiteSpace(identity.FindFirst(CustomClaimTypes.ProvjudUserGuid)?.Value))
+//             {
+//                 var provjudClaim = response.Claims.FirstOrDefault(claim => claim.Type == CustomClaimTypes.ProvjudUserGuid);
+//                 if (provjudClaim != null)
+//                 {
+//                     identity.AddClaim(provjudClaim);
+//                 }
+//             }
+//         }
+    }
+
+}

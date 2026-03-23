@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import 'vuetify/styles'
@@ -7,10 +8,12 @@ import { registerPlugins } from './plugins'
 
 import "./assets/styles/main.scss"
 
+const pinia = createPinia()
 const app = createApp(App)
 
 app.use(router)
 
 registerPlugins(app)
 
+app.use(pinia)
 app.mount('#app')

@@ -7,6 +7,9 @@ using Microsoft.OpenApi;
 using CES.Business.Interfaces;
 using CES.API.FileStorage;
 using CES.API.Middleware;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using CES.API.Authentication;
+using CES.Business.Infrastructure;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,6 +23,12 @@ builder.Services.AddScoped<IFileStorage, LocalFileStorage>();
 builder.Services.Configure<StorageOptions>(
     builder.Configuration.GetSection("FileStorage"));
 
+// Authentication
+builder.Services.AddCESAuthentication(builder.Configuration);
+builder.Services.AddAuthorization();
+
+
+// ** CORS **
 var corsPolicyName = "CESCorsPolicy";
 var corsSettings = builder.Configuration.GetSection("CORS").Get<CORSSettings>();
 builder.Services.AddCors(options =>
@@ -38,6 +47,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddEndpointsApiExplorer();
+
 
 // builder.Services.AddSwaggerGen();
 builder.Services.AddSwaggerGen(c =>
@@ -79,6 +89,7 @@ builder.Services.AddDbContext<CESDataStore>(options =>
 
 // Add Individual services here, or check for classes implementing a to-be-created interface
 builder.Services.AddScoped<ICESDataStore, CESDataStore>();
+
 
 // var authSettings = builder.Configuration.GetSection("UserAuth").Get<UserAuthSettings>();
 // builder.Services.AddAuthentication("Bearer")

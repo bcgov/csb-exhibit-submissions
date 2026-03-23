@@ -1,5 +1,5 @@
 import type { ExhibitFormModel } from '@/models/ExhibitFormModel'
-import httpClient from './httpClient'
+import api from './apiClient'
 import type { SubmissionReviewModel } from '@/models/SubmissionReviewModel'
 import type { SubmissionAcceptanceModel } from '@/models/SubmissionAcceptanceModel'
 
@@ -29,7 +29,7 @@ export default function useSubmissionService() {
 
       console.log('Done Preparing files:', formData)
 
-      const apiReturn = await httpClient.post(url, formData, {
+      const apiReturn = await api.post(url, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -54,7 +54,7 @@ export default function useSubmissionService() {
     const url = `/submissions/retrieve/`
     let apiReturn
     try {
-      apiReturn = await httpClient.get<SubmissionReviewModel>(url, {
+      apiReturn = await api.get<SubmissionReviewModel>(url, {
         params: { fileId: fileId },
       })
     } catch (err) {
@@ -68,7 +68,7 @@ export default function useSubmissionService() {
     const url = `/submissions/listing/`
     let apiReturn = undefined
     try {
-      apiReturn = await httpClient.get<SubmissionReviewModel[]>(url)
+      apiReturn = await api.get<SubmissionReviewModel[]>(url)
     } catch (err) {
       console.error(err)
       return undefined
@@ -82,7 +82,7 @@ export default function useSubmissionService() {
     const url = `/submissions/accept/`
     let retVal = false
     try {
-      const apiReturn = await httpClient.post(url, model)
+      const apiReturn = await api.post(url, model)
       retVal = apiReturn.data ?? false
     } catch (err) {
       console.error(err)
@@ -95,7 +95,7 @@ export default function useSubmissionService() {
     const url = `/submissions/reject/`
     let retVal = false
     try {
-      const apiReturn = await httpClient.post(url, model)
+      const apiReturn = await api.post(url, model)
       retVal = apiReturn.data ?? false
     } catch (err) {
       console.error(err)

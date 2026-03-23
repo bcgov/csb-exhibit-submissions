@@ -17,6 +17,7 @@ namespace CES.API.Controllers
 
         [HttpPost]
         [Route("api/submissions/submit")]
+        [Authorize(Roles = "User")]
         public async Task<IActionResult> SubmitEvidence([FromForm] SubmissionModel model)
         {
             if (!ModelState.IsValid)
@@ -43,6 +44,7 @@ namespace CES.API.Controllers
 
         [HttpGet]
         [Route("api/submissions/retrieve")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RetrieveSubmission([FromQuery]int fileId)
         {
             var model = await _submissionService.RetrieveSubmission(fileId);
@@ -55,6 +57,7 @@ namespace CES.API.Controllers
 
         [HttpGet]
         [Route("api/submissions/listing")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RetrieveSubmissionListing()
         {
             
@@ -68,6 +71,7 @@ namespace CES.API.Controllers
         
         [HttpPost]
         [Route("api/submissions/accept")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> AcceptSubmissions([FromBody] EvidenceAcceptanceModel model)
         {
             if (!ModelState.IsValid)
@@ -86,6 +90,7 @@ namespace CES.API.Controllers
         
         [HttpPost]
         [Route("api/submissions/reject")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RejectSubmissions([FromBody] EvidenceAcceptanceModel model)
         {
             if (!ModelState.IsValid)

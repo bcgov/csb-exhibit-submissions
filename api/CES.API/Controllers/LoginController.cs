@@ -1,4 +1,5 @@
-﻿using CES.Business.Interfaces;
+﻿using CES.API.Authentication;
+using CES.Business.Interfaces;
 using CES.Business.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,27 +8,30 @@ namespace CES.API.Controllers
 {
     public class LoginController : Controller
     {
-        public ILoginService _loginService {  get; set; }
-        public LoginController(ILoginService loginService) 
+        public ITokenService _tokenService {get;set;}
+        public LoginController(ITokenService tokenService) 
         {
-            _loginService = loginService;
+            _tokenService = tokenService;
         }
 
         [HttpPost]
-        [Route("api/login")]
+        [Route("api/auth/login")]
         public IActionResult LoginUser([FromBody] CESLoginModel model)
         {
-            if (!ModelState.IsValid)
+            var mockUsers = new Dictionary<string, (string Password, string Role)>
             {
-                return BadRequest(ModelState);
+                { "admin@gov.bc.ca", ("pass123", "Admin") },
+                { "user@gov.bc.ca", ("pass123", "User") }
+            };
+            if (mockUsers.TryGetValue(model.Username.ToLower(), out var userRecord) && 
+                userRecord.Password == model.Password)
+            {
+                // Generate the token using the service we built earlier
+                var token = _tokenService.GenerateToken(model.Username, userRecord.Role);
+                return Ok(new { token });
             }
 
-            var result = _loginService.LoginUser(model);
-            if (result == null)
-            {
-                return BadRequest("Invalid Username and password");
-            }
-            return Ok(true);
+            return Unauthorized();
         }
 
         

@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
- import { mdiAccountCircle } from '@mdi/js';
+ import { mdiAccountCircle, mdiLogout } from '@mdi/js';
 import { ref } from 'vue';
 import logo from './assets/bc-logo.svg?url'
+import useAuthService from './services/AuthService';
 
 const selectedTab = ref('/officer/court-list')
+const {logout} = useAuthService();
+const handleLogout = () => {
+  console.log('Logging out...')
+  logout()  
+}
 </script>
 
 <template>
@@ -21,19 +27,29 @@ const selectedTab = ref('/officer/court-list')
           <v-tab value="court-list" to="/officer/court-list">Court list</v-tab>
           
           <v-spacer></v-spacer>
-          <div class="d-flex align-center">
-            <v-btn
-              spaced="end"
-              size="x-large"
-              class="text-subtitle-1"
-            >
-              <span class="text-left">
-                <div class="mb-1">User name goes here</div>
-              </span>
-              <template #append>
-                <v-icon :icon="mdiAccountCircle" size="32" />
+          <div class="d-flex align-center mr-4">
+            <v-menu min-width="200px" rounded>
+              <template v-slot:activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  size="x-large"
+                  class="text-subtitle-1"
+                  variant="text"
+                >
+                  <span class="mr-2">User name goes here</span>
+                  <v-icon :icon="mdiAccountCircle" size="32" />
+                </v-btn>
               </template>
-            </v-btn>
+
+              <v-list mt-2>
+                <v-list-item @click="handleLogout" prepend-icon="">
+                  <template v-slot:prepend>
+                    <v-icon :icon="mdiLogout" class="mr-2"></v-icon>
+                  </template>
+                  <v-list-item-title>Logout</v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-menu>
           </div>
         </v-tabs>
       </v-app-bar>
@@ -44,18 +60,6 @@ const selectedTab = ref('/officer/court-list')
       </v-app>
       </v-theme-provider>
 
-  <!-- <header>
-
-    <div class="wrapper">
-      <nav>
-        <RouterLink to="/dev">Dev tools</RouterLink>
-        <RouterLink to="/officer/court-list">Court CourtListing</RouterLink>
-        <RouterLink to="/admin/list">Admin Listing</RouterLink>
-      </nav>
-    </div>
-  </header> -->
-
-  <!-- <RouterView /> -->
 </template>
 
 <style scoped>
