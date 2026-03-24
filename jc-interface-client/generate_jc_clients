@@ -1,0 +1,18 @@
+echo "Ensure oas-raml-converter and nswag are installed globally."
+jc_interface_raml_folder="/C/Code/Work/JC-Interface/src/main/api/"
+output_raml_folder="/C/Code/Work/supreme-court-viewer/jc-interface-client/API References/"
+
+echo "Copying from $jc_interface_raml_folder to $output_raml_folder"
+cp $jc_interface_raml_folder*.raml "$output_raml_folder"
+cd "${output_raml_folder}"
+echo "Replacing baseUri"
+sed -i 's,baseUri:.*$,,g' *.raml
+
+echo "Converting RAML to OAS files - then generating clients."
+for filename in *.raml; 
+   do
+		name=`echo "$filename" | cut -d'.' -f1`
+		echo "Converting $filename to $name-oas3.json"
+        oas-raml-converter --from RAML --to OAS30 $filename > $name-oas3.json
+		nswag openapi2csclient /runtime:NetCore31 /input:$name-oas3.json /classname:${name}Client /namespace:JCCommon.Clients.$name /output:../Clients/${name}Client.cs /generateBaseUrlProperty:false /useBaseUrl:false /exposeJsonSerializerSettings:true /operationGenerationMode:SingleClientFromPathSegments
+ done

@@ -1,0 +1,1959 @@
+---
+  openapi: "3.0.0"
+  info: 
+    title: "JC-Interface - Lookup Code Services"
+    version: "0.0.2"
+  servers: []
+  paths: 
+    /admin/reloadLookups: 
+      put: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                example: 
+                  message: "Success"
+                schema: 
+                  $ref: "#/components/schemas/adminMessage"
+          403: 
+            description: ""
+            content: 
+              application/json: 
+                example: 
+                  message: "Unauthorized"
+                schema: 
+                  $ref: "#/components/schemas/adminMessage"
+        description: "Used to reload lookups and thus locations manually. Requires a password to execute. \n"
+        operationId: "PUT_admin-reloadLookups"
+        parameters: 
+          - 
+            name: "reloadPassword"
+            in: "header"
+            required: true
+            description: "Valid password to trigger lookup reload."
+            schema: 
+              type: "string"
+    /codes/adjudicators: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available adjudicators.\n"
+        operationId: "GET_codes-adjudicators"
+    /codes/adjudicators/{adjudicatorId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific adjudicator.\n"
+        operationId: "GET_codes-adjudicators-adjudicatorId"
+      parameters: 
+        - 
+          name: "adjudicatorId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/agencyLocations: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available agencyLocations.\n"
+        operationId: "GET_codes-agencyLocations"
+    /codes/asset/roleCombos: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available roleCombos.\n"
+        operationId: "GET_codes-asset-roleCombos"
+    /codes/asset/roleCombos/{roleComboId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available roleCombos.\n"
+        operationId: "GET_codes-asset-roleCombos-roleComboId"
+        parameters: 
+          - 
+            name: "flexFilter"
+            in: "query"
+            schema: 
+              type: "string"
+      parameters: 
+        - 
+          name: "roleComboId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/asset/usageRules: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available usageRules.\n"
+        operationId: "GET_codes-asset-usageRules"
+    /codes/asset/usageRules/{assetUsageRuleId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific usageRule.\n"
+        operationId: "GET_codes-asset-usageRules-assetUsageRuleId"
+      parameters: 
+        - 
+          name: "assetUsageRuleId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/crown/assignments: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available assignments.\n"
+        operationId: "GET_codes-crown-assignments"
+    /codes/crown/assignments/{assignmentId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific assignment.\n"
+        operationId: "GET_codes-crown-assignments-assignmentId"
+      parameters: 
+        - 
+          name: "assignmentId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/crown/federal/courts: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available courts.\n"
+        operationId: "GET_codes-crown-federal-courts"
+    /codes/crown/federal/courts/{courtId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific court.\n"
+        operationId: "GET_codes-crown-federal-courts-courtId"
+      parameters: 
+        - 
+          name: "courtId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/crown/provincial/courts: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available courts.\n"
+        operationId: "GET_codes-crown-provincial-courts"
+    /codes/crown/provincial/courts/{courtId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific court.\n"
+        operationId: "GET_codes-crown-provincial-courts-courtId"
+      parameters: 
+        - 
+          name: "courtId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/court/classes: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available classes.\n"
+        operationId: "GET_codes-court-classes"
+    /codes/court/classes/{classeId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific class.\n"
+        operationId: "GET_codes-court-classes-classeId"
+      parameters: 
+        - 
+          name: "classeId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/court/divisions: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available divisions.\n"
+        operationId: "GET_codes-court-divisions"
+    /codes/court/divisions/{divisionId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific division.\n"
+        operationId: "GET_codes-court-divisions-divisionId"
+      parameters: 
+        - 
+          name: "divisionId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/court/levels: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available levels.\n"
+        operationId: "GET_codes-court-levels"
+    /codes/court/levels/{levelId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific level.\n"
+        operationId: "GET_codes-court-levels-levelId"
+      parameters: 
+        - 
+          name: "levelId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/devices: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available devices.\n"
+        operationId: "GET_codes-devices"
+    /codes/devices/{deviceId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific device.\n"
+        operationId: "GET_codes-devices-deviceId"
+      parameters: 
+        - 
+          name: "deviceId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/documents: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available documents.\n"
+        operationId: "GET_codes-documents"
+    /codes/documents/{documentId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific document.\n"
+        operationId: "GET_codes-documents-documentId"
+      parameters: 
+        - 
+          name: "documentId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/file/complexities: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available complexities.\n"
+        operationId: "GET_codes-file-complexities"
+    /codes/file/complexities/{complexityId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific complexity.\n"
+        operationId: "GET_codes-file-complexities-complexityId"
+      parameters: 
+        - 
+          name: "complexityId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/findings: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available findings.\n"
+        operationId: "GET_codes-findings"
+    /codes/findings/{findingId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific finding.\n"
+        operationId: "GET_codes-findings-findingId"
+      parameters: 
+        - 
+          name: "findingId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/hearing/restrictions: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available restrictions.\n"
+        operationId: "GET_codes-hearing-restrictions"
+    /codes/hearing/restrictions/{restrictionId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific restriction.\n"
+        operationId: "GET_codes-hearing-restrictions-restrictionId"
+      parameters: 
+        - 
+          name: "restrictionId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/roles: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available roles.\n"
+        operationId: "GET_codes-roles"
+    /codes/roles/{roleId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific role.\n"
+        operationId: "GET_codes-roles-roleId"
+      parameters: 
+        - 
+          name: "roleId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/participant/roles: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available roles.\n"
+        operationId: "GET_codes-participant-roles"
+    /codes/participant/roles/{roleId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific role.\n"
+        operationId: "GET_codes-participant-roles-roleId"
+      parameters: 
+        - 
+          name: "roleId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/trial/collapse/reasons: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available reasons.\n"
+        operationId: "GET_codes-trial-collapse-reasons"
+    /codes/trial/collapse/reasons/{reasonId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available reasons.\n"
+        operationId: "GET_codes-trial-collapse-reasons-reasonId"
+        parameters: 
+          - 
+            name: "flexFilter"
+            in: "query"
+            schema: 
+              type: "string"
+      parameters: 
+        - 
+          name: "reasonId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/trial/proceeded/codes: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available codes.\n"
+        operationId: "GET_codes-trial-proceeded-codes"
+    /codes/trial/proceeded/codes/{codeId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific code.\n"
+        operationId: "GET_codes-trial-proceeded-codes-codeId"
+      parameters: 
+        - 
+          name: "codeId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/witness/roles: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available roles.\n"
+        operationId: "GET_codes-witness-roles"
+    /codes/witness/roles/{roleId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific role.\n"
+        operationId: "GET_codes-witness-roles-roleId"
+      parameters: 
+        - 
+          name: "roleId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/civil/assets: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available assets.\n"
+        operationId: "GET_codes-civil-assets"
+    /codes/civil/assets/{assetId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific asset.\n"
+        operationId: "GET_codes-civil-assets-assetId"
+      parameters: 
+        - 
+          name: "assetId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/civil/appearance/duration: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available duration.\n"
+        operationId: "GET_codes-civil-appearance-duration"
+    /codes/civil/appearance/duration/{durationId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific duration.\n"
+        operationId: "GET_codes-civil-appearance-duration-durationId"
+      parameters: 
+        - 
+          name: "durationId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/civil/appearance/reasons: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available reasons.\n"
+        operationId: "GET_codes-civil-appearance-reasons"
+    /codes/civil/appearance/reasons/{reasonId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific reason.\n"
+        operationId: "GET_codes-civil-appearance-reasons-reasonId"
+      parameters: 
+        - 
+          name: "reasonId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/civil/appearance/results: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available results.\n"
+        operationId: "GET_codes-civil-appearance-results"
+    /codes/civil/appearance/results/{resultId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific result.\n"
+        operationId: "GET_codes-civil-appearance-results-resultId"
+      parameters: 
+        - 
+          name: "resultId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/civil/appearance/statuses: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available statuses.\n"
+        operationId: "GET_codes-civil-appearance-statuses"
+    /codes/civil/appearance/statuses/{statusId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific status.\n"
+        operationId: "GET_codes-civil-appearance-statuses-statusId"
+      parameters: 
+        - 
+          name: "statusId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/civil/dateDeclinedBy: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available dateDeclinedBy.\n"
+        operationId: "GET_codes-civil-dateDeclinedBy"
+    /codes/civil/dateDeclinedBy/{dateDeclinedById}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific dateDeclinedBy.\n"
+        operationId: "GET_codes-civil-dateDeclinedBy-dateDeclinedById"
+      parameters: 
+        - 
+          name: "dateDeclinedById"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/civil/document/issueResults: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available issueResults.\n"
+        operationId: "GET_codes-civil-document-issueResults"
+    /codes/civil/document/issueResults/{code}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific issueResult.\n"
+        operationId: "GET_codes-civil-document-issueResults-code"
+      parameters: 
+        - 
+          name: "code"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/civil/document/issueTypes: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available issueTypes.\n"
+        operationId: "GET_codes-civil-document-issueTypes"
+    /codes/civil/document/issueTypes/{code}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific issueType.\n"
+        operationId: "GET_codes-civil-document-issueTypes-code"
+      parameters: 
+        - 
+          name: "code"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/civil/priority/markers: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available markers.\n"
+        operationId: "GET_codes-civil-priority-markers"
+    /codes/civil/priority/markers/{markerId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific marker.\n"
+        operationId: "GET_codes-civil-priority-markers-markerId"
+      parameters: 
+        - 
+          name: "markerId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/civil/pastAppearance/partyAppearanceMethod/partyAttendanceTypes: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available partyAttendanceTypes.\n"
+        operationId: "GET_codes-civil-pastAppearance-partyAppearanceMethod-partyAttendanceTypes"
+    /codes/civil/pastAppearance/partyAppearanceMethod/partyAttendanceTypes/{partyAppearanceMethod}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific partyAttendanceType.\n"
+        operationId: "GET_codes-civil-pastAppearance-partyAppearanceMethod-partyAttendanceTypes-partyAppearanceMethod"
+      parameters: 
+        - 
+          name: "partyAppearanceMethod"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/civil/pastAppearance/partyAppearanceMethod/counsel: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available counsel.\n"
+        operationId: "GET_codes-civil-pastAppearance-partyAppearanceMethod-counsel"
+    /codes/civil/pastAppearance/partyAppearanceMethod/counsel/{partyAppearanceMethod}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific counsel.\n"
+        operationId: "GET_codes-civil-pastAppearance-partyAppearanceMethod-counsel-partyAppearanceMethod"
+      parameters: 
+        - 
+          name: "partyAppearanceMethod"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/criminal/assets: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available assets.\n"
+        operationId: "GET_codes-criminal-assets"
+    /codes/criminal/assets/{assetId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific asset.\n"
+        operationId: "GET_codes-criminal-assets-assetId"
+      parameters: 
+        - 
+          name: "assetId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/criminal/sentences: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available sentences.\n"
+        operationId: "GET_codes-criminal-sentences"
+    /codes/criminal/sentences/{sentenceId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific sentence.\n"
+        operationId: "GET_codes-criminal-sentences-sentenceId"
+      parameters: 
+        - 
+          name: "sentenceId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/criminal/banStatutes: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available banStatutes.\n"
+        operationId: "GET_codes-criminal-banStatutes"
+    /codes/criminal/banStatutes/{banStatuteId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific banStatute.\n"
+        operationId: "GET_codes-criminal-banStatutes-banStatuteId"
+      parameters: 
+        - 
+          name: "banStatuteId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/criminal/appearance/duration: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available duration.\n"
+        operationId: "GET_codes-criminal-appearance-duration"
+    /codes/criminal/appearance/duration/{durationId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific duration.\n"
+        operationId: "GET_codes-criminal-appearance-duration-durationId"
+      parameters: 
+        - 
+          name: "durationId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/criminal/appearance/reasons: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available reasons.\n"
+        operationId: "GET_codes-criminal-appearance-reasons"
+    /codes/criminal/appearance/reasons/{reasonId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific reason.\n"
+        operationId: "GET_codes-criminal-appearance-reasons-reasonId"
+      parameters: 
+        - 
+          name: "reasonId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/criminal/appearance/results: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available results.\n"
+        operationId: "GET_codes-criminal-appearance-results"
+    /codes/criminal/appearance/results/{resultId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific result.\n"
+        operationId: "GET_codes-criminal-appearance-results-resultId"
+      parameters: 
+        - 
+          name: "resultId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/criminal/appearance/statuses: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available statuses.\n"
+        operationId: "GET_codes-criminal-appearance-statuses"
+    /codes/criminal/appearance/statuses/{statusId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific status.\n"
+        operationId: "GET_codes-criminal-appearance-statuses-statusId"
+      parameters: 
+        - 
+          name: "statusId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/criminal/dateDeclinedBy: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available dateDeclinedBy.\n"
+        operationId: "GET_codes-criminal-dateDeclinedBy"
+    /codes/criminal/dateDeclinedBy/{dateDeclinedById}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific dateDeclinedBy.\n"
+        operationId: "GET_codes-criminal-dateDeclinedBy-dateDeclinedById"
+      parameters: 
+        - 
+          name: "dateDeclinedById"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/criminal/priority/markers: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available markers.\n"
+        operationId: "GET_codes-criminal-priority-markers"
+    /codes/criminal/priority/markers/{markerId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific marker.\n"
+        operationId: "GET_codes-criminal-priority-markers-markerId"
+      parameters: 
+        - 
+          name: "markerId"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/criminal/pastAppearance/partyAppearanceMethod/accused: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available accused.\n"
+        operationId: "GET_codes-criminal-pastAppearance-partyAppearanceMethod-accused"
+    /codes/criminal/pastAppearance/partyAppearanceMethod/accused/{partyAppearanceMethod}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific accused.\n"
+        operationId: "GET_codes-criminal-pastAppearance-partyAppearanceMethod-accused-partyAppearanceMethod"
+      parameters: 
+        - 
+          name: "partyAppearanceMethod"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/criminal/pastAppearance/partyAppearanceMethod/accusedCounsel: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available accusedCounsel.\n"
+        operationId: "GET_codes-criminal-pastAppearance-partyAppearanceMethod-accusedCounsel"
+    /codes/criminal/pastAppearance/partyAppearanceMethod/accusedCounsel/{partyAppearanceMethod}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific accusedCounsel.\n"
+        operationId: "GET_codes-criminal-pastAppearance-partyAppearanceMethod-accusedCounsel-partyAppearanceMethod"
+      parameters: 
+        - 
+          name: "partyAppearanceMethod"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/criminal/pastAppearance/partyAppearanceMethod/adjudicator: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available adjudicator.\n"
+        operationId: "GET_codes-criminal-pastAppearance-partyAppearanceMethod-adjudicator"
+    /codes/criminal/pastAppearance/partyAppearanceMethod/adjudicator/{partyAppearanceMethod}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific adjudicator.\n"
+        operationId: "GET_codes-criminal-pastAppearance-partyAppearanceMethod-adjudicator-partyAppearanceMethod"
+      parameters: 
+        - 
+          name: "partyAppearanceMethod"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+    /codes/criminal/pastAppearance/partyAppearanceMethod/crown: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCodes"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get a list of available crown.\n"
+        operationId: "GET_codes-criminal-pastAppearance-partyAppearanceMethod-crown"
+    /codes/criminal/pastAppearance/partyAppearanceMethod/crown/{partyAppearanceMethod}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/lookupCode"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the specific crown.\n"
+        operationId: "GET_codes-criminal-pastAppearance-partyAppearanceMethod-crown-partyAppearanceMethod"
+      parameters: 
+        - 
+          name: "partyAppearanceMethod"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+  components: 
+    schemas: 
+      adminMessage: 
+        type: "object"
+        properties: 
+          message: 
+            type: "string"
+      lookupCode: 
+        description: "A code value as defined in the JUSTIN/CEIS web services."
+        type: "object"
+        properties: 
+          codeType: 
+            type: "string"
+          code: 
+            type: "string"
+          shortDesc: 
+            type: "string"
+          longDesc: 
+            type: "string"
+          flex: 
+            type: "string"
+        required: 
+          - "codeType"
+          - "code"
+          - "shortDesc"
+          - "longDesc"
+          - "flex"
+      lookupCodes: 
+        description: "lookupCodes"
+        type: "array"
+        items: 
+          $ref: "#/components/schemas/lookupCode"
+    responses: {}
+    parameters: {}
+    examples: {}
+    requestBodies: {}
+    headers: {}
+    securitySchemes: 
+      basic: 
+        type: "http"
+        scheme: "basic"
+    links: {}
+    callbacks: {}
+

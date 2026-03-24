@@ -1,0 +1,3503 @@
+---
+  openapi: "3.0.0"
+  info: 
+    title: "JC-Interface - File Services"
+    version: "0.0.2"
+  servers: []
+  paths: 
+    /files/courtCalendarDetailsByDay: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/courtCalendarDetailByDay"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Gets the court list details from JUSTIN web services.\n"
+        operationId: "GET_files-courtCalendarDetailsByDay"
+        parameters: 
+          - 
+            name: "requestAgencyIdentifierId"
+            in: "header"
+            required: true
+            description: "Requesting Agency Identifier"
+            schema: 
+              type: string
+          - 
+            name: "requestPartId"
+            in: "header"
+            required: true
+            description: "Requesting Participant Id"
+            schema: 
+              type: string
+          - 
+            name: "applicationCd"
+            in: "header"
+            required: true
+            description: "The code for the calling application"
+            schema: 
+              type: string
+          - 
+            name: "agencyCode"
+            in: "query"
+            required: true
+            description: "Agency Code; for example 83.0001 (Kelowna)."
+            schema: 
+              type: string
+          - 
+            name: "appearanceDt"
+            in: "query"
+            required: true
+            description: "The appearance date in the format YYYY-MM-dd"
+            schema: 
+              type: string
+          - 
+            name: "roomCd"
+            in: "query"
+            required: true
+            description: "Court room code"
+            schema: 
+              type: string
+    /files/courtlist: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/courtList"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Gets the court list from the CCD web services.\n"
+        operationId: "GET_files-courtlist"
+        parameters: 
+          - 
+            name: "requestAgencyIdentifierId"
+            in: "header"
+            required: true
+            description: "Requesting Agency Identifier"
+            schema: 
+              type: string
+          - 
+            name: "requestPartId"
+            in: "header"
+            required: true
+            description: "Requesting Participant Id"
+            schema: 
+              type: string
+          - 
+            name: "applicationCd"
+            in: "header"
+            required: true
+            description: "The code for the calling application"
+            schema: 
+              type: string
+          - 
+            name: "agencyId"
+            in: "query"
+            required: true
+            description: "Agency Identifier Code (Location Code); for example 4801 (Kelowna)."
+            schema: 
+              type: string
+          - 
+            name: "roomCd"
+            in: "query"
+            required: true
+            schema: 
+              type: string
+          - 
+            name: "proceedingDt"
+            in: "query"
+            required: true
+            description: "The proceeding date in the format YYYY-MM-dd"
+            schema: 
+              type: string
+          - 
+            name: "divisionCd"
+            in: "query"
+            description: "The division code; CR, or CV."
+            schema: 
+              type: string
+          - 
+            name: "fileNumber"
+            in: "query"
+            description: "The full file number; for example 1500-3"
+            schema: 
+              type: string
+    /files/recordOfProceedings: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/ropResponse"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Gets the Record Of Proceedings for a given file.\n"
+        operationId: "GET_files-recordOfProceedings"
+        parameters: 
+          - 
+            name: "requestAgencyIdentifierId"
+            in: "header"
+            required: true
+            description: "Requesting Agency Identifier"
+            schema: 
+              type: string
+          - 
+            name: "requestPartId"
+            in: "header"
+            required: true
+            description: "Requesting Participant Id"
+            schema: 
+              type: string
+          - 
+            name: "applicationCd"
+            in: "header"
+            required: true
+            description: "The code for the calling application"
+            schema: 
+              type: string
+          - 
+            name: "partId"
+            in: "query"
+            required: true
+            description: "The participant id associated to the Record Of Proceedings."
+            schema: 
+              type: string
+          - 
+            name: "profSeqNo"
+            in: "query"
+            required: true
+            schema: 
+              type: string
+          - 
+            name: "courtLevelCd"
+            in: "query"
+            required: true
+            description: "The associated court level code."
+            schema:
+              $ref: '#/components/schemas/courtLevelCd' 
+          - 
+            name: "courtClassCd"
+            in: "query"
+            required: true
+            schema:
+              $ref: '#/components/schemas/courtClassCd' 
+
+    /files/document: 
+      get: 
+        responses:
+          400:
+            description: Bad request.
+          404:
+            description: Document was not found.
+          500:
+            description: Unexpected error.
+          200: 
+            description:
+            content: 
+              application/octet-stream: 
+                schema: 
+                  type: string
+                  format: binary
+        description: "Gets the document identified by a document id.\n"
+        operationId: "GET_files-document"
+        parameters: 
+          - 
+            name: "requestAgencyIdentifierId"
+            in: "header"
+            required: true
+            description: "Requesting Agency Identifier"
+            schema: 
+              type: string
+          - 
+            name: "requestPartId"
+            in: "header"
+            required: true
+            description: "Requesting Participant Id"
+            schema: 
+              type: string
+          - 
+            name: "applicationCd"
+            in: "header"
+            required: true
+            description: "The code for the calling application"
+            schema: 
+              type: string
+          - 
+            name: "correlationId"
+            in: "header"
+            required: true
+            description: "Request tracking ID"
+            schema: 
+              type: string
+          - 
+            name: "documentId"
+            in: "query"
+            required: true
+            description: "cfcAccusedFile.document array element's imageId, or cvfcCivilFile document array element's imageId"
+            schema: 
+              type: string
+          - 
+            name: "courtDivisionCd"
+            in: "query"
+            required: true
+            description: "R for criminal, I for non-criminal"
+            schema: 
+              type: string
+          - 
+            name: "fileId"
+            in: "query"
+            required: true
+            description: "Physical File Id (CEIS) or Justin No (JUSTIN)"
+            schema: 
+              type: string
+          - 
+            name: "flatten"
+            in: "query"
+            description: "Flatten file"
+            schema:
+              type: boolean
+              default: false
+              
+    /files/criminal: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/fileSearchResponse"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Provides facilities for performing a criminal file search.\n"
+        operationId: "GET_files-criminal"
+        parameters: 
+          - 
+            name: "requestAgencyIdentifierId"
+            in: "header"
+            required: true
+            description: "Requesting Agency Identifier"
+            schema: 
+              type: string
+          - 
+            name: "requestPartId"
+            in: "header"
+            required: true
+            description: "Requesting Participant Id"
+            schema: 
+              type: string
+          - 
+            name: "applicationCd"
+            in: "header"
+            required: true
+            description: "The code for the calling application"
+            schema: 
+              type: string
+          - 
+            name: "correlationId"
+            in: "header"
+            required: true
+            description: "Request tracking ID"
+            schema: 
+              type: string
+          - 
+            name: "searchMode"
+            in: "query"
+            required: true
+            schema:
+              $ref: '#/components/schemas/searchMode' 
+          - 
+            name: "fileHomeAgencyId"
+            in: "query"
+            required: true
+            description: "File home Agency Identifier; the Justin Agency ID.  Equates to a location code."
+            schema: 
+              type: string
+          - 
+            name: "fileNumberTxt"
+            in: "query"
+            schema: 
+              type: string
+          - 
+            name: "filePrefixTxt"
+            in: "query"
+            schema: 
+              type: string
+          - 
+            name: "filePermissions"
+            in: "query"
+            required: true
+            description: "A list of one or more of the courtClassCd codes indicating the files to which the requesting user has permissions."
+            schema: 
+              type: string
+          - 
+            name: "fileSuffixNo"
+            in: "query"
+            schema: 
+              type: string
+          - 
+            name: "mdocRefTypeCd"
+            in: "query"
+            schema: 
+              type: string
+          - 
+            name: "courtClassCd"
+            in: "query"
+            schema: 
+              $ref: '#/components/schemas/courtClassCd'
+          - 
+            name: "courtLevelCd"
+            in: "query"
+            schema: 
+              $ref: '#/components/schemas/courtLevelCd'
+          - 
+            name: "nameSearchTypeCd"
+            in: "query"
+            schema: 
+              $ref: '#/components/schemas/nameSearchTypeCd'
+          - 
+            name: "lastNm"
+            in: "query"
+            schema: 
+              type: string
+          - 
+            name: "orgNm"
+            in: "query"
+            schema: 
+              type: string
+          - 
+            name: "givenNm"
+            in: "query"
+            schema: 
+              type: string
+          - 
+            name: "birthDt"
+            in: "query"
+            schema: 
+              type: string
+          - 
+            name: "searchByCrownPartId"
+            in: "query"
+            schema: 
+              type: string
+          - 
+            name: "searchByCrownActiveOnlyYN"
+            in: "query"
+            schema: 
+              $ref: "#/components/schemas/searchByCrownActiveOnlyYN"
+          - 
+            name: "searchByCrownFileDesignationCd"
+            in: "query"
+            schema: 
+              $ref: "#/components/schemas/searchByCrownFileDesignationCd"
+          - 
+            name: "mdocJustinNoSet"
+            in: "query"
+            schema: 
+              type: string
+          - 
+            name: "physicalFileIdSet"
+            in: "query"
+            schema: 
+              type: string
+    /files/criminal/appearance/{appearanceId}/counts: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/criminalFileAppearanceCountResponse"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get counts for a given appearanceId.\n"
+        operationId: "GET_files-criminal-appearance-appearanceId-counts"
+        parameters: 
+          - 
+            name: "requestAgencyIdentifierId"
+            in: "header"
+            required: true
+            description: "Requesting Agency Identifier"
+            schema: 
+              type: string
+          - 
+            name: "requestPartId"
+            in: "header"
+            required: true
+            description: "Requesting Participant Id"
+            schema: 
+              type: string
+          - 
+            name: "applicationCd"
+            in: "header"
+            required: true
+            description: "The code for the calling application"
+            schema: 
+              type: string
+      parameters: 
+        - 
+          name: "appearanceId"
+          in: "path"
+          required: true
+          schema: 
+            type: string
+    /files/criminal/appearance/{appearanceId}/appearancemethods: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/criminalFileAppearanceApprMethodResponse"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get appearance methods for a given appearanceId.\n"
+        operationId: "GET_files-criminal-appearance-appearanceId-appearancemethods"
+        parameters: 
+          - 
+            name: "requestAgencyIdentifierId"
+            in: "header"
+            required: true
+            description: "Requesting Agency Identifier"
+            schema: 
+              type: string
+          - 
+            name: "requestPartId"
+            in: "header"
+            required: true
+            description: "Requesting Participant Id"
+            schema: 
+              type: string
+          - 
+            name: "applicationCd"
+            in: "header"
+            required: true
+            description: "The code for the calling application"
+            schema: 
+              type: string
+      parameters: 
+        - 
+          name: "appearanceId"
+          in: "path"
+          required: true
+          schema: 
+            type: string
+    /files/criminal/filecontent: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/criminalFileContent"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Gets the criminal file content from the CCD web services.\n"
+        operationId: "GET_files-criminal-filecontent"
+        parameters: 
+          - 
+            name: "requestAgencyIdentifierId"
+            in: "header"
+            required: true
+            description: "Requesting Agency Identifier"
+            schema: 
+              type: string
+          - 
+            name: "requestPartId"
+            in: "header"
+            required: true
+            description: "Requesting Participant Id"
+            schema: 
+              type: string
+          - 
+            name: "applicationCd"
+            in: "header"
+            required: true
+            description: "The code for the calling application"
+            schema: 
+              type: string
+          - 
+            name: "agencyId"
+            in: "query"
+            description: "Agency Identifier Code (Location Code); for example 4801 (Kelowna)."
+            schema: 
+              type: string
+          - 
+            name: "roomCd"
+            in: "query"
+            schema: 
+              type: string
+          - 
+            name: "proceedingDt"
+            in: "query"
+            description: "The proceeding date in the format YYYY-MM-dd"
+            schema: 
+              type: string
+          - 
+            name: "appearanceId"
+            in: "query"
+            description: "The full appeance Id in the for 00000.0000"
+            schema: 
+              type: string
+          - 
+            name: "mdocJustinNo"
+            in: "query"
+            schema: 
+              type: string
+    /files/criminal/{fileId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/criminalFileDetailResponse"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the details for a given criminal file.\n"
+        operationId: "GET_files-criminal-fileId"
+        parameters: 
+          - 
+            name: "requestAgencyIdentifierId"
+            in: "header"
+            required: true
+            description: "Requesting Agency Identifier"
+            schema: 
+              type: string
+          - 
+            name: "requestPartId"
+            in: "header"
+            required: true
+            description: "Requesting Participant Id"
+            schema: 
+              type: string
+          - 
+            name: "applicationCd"
+            in: "header"
+            required: true
+            description: "The code for the calling application"
+            schema: 
+              type: string
+      parameters: 
+        - 
+          name: "fileId"
+          in: "path"
+          required: true
+          schema: 
+            type: string
+    /files/criminal/{fileId}/appearances: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/criminalFileAppearancesResponse"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the appearance information for a given criminal file.\n"
+        operationId: "GET_files-criminal-fileId-appearances"
+        parameters: 
+          - 
+            name: "requestAgencyIdentifierId"
+            in: "header"
+            required: true
+            description: "Requesting Agency Identifier"
+            schema: 
+              type: string
+          - 
+            name: "requestPartId"
+            in: "header"
+            required: true
+            description: "Requesting Participant Id"
+            schema: 
+              type: string
+          - 
+            name: "applicationCd"
+            in: "header"
+            required: true
+            description: "The code for the calling application"
+            schema: 
+              type: string
+          - 
+            name: "futureYN"
+            in: "query"
+            schema: 
+              $ref: "#/components/schemas/futureYN"
+          - 
+            name: "historyYN"
+            in: "query"
+            schema: 
+              $ref: "#/components/schemas/historyYN"
+      parameters: 
+        - 
+          name: "fileId"
+          in: "path"
+          required: true
+          schema: 
+            type: string
+    /files/civil: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/fileSearchResponse"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Provides facilities for performing a civil file search.\n"
+        operationId: "GET_files-civil"
+        parameters: 
+          - 
+            name: "requestAgencyIdentifierId"
+            in: "header"
+            required: true
+            description: "Requesting Agency Identifier"
+            schema: 
+              type: string
+          - 
+            name: "requestPartId"
+            in: "header"
+            required: true
+            description: "Requesting Participant Id"
+            schema: 
+              type: string
+          - 
+            name: "applicationCd"
+            in: "header"
+            required: true
+            description: "The code for the calling application"
+            schema: 
+              type: string
+          - 
+            name: "correlationId"
+            in: "header"
+            required: true
+            description: "Request tracking ID"
+            schema: 
+              type: string
+          - 
+            name: "searchMode"
+            in: "query"
+            required: true
+            schema: 
+              $ref: "#/components/schemas/searchMode"
+          - 
+            name: "fileHomeAgencyId"
+            in: "query"
+            required: true
+            description: "File home Agency Identifier; the Justin Agency ID.  Equates to a location code."
+            schema: 
+              type: string
+          - 
+            name: "fileNumberTxt"
+            in: "query"
+            schema: 
+              type: string
+          - 
+            name: "filePrefixTxt"
+            in: "query"
+            schema: 
+              type: string
+          - 
+            name: "filePermissions"
+            in: "query"
+            required: true
+            description: "A list of one or more of the courtClassCd codes indicating the files to which the requesting user has permissions."
+            schema: 
+              type: string
+          - 
+            name: "fileSuffixNo"
+            in: "query"
+            schema: 
+              type: string
+          - 
+            name: "mdocRefTypeCd"
+            in: "query"
+            schema: 
+              type: string
+          - 
+            name: "courtClassCd"
+            in: "query"
+            schema: 
+              $ref: '#/components/schemas/courtClassCd'
+          - 
+            name: "courtLevelCd"
+            in: "query"
+            schema: 
+              $ref: '#/components/schemas/courtLevelCd'
+          - 
+            name: "nameSearchTypeCd"
+            in: "query"
+            schema: 
+              $ref: '#/components/schemas/nameSearchTypeCd'
+          - 
+            name: "lastNm"
+            in: "query"
+            schema: 
+              type: string
+          - 
+            name: "orgNm"
+            in: "query"
+            schema: 
+              type: string
+          - 
+            name: "givenNm"
+            in: "query"
+            schema: 
+              type: string
+          - 
+            name: "birthDt"
+            in: "query"
+            schema: 
+              type: string
+          - 
+            name: "searchByCrownPartId"
+            in: "query"
+            schema: 
+              type: string
+          - 
+            name: "searchByCrownActiveOnlyYN"
+            in: "query"
+            schema: 
+              $ref: '#/components/schemas/searchByCrownActiveOnlyYN'
+          - 
+            name: "searchByCrownFileDesignationCd"
+            in: "query"
+            schema: 
+              $ref: '#/components/schemas/searchByCrownFileDesignationCd'
+          - 
+            name: "mdocJustinNoSet"
+            in: "query"
+            schema: 
+              type: string
+          - 
+            name: "physicalFileIdSet"
+            in: "query"
+            schema: 
+              type: string
+    /files/civil/appearance/{appearanceId}/parties: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/civilFileAppearancePartyResponse"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get appearance parties for a given appearanceId.\n"
+        operationId: "GET_files-civil-appearance-appearanceId-parties"
+        parameters: 
+          - 
+            name: "requestAgencyIdentifierId"
+            in: "header"
+            required: true
+            description: "Requesting Agency Identifier"
+            schema: 
+              type: string
+          - 
+            name: "requestPartId"
+            in: "header"
+            required: true
+            description: "Requesting Participant Id"
+            schema: 
+              type: string
+          - 
+            name: "applicationCd"
+            in: "header"
+            required: true
+            description: "The code for the calling application"
+            schema: 
+              type: string
+      parameters: 
+        - 
+          name: "appearanceId"
+          in: "path"
+          required: true
+          schema: 
+            type: string
+    /files/civil/appearance/{appearanceId}/appearancemethods: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/civilFileAppearanceApprMethodResponse"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get appearance methods for a given appearanceId.\n"
+        operationId: "GET_files-civil-appearance-appearanceId-appearancemethods"
+        parameters: 
+          - 
+            name: "requestAgencyIdentifierId"
+            in: "header"
+            required: true
+            description: "Requesting Agency Identifier"
+            schema: 
+              type: string
+          - 
+            name: "requestPartId"
+            in: "header"
+            required: true
+            description: "Requesting Participant Id"
+            schema: 
+              type: string
+          - 
+            name: "applicationCd"
+            in: "header"
+            required: true
+            description: "The code for the calling application"
+            schema: 
+              type: string
+      parameters: 
+        - 
+          name: "appearanceId"
+          in: "path"
+          required: true
+          schema: 
+            type: string
+    /files/civil/courtsummaryreport: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/justinReportResponse"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Gets the court summary report for a given appearanceId.\n"
+        operationId: "GET_files-civil-courtsummaryreport"
+        parameters: 
+          - 
+            name: "requestAgencyIdentifierId"
+            in: "header"
+            required: true
+            description: "Requesting Agency Identifier"
+            schema: 
+              type: string
+          - 
+            name: "requestPartId"
+            in: "header"
+            required: true
+            description: "Requesting Participant Id"
+            schema: 
+              type: string
+          - 
+            name: "applicationCd"
+            in: "header"
+            required: true
+            description: "The code for the calling application"
+            schema: 
+              type: string
+          - 
+            name: "appearanceId"
+            in: "query"
+            required: true
+            description: "The full appearance Id in the for 00000.0000"
+            schema: 
+              type: string
+          - 
+            name: "reportName"
+            in: "query"
+            required: true
+            schema: 
+              type: string
+    /files/civil/filecontent: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/civilFileContent"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Gets the civil file content from the CCD web services.\n"
+        operationId: "GET_files-civil-filecontent"
+        parameters: 
+          - 
+            name: "requestAgencyIdentifierId"
+            in: "header"
+            required: true
+            description: "Requesting Agency Identifier"
+            schema: 
+              type: string
+          - 
+            name: "requestPartId"
+            in: "header"
+            required: true
+            description: "Requesting Participant Id"
+            schema: 
+              type: string
+          - 
+            name: "applicationCd"
+            in: "header"
+            required: true
+            description: "The code for the calling application"
+            schema: 
+              type: string
+          - 
+            name: "agencyId"
+            in: "query"
+            description: "Agency Identifier Code (Location Code); for example 4801 (Kelowna)."
+            schema: 
+              type: string
+          - 
+            name: "roomCd"
+            in: "query"
+            schema: 
+              type: string
+          - 
+            name: "proceedingDt"
+            in: "query"
+            description: "The proceeding date in the format YYYY-MM-dd"
+            schema: 
+              type: string
+          - 
+            name: "appearanceId"
+            in: "query"
+            description: "The full appearance Id in the for 00000.0000"
+            schema: 
+              type: string
+          - 
+            name: "physicalFileId"
+            in: "query"
+            schema: 
+              type: string
+    /files/civil/{fileId}: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/civilFileDetailResponse"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the details for a given civil file.\n"
+        operationId: "GET_files-civil-fileId"
+        parameters: 
+          - 
+            name: "requestAgencyIdentifierId"
+            in: "header"
+            required: true
+            description: "Requesting Agency Identifier"
+            schema: 
+              type: string
+          - 
+            name: "requestPartId"
+            in: "header"
+            required: true
+            description: "Requesting Participant Id"
+            schema: 
+              type: string
+          - 
+            name: "applicationCd"
+            in: "header"
+            description: "The code for the calling application"
+            schema: 
+              type: string
+      parameters: 
+        - 
+          name: "fileId"
+          in: "path"
+          required: true
+          schema: 
+            type: string
+    /files/civil/{fileId}/appearances: 
+      get: 
+        responses: 
+          200: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  $ref: "#/components/schemas/civilFileAppearancesResponse"
+          404: 
+            description: ""
+            content: 
+              application/json: 
+                schema: 
+                  example: 
+                    message: "No items matching the given criteria were found."
+        description: "Get the appearance information for a given civil file.\n"
+        operationId: "GET_files-civil-fileId-appearances"
+        parameters: 
+          - 
+            name: "requestAgencyIdentifierId"
+            in: "header"
+            required: true
+            description: "Requesting Agency Identifier"
+            schema: 
+              type: string
+          - 
+            name: "requestPartId"
+            in: "header"
+            required: true
+            description: "Requesting Participant Id"
+            schema: 
+              type: string
+          - 
+            name: "applicationCd"
+            in: "header"
+            required: true
+            description: "The code for the calling application"
+            schema: 
+              type: string
+          - 
+            name: "futureYN"
+            in: "query"
+            schema: 
+              $ref: "#/components/schemas/futureYN"
+          - 
+            name: "historyYN"
+            in: "query"
+            schema: 
+              $ref: "#/components/schemas/historyYN"
+      parameters: 
+        - 
+          name: "fileId"
+          in: "path"
+          required: true
+          schema: 
+            type: string
+  components: 
+    schemas:
+      historyYN:
+        enum:
+          - Y
+          - N
+        type: string
+      futureYN:
+        enum:
+          - Y
+          - N
+        type: string
+      searchByCrownActiveOnlyYN:
+        enum:
+        - Y
+        - N
+        type: string
+      searchByCrownFileDesignationCd:
+        enum:
+          - "SPC"
+          - "GA"
+          - "SA"
+          - "ALL"
+          - "SG"
+        type: string
+      nameSearchTypeCd:
+        enum: 
+        - E
+        - P
+        - S
+        type: string
+      searchMode:
+        enum: 
+        - FILENO
+        - PARTNAME
+        - CROWN
+        - JUSTINNO
+        - PHYSID
+        type: string
+      courtClassCd:
+        enum: 
+          - A
+          - Y
+          - T
+          - F
+          - C
+          - M
+          - L
+          - R
+          - B
+          - D
+          - E
+          - G
+          - H
+          - N
+          - O
+          - P
+          - S
+          - V
+        type: string
+      courtLevelCd:
+        enum: 
+          - P
+          - S
+          - A
+        type: string 
+      clOrderToVary: 
+        type: object
+        properties: 
+          documentId: 
+            type: string
+          documentTypeDsc: 
+            type: string
+          adjudicatorName: 
+            type: string
+          dateGranted: 
+            type: string
+      clFiledBy: 
+        type: object
+        properties: 
+          filedByName: 
+            type: string
+          roleTypeCode: 
+            type: string
+      clUnscheduledDocument: 
+        type: object
+        properties: 
+          documentId: 
+            type: string
+          fileSeqNumber: 
+            type: string
+          documentTypeDsc: 
+            type: string
+          filedBy: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clFiledBy"
+      clCivilArrestWarrant: 
+        type: object
+        properties: 
+          warrantTypeCd: 
+            type: string
+          warrantDate: 
+            type: string
+          warrantTypeDsc: 
+            type: string
+      clHearingRestriction: 
+        type: object
+        properties: 
+          hearingRestrictiontype: 
+            type: string
+          judgeName: 
+            type: string
+          hearingRestrictionDate: 
+            type: string
+      clScheduledAppearance: 
+        type: object
+        properties: 
+          appearanceId: 
+            type: string
+          courtAgencyIdentifier: 
+            type: string
+          courtRoom: 
+            type: string
+          appearanceDate: 
+            type: string
+          appearanceTime: 
+            type: string
+          appearanceReasonCd: 
+            type: string
+          estDurationHours: 
+            type: string
+          estDurationMins: 
+            type: string
+      clProtectedPartyName: 
+        type: object
+        properties: 
+          protectedPartyName: 
+            type: string
+      clRestrainingPartyName: 
+        type: object
+        properties: 
+          restrainingPartyName: 
+            type: string
+      clProtectionOrder: 
+        type: object
+        properties: 
+          orderTypeDsc: 
+            type: string
+          restrainingPartyName: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clRestrainingPartyName"
+          protectedPartyName: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clProtectedPartyName"
+          pororderIssueDate: 
+            type: string
+          porconditionText: 
+            type: string
+          pororderExpiryDate: 
+            type: string
+      clSpeakerEvent: 
+        type: object
+        properties: 
+          speakerEventDate: 
+            type: string
+          speakerEventTime: 
+            type: string
+          speakerEventText: 
+            type: string
+      clSpeaker: 
+        type: object
+        properties: 
+          speakerId: 
+            type: string
+          speakerTypeCd: 
+            type: string
+          speakerSeqNo: 
+            type: string
+          voirDireSeqNo: 
+            type: string
+          speakerName: 
+            type: string
+          speakerStatusCd: 
+            type: string
+          speakerStatusDsc: 
+            type: string
+          speakerEvent: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clSpeakerEvent"
+      clPartyRole: 
+        type: object
+        properties: 
+          roleTypeCd: 
+            type: string
+          roleTypeDsc: 
+            type: string
+      clPartyName: 
+        type: object
+        properties: 
+          nameTypeCd: 
+            type: string
+          nameTypeDsc: 
+            type: string
+          surnameNm: 
+            type: string
+          firstGivenNm: 
+            type: string
+          secondGivenNm: 
+            type: string
+          thirdGivenNm: 
+            type: string
+          organizationNm: 
+            type: string
+      clLegalRepresentative: 
+        type: object
+        properties: 
+          legalRepTypeDsc: 
+            type: string
+          legalRepFullName: 
+            type: string
+      clRepresentative: 
+        type: object
+        properties: 
+          repFullName: 
+            type: string
+          attendanceMethodCd: 
+            type: string
+          phoneNumber: 
+            type: string
+          instruction: 
+            type: string
+      clCounsel: 
+        type: object
+        properties: 
+          counselFullName: 
+            type: string
+          counselId: 
+            type: string
+          phoneNumber: 
+            type: string
+      clParty: 
+        type: object
+        properties: 
+          partyId: 
+            type: string
+          partyScheduled: 
+            type: string
+          partyRoleType: 
+            type: string
+          partyFullName: 
+            type: string
+          attendanceMethodCd: 
+            type: string
+          partyTypeCd: 
+            type: string
+          leftRightParty: 
+            type: string
+          birthDate: 
+            type: string
+          phoneNumber: 
+            type: string
+          instruction: 
+            type: string
+          partyFullAddressText: 
+            type: string
+          warrantIssueDate: 
+            type: string
+          activeYN: 
+            type: string
+          counsel: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clCounsel"
+          representative: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clRepresentative"
+          legalRepresentative: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clLegalRepresentative"
+          partyRole: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clPartyRole"
+          partyName: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clPartyName"
+      clIssueType: 
+        type: object
+        properties: 
+          issueDescription: 
+            type: string
+          issueNumber: 
+            type: string
+          issueType: 
+            type: string
+      clDocument: 
+        type: object
+        properties: 
+          appearanceID: 
+            type: string
+          documentId: 
+            type: string
+          fileSeqNumber: 
+            type: string
+          roleTypeCode: 
+            type: string
+          documentTypeDescription: 
+            type: string
+          estimatedDocumentMinutes: 
+            type: string
+          documentTypeCd: 
+            type: string
+          dateGranted: 
+            type: string
+          dateVaried: 
+            type: string
+          cancelledDate: 
+            type: string
+          adjudicatorPartId: 
+            type: string
+          adjudicatorName: 
+            type: string
+          orderDocumentYN: 
+            type: string
+          documentAccessLevelCd: 
+            type: string
+          documentSealStartDate: 
+            type: string
+          documentSealEndDate: 
+            type: string
+          appearanceReasonCode: 
+            type: string
+          issue: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clIssueType"
+          filedBy: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clFiledBy"
+      clAsset: 
+        type: object
+        properties: 
+          assetTypeDescription: 
+            type: string
+      clPhysicalFile: 
+        type: object
+        properties: 
+          physicalFileID: 
+            type: string
+          fileAccessLevelCd: 
+            type: string
+          fileNumber: 
+            type: string
+          styleOfCause: 
+            type: string
+          leftPartyLastName: 
+            type: string
+          leftPartyGivenName: 
+            type: string
+          leftPartyOtherCount: 
+            type: string
+          rightPartyLastName: 
+            type: string
+          rightPartyGivenName: 
+            type: string
+          rightPartyOtherCount: 
+            type: string
+          thirdPartyLastName: 
+            type: string
+          thirdPartyGivenName: 
+            type: string
+          thirdPartyOtherCount: 
+            type: string
+          homeAgencyCd: 
+            type: string
+          civilAgencyCd: 
+            type: string
+      clCivilCourtList: 
+        type: object
+        properties: 
+          appearanceId: 
+            type: string
+          appearanceTime: 
+            type: string
+          binderText: 
+            type: string
+          courtListPrintSortNumber: 
+            type: string
+          civilDocumentsAvailable: 
+            type: string
+          appearanceDate: 
+            type: string
+          externalFileNumberText: 
+            type: string
+          courtListTypeCd: 
+            type: string
+          courtRoomCd: 
+            type: string
+          courtLevelCd: 
+            type: string
+          courtClassCd: 
+            type: string
+          fileAccessLevelCd: 
+            type: string
+          sealStartDate: 
+            type: string
+          sealEndDate: 
+            type: string
+          sheriffCommentText: 
+            type: string
+          sealFileSOCText: 
+            type: string
+          estimatedAppearanceMinutes: 
+            type: string
+          physicalFile: 
+            $ref: "#/components/schemas/clPhysicalFile"
+          asset: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clAsset"
+          document: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clDocument"
+          parties: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clParty"
+          speaker: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clSpeaker"
+          protectionOrder: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clProtectionOrder"
+          scheduledAppearance: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clScheduledAppearance"
+          hearingRestriction: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clHearingRestriction"
+          arrestWarrant: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clArrestWarrant"
+          unscheduledDocument: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clUnscheduledDocument"
+          orderToVary: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clOrderToVary"
+      clCFCOrder: 
+        type: object
+        properties: 
+          orderTypeDsc: 
+            type: string
+          cfcorderIssueDate: 
+            type: string
+          cfcconditionText: 
+            type: string
+      clCRProtectionOrder: 
+        type: object
+        properties: 
+          orderTypeDsc: 
+            type: string
+          pororderIssueDate: 
+            type: string
+          porconditionText: 
+            type: string
+      clArrestWarrant: 
+        type: object
+        properties: 
+          fileNumberText: 
+            type: string
+          warrantDate: 
+            type: string
+      clAgeNotice: 
+        title: "AgeNotice"
+        type: object
+        properties: 
+          eventDate: 
+            type: string
+          eventTypeDsc: 
+            type: string
+          detailText: 
+            type: string
+          dOB: 
+            type: string
+          relationship: 
+            type: string
+          provenBy: 
+            type: string
+          noticeTo: 
+            type: string
+      clSentOrderToVary: 
+        type: object
+        properties: 
+          formTypeCd: 
+            type: string
+          docmTypeDsc: 
+            type: string
+          docmId: 
+            type: string
+          docmIssueDate: 
+            type: string
+          docmImageId: 
+            type: string
+          docmStatus: 
+            type: string
+      clBailOrderToVary: 
+        type: object
+        properties: 
+          formTypeCd: 
+            type: string
+          docmTypeDsc: 
+            type: string
+          docmId: 
+            type: string
+          docmIssueDate: 
+            type: string
+          docmImageId: 
+            type: string
+          docmStatus: 
+            type: string
+      clBans: 
+        type: object
+        properties: 
+          banTypeCd: 
+            type: string
+          banTypeDescription: 
+            type: string
+          banTypeAct: 
+            type: string
+          banTypeSection: 
+            type: string
+          banTypeSubSection: 
+            type: string
+          banStatuteId: 
+            type: string
+          banCommentText: 
+            type: string
+          banAcprId: 
+            type: string
+      clAppearanceCount: 
+        type: object
+        properties: 
+          appearanceCountId: 
+            type: string
+          countPrintSequenceNumber: 
+            type: string
+          chargeStatuteCode: 
+            type: string
+          chargeStatuteDescription: 
+            type: string
+          lesserIncludedChargeStatuteCode: 
+            type: string
+          appearanceCountCancelledYN: 
+            type: string
+          lesserIncludedChargeStatuteDescription: 
+            type: string
+          appearanceReasonCode: 
+            type: string
+          pleaCode: 
+            type: string
+          pleaDate: 
+            type: string
+          electionCode: 
+            type: string
+          electionDate: 
+            type: string
+          mdctSeqNo: 
+            type: string
+          offenceAgeDaysNumber: 
+            type: string
+          issuingOfficerPoliceForceCode: 
+            type: string
+          issuingOfficerPINText: 
+            type: string
+          issuingOfficerSurnameName: 
+            type: string
+          findingCode: 
+            type: string
+          findingDate: 
+            type: string
+      clAttendanceMethod: 
+        type: object
+        properties: 
+          apprId: 
+            type: string
+          assetUsageSeqNo: 
+            type: string
+          roleType: 
+            type: string
+          attendanceMethodCd: 
+            type: string
+          phoneNumber: 
+            type: string
+          instruction: 
+            type: string
+          otherRoleName: 
+            type: string
+      clAccusedFormattedName: 
+        type: object
+        properties: 
+          lastName: 
+            type: string
+          given1Name: 
+            type: string
+          given2Name: 
+            type: string
+          given3Name: 
+            type: string
+          orgName: 
+            type: string
+      clIssue: 
+        type: object
+        properties: 
+          countPrntSeqNo: 
+            type: string
+          statuteActCd: 
+            type: string
+          statuteSectionCd: 
+            type: string
+          statuteSectionDsc: 
+            type: string
+      clFileInformation: 
+        type: object
+        properties: 
+          fileLocaAgencyIdentifierCd: 
+            type: string
+          phyFileFolderNo: 
+            type: string
+          physTicketSeriesTxt: 
+            type: string
+          mdocInfoSeqNo: 
+            type: string
+          partId: 
+            type: string
+          profSeqNo: 
+            type: string
+          mdocJustinNo: 
+            type: string
+          courtLevelCd: 
+            type: string
+          courtClassCd: 
+            type: string
+          mdocTypeCd: 
+            type: string
+          mdocTypeDsc: 
+            type: string
+          mdocImageId: 
+            type: string
+          mdocAmendedYN: 
+            type: string
+          mdocAmendedText: 
+            type: string
+          issue: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clIssue"
+      clCriminalCourtList: 
+        type: object
+        properties: 
+          criminalAppearanceID: 
+            type: string
+          courtListTypeCd: 
+            type: string
+          appearanceSequenceNumber: 
+            type: string
+          appearanceTime: 
+            type: string
+          fileInformation: 
+            $ref: "#/components/schemas/clFileInformation"
+          fileNumberText: 
+            type: string
+          fileHomeLocationName: 
+            type: string
+          sealTypeCd: 
+            type: string
+          sealTypeDsc: 
+            type: string
+          otherFileInformationText: 
+            type: string
+          accusedFullName: 
+            type: string
+          accusedFormattedName: 
+            $ref: "#/components/schemas/clAccusedFormattedName"
+          accusedBirthDate: 
+            type: string
+          accusedCurrentBailProcessText: 
+            type: string
+          accusedInCustodyFlag: 
+            type: string
+          counselFullName: 
+            type: string
+          counselDesignationYN: 
+            type: string
+          counselPartId: 
+            type: string
+          caseAgeDaysNumber: 
+            type: string
+          crownTypeCd: 
+            type: string
+          crownLocationCd: 
+            type: string
+          participantRoleCd: 
+            type: string
+          participantRoleDsc: 
+            type: string
+          attendanceMethod: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clAttendanceMethod"
+          appearanceCount: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clAppearanceCount"
+          bans: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clBans"
+          bailOrderToVary: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clBailOrderToVary"
+          sentOrderToVary: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clSentOrderToVary"
+          ageNotice: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clAgeNotice"
+          speaker: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clSpeaker"
+          arrestWarrant: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clArrestWarrant"
+          protectionOrder: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clProtectionOrder"
+          scheduledAppearance: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clScheduledAppearance"
+          hearingRestriction: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clHearingRestriction"
+          cfcorder: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clCFCOrder"
+      clFileSearchParameter: 
+        type: object
+        properties: 
+          courtDivisionCd: 
+            type: string
+          fileNumber: 
+            type: string
+      courtList: 
+        type: object
+        properties: 
+          courtLocationName: 
+            type: string
+          courtRoomCode: 
+            type: string
+          courtProceedingsDate: 
+            type: string
+          fileSearchParameter: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clFileSearchParameter"
+          criminalCourtList: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clCriminalCourtList"
+          civilCourtList: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clCivilCourtList"
+      cfcProtectionOrder: 
+        type: object
+        properties: 
+          pOROrderIssueDate: 
+            type: string
+          orderTypeDsc: 
+            type: string
+          pORConditionText: 
+            type: string
+      cfcCFCOrder: 
+        type: object
+        properties: 
+          cFCOrderIssueDate: 
+            type: string
+          orderTypeDsc: 
+            type: string
+          cFCConditionText: 
+            type: string
+      cfcHearingRestriction: 
+        type: object
+        properties: 
+          hearingRestrictiontype: 
+            type: string
+          judgeName: 
+            type: string
+          hearingRestrictionDate: 
+            type: string
+      cfcDocument: 
+        type: object
+        properties: 
+          docmClassification: 
+            type: string
+          docmId: 
+            type: string
+          issueDate: 
+            type: string
+          docmFormId: 
+            type: string
+          docmFormDsc: 
+            type: string
+          docmDispositionDsc: 
+            type: string
+          docmDispositionDate: 
+            type: string
+          imageId: 
+            type: string
+          documentPageCount: 
+            type: string
+      cfcAppearance: 
+        type: object
+        properties: 
+          appearanceId: 
+            type: string
+          appearanceDate: 
+            type: string
+          courtAgencyIdentifier: 
+            type: string
+          courtRoom: 
+            type: string
+          appearanceNote: 
+            type: string
+          estimatedTimeHour: 
+            type: string
+          estimatedTimeMin: 
+            type: string
+          confirmStatusDsc: 
+            type: string
+          judgesRecommendation: 
+            type: string
+          appearanceCount: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cfcAppearanceCount"
+          partyAppearanceMethod: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cfcPartyAppearanceMethod"
+      cfcAppearanceCount: 
+        type: object
+        properties: 
+          appcId: 
+            type: string
+          countNumber: 
+            type: string
+          appearanceReason: 
+            type: string
+          appearanceResult: 
+            type: string
+          finding: 
+            type: string
+          sectionTxt: 
+            type: string
+          sectionDscTxt: 
+            type: string
+          sentence: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cfcSentence"
+      cfcSentence: 
+        type: object
+        properties: 
+          sntpCd: 
+            type: string
+          sentTermPeriodQty: 
+            type: string
+          sentTermCd: 
+            type: string
+          sentSubtermPeriodQty: 
+            type: string
+          sentSubtermCd: 
+            type: string
+          sentTertiaryTermPeriodQty: 
+            type: string
+          sentTertiaryTermCd: 
+            type: string
+          sentIntermittentYn: 
+            type: string
+          sentMonetaryAmt: 
+            type: string
+          sentDueTtpDt: 
+            type: string
+          sentEffectiveDt: 
+            type: string
+          sentDetailTxt: 
+            type: string
+          sentYcjaAdultYouthCd: 
+            type: string
+          sentCustodySecureYn: 
+            type: string
+      cfcPartyAppearanceMethod: 
+        type: object
+        properties: 
+          partyName: 
+            type: string
+          partyRole: 
+            type: string
+          partId: 
+            type: string
+          partyAppearanceMethod: 
+            type: string
+      cfcBan: 
+        type: object
+        properties: 
+          banTypeCd: 
+            type: string
+          banTypeDescription: 
+            type: string
+          banTypeAct: 
+            type: string
+          banTypeSection: 
+            type: string
+          banTypeSubSection: 
+            type: string
+          banStatuteId: 
+            type: string
+          banCommentText: 
+            type: string
+          banOrderedDate: 
+            type: string
+          banSeqNo: 
+            type: string
+      cfcArrestWarrant: 
+        type: object
+        properties: 
+          fileNumberText: 
+            type: string
+          warrantDate: 
+            type: string
+      cfcAccusedFile: 
+        type: object
+        properties: 
+          fileNumber: 
+            type: string
+          fileLocaAgencyIdentifierCd: 
+            type: string
+          mdocJustinNo: 
+            type: string
+          mdocInfoSeqNo: 
+            type: string
+          physTicketSeriesTxt: 
+            type: string
+          phyFileFolderNo: 
+            type: string
+          courtClassCd: 
+            type: string
+          courtLevelCd: 
+            type: string
+          partId: 
+            type: string
+          profSeqNo: 
+            type: string
+          sealTypeCd: 
+            type: string
+          filedDate: 
+            type: string
+          arrestWarrant: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cfcArrestWarrant"
+          ban: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cfcBan"
+          protectionOrder: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cfcProtectionOrder"
+          cfcorder: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cfcCFCOrder"
+          hearingRestriction: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cfcHearingRestriction"
+          document: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cfcDocument"
+          appearance: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cfcAppearance"
+      criminalFileContent: 
+        type: object
+        properties: 
+          courtLocaCd: 
+            type: string
+          courtRoomCd: 
+            type: string
+          courtProceedingDate: 
+            type: string
+          appearanceId: 
+            type: array
+            items: 
+              type: string
+          mdocJustinNo: 
+            type: string
+          accusedFile: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cfcAccusedFile"
+      cvfcSpecialProgram: 
+        type: object
+        properties: 
+          specialProgramDsc: 
+            type: string
+          programEntryDate: 
+            type: string
+          programEntryReasonDsc: 
+            type: string
+          programExitDate: 
+            type: string
+          programExitReasonDsc: 
+            type: string
+      cvfcIssue: 
+        type: object
+        properties: 
+          issueDsc: 
+            type: string
+          issueNumber: 
+            type: string
+          concludedYN: 
+            type: string
+      cvfcDocumentHearing: 
+        type: object
+        properties: 
+          documentId: 
+            type: string
+          fileSeqNumber: 
+            type: string
+          documentTypeCd: 
+            type: string
+          documentTypeDescription: 
+            type: string
+          filedBy: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clFiledBy"
+          roleTypeCode: 
+            type: string
+          orderDocumentYN: 
+            type: string
+          appearanceReasonCode: 
+            type: string
+          appearanceResultCode: 
+            type: string
+          issue: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cvfcIssue"
+      cvfcCounsel: 
+        type: object
+        properties: 
+          counselId: 
+            type: string
+          fullNm: 
+            type: string
+          phoneNumberTxt: 
+            type: string
+          counselAppearanceMethod: 
+            type: string
+          counselName: 
+            type: string
+      cvfcGeneralAttendee: 
+        type: object
+        properties: 
+          attendeeName: 
+            type: string
+          counselName: 
+            type: string
+      cvfcCourtParticipant: 
+        type: object
+        properties: 
+          partyName: 
+            type: string
+          partyRole: 
+            type: string
+          partId: 
+            type: string
+          partyAppearanceMethod: 
+            type: string
+          leftRightParty: 
+            type: string
+          counsel: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cvfcCounsel"
+      cvfcPreviousAppearance: 
+        type: object
+        properties: 
+          appearanceId: 
+            type: string
+          appearanceDate: 
+            type: string
+          courtAgencyIdentifier: 
+            type: string
+          courtRoom: 
+            type: string
+          adjudicatorName: 
+            type: string
+          adjudicatorComment: 
+            type: string
+          adjudicatorAppearanceMethod: 
+            type: string
+          documentHearing: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cvfcDocumentHearing"
+          courtParticipant: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cvfcCourtParticipant"
+          generalAttendee: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cvfcGeneralAttendee"
+      cvfcAppearance: 
+        type: object
+        properties: 
+          appearanceId: 
+            type: string
+          appearanceDate: 
+            type: string
+          courtAgencyIdentifier: 
+            type: string
+          courtRoom: 
+            type: string
+          appearanceReason: 
+            type: string
+          adjudicatorComment:
+            type: string
+      cvfcPartyInterest: 
+        type: object
+        properties: 
+          orderRoleTypeDsc: 
+            type: string
+          partyName: 
+            type: string
+          partyBirthDate: 
+            type: string
+      cvfcDocument: 
+        type: object
+        properties: 
+          documentId: 
+            type: string
+          fileSeqNumber: 
+            type: string
+          filedByName: 
+            type: string
+          roleTypeCode: 
+            type: string
+          documentTypeCd: 
+            type: string
+          documentTypeDescription: 
+            type: string
+          documentAccessLevelCd: 
+            type: string
+          documentSealEndDate: 
+            type: string
+          documentSealStartDate: 
+            type: string
+          dateGranted: 
+            type: string
+          estimatedDocumentMinutes: 
+            type: string
+          endedDate: 
+            type: string
+          dateVaried: 
+            type: string
+          cancelledDate: 
+            type: string
+          documentCommentText: 
+            type: string
+          orderDocumentYN: 
+            type: string
+          pOROrderYN: 
+            type: string
+          cFCOrderYN: 
+            type: string
+          imageId: 
+            type: string
+          sealedYN: 
+            type: string
+          documentPageCount: 
+            type: string
+          swornByNm: 
+            type: string
+          affidavitNo: 
+            type: string
+          issue: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cvfcIssue"
+          appearance: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cvfcAppearance"
+          partyInterest: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cvfcPartyInterest"
+          filedBy: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/clFiledBy"
+      cvfcCivilFile: 
+        type: object
+        properties: 
+          physicalFileID: 
+            type: string
+          fileNumber: 
+            type: string
+          courtLevelCd: 
+            type: string
+          courtClassCd: 
+            type: string
+          indigencyGrantedYN: 
+            type: string
+          infantFileYN: 
+            type: string
+          cFCSAFileYN: 
+            type: string
+          marriagePlaceText: 
+            type: string
+          marriageDate: 
+            type: string
+          divorceDate: 
+            type: string
+          federalClearanceDate: 
+            type: string
+          centralRegNumber: 
+            type: string
+          caveatExpiryDate: 
+            type: string
+          probateFileNumber: 
+            type: string
+          caveatCancelledYN: 
+            type: string
+          assetDeclaredAmt: 
+            type: string
+          probateFeeAmt: 
+            type: string
+          probateEnteredDate: 
+            type: string
+          additionalAssetDeclaredAmt: 
+            type: string
+          additionalProbateFeeAmt: 
+            type: string
+          estateValueAmt: 
+            type: string
+          outsideBCAssetAmt: 
+            type: string
+          assetCommentText: 
+            type: string
+          fileCommentText: 
+            type: string
+          sealedYN: 
+            type: string
+          sheriffCommentText: 
+            type: string
+          fileLocaAgencyIdentifierCd: 
+            type: string
+          specialProgram: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cvfcSpecialProgram"
+          previousAppearance: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cvfcPreviousAppearance"
+          document: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cvfcDocument"
+      civilFileContent: 
+        type: object
+        properties: 
+          courtLocaCd: 
+            type: string
+          courtRoomCd: 
+            type: string
+          courtProceedingDate: 
+            type: string
+          appearanceId: 
+            type: array
+            items: 
+              type: string
+          physicalFileId: 
+            type: string
+          civilFile: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cvfcCivilFile"
+      charge: 
+        type: object
+        properties: 
+          sectionTxt: 
+            type: string
+          sectionDscTxt: 
+            type: string
+      participant: 
+        type: object
+        properties: 
+          fullNm: 
+            type: string
+          charge: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/charge"
+      fileDetail: 
+        type: object
+        properties: 
+          mdocJustinNo: 
+            type: string
+          physicalFileId: 
+            type: string
+          fileHomeAgencyId: 
+            type: string
+          fileNumberTxt: 
+            type: string
+          mdocSeqNo: 
+            type: string
+          ticketSeriesTxt: 
+            type: string
+          mdocRefTypeCd: 
+            type: string
+          courtLevelCd: 
+            $ref: "#/components/schemas/courtLevelCd"
+          courtClassCd: 
+            $ref: "#/components/schemas/courtClassCd"
+          warrantYN: 
+            enum: 
+              - "Y"
+              - "N"
+            type: string
+          inCustodyYN: 
+            enum: 
+              - "Y"
+              - "N"
+            type: string
+          nextApprDt: 
+            type: string
+          pcssCourtDivisionCd: 
+            enum: 
+              - "I"
+              - "R"
+              - "F"
+            type: string
+          sealStatusCd: 
+            enum: 
+              - "NA"
+              - "SD"
+              - "EF"
+            type: string
+          approvalCrownAgencyTypeCd: 
+            type: string
+          participant: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/participant"
+      fileSearchResponse: 
+        type: object
+        properties: 
+          responseCd: 
+            type: string
+          responseMessageTxt: 
+            type: string
+          recCount: 
+            type: string
+          fileDetail: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/fileDetail"
+      rcc: 
+        type: object
+        properties: 
+          rccId: 
+            type: string
+          rccAgencyId: 
+            type: string
+          rccAgencyFileNo: 
+            type: string
+          synopsisTxt: 
+            type: string
+      crownFileNote: 
+        type: object
+        properties: 
+          fileNoteId: 
+            type: string
+          noteTxt: 
+            type: string
+      hearingRestriction2: 
+        type: object
+        properties: 
+          hearingRestrictionId: 
+            type: string
+          adjPartId: 
+            type: string
+          adjFullNm: 
+            type: string
+          hearingRestrictionTypeCd: 
+            enum: 
+              - S
+              - D
+              - A
+              - G
+            type: string
+          partId: 
+            type: string
+          profSeqNo: 
+            type: string
+          partNm: 
+            type: string
+          adjInitialsTxt: 
+            type: string
+          justinNo: 
+            type: string
+          hearingRestrictionCcn: 
+            type: string
+      criminalWitness: 
+        type: object
+        properties: 
+          partId: 
+            type: string
+          lastNm: 
+            type: string
+          givenNm: 
+            type: string
+          witnessTypeCd: 
+            type: string
+          roleTypeCd: 
+            enum: 
+              - WIT
+              - CRN
+            type: string
+          requiredYN: 
+            enum: 
+              - Y
+              - N
+            type: string
+          confidentialYN: 
+            enum: 
+              - Y
+              - N
+            type: string
+          pinCodeTxt: 
+            type: string
+          agencyId: 
+            type: string
+      criminalParticipant: 
+        type: object
+        properties: 
+          partId: 
+            type: string
+          profSeqNo: 
+            type: string
+          lastNm: 
+            type: string
+          givenNm: 
+            type: string
+          orgNm: 
+            type: string
+          warrantYN: 
+            enum: 
+              - Y
+              - N
+              - null
+            type: string
+          inCustodyYN: 
+            enum: 
+              - Y
+              - N
+              - null
+            type: string
+          interpreterYN: 
+            enum: 
+              - Y
+              - N
+              - null
+            type: string
+          detainedYN: 
+            enum: 
+              - Y
+              - N
+              - null
+            type: string
+          birthDt: 
+            type: string
+          counselRrepId: 
+            type: string
+          counselPartId: 
+            type: string
+          counselLastNm: 
+            type: string
+          counselGivenNm: 
+            type: string
+          counselRelatedRepTypeCd: 
+            type: string
+          counselEnteredDt: 
+            type: string
+          designatedCounselYN: 
+            enum: 
+              - Y
+              - N
+              - null
+            type: string
+          charge: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/charge"
+      trialRemark: 
+        type: object
+        properties: 
+          commentTxt: 
+            type: string
+      criminalFileDetailResponse: 
+        type: object
+        properties: 
+          responseCd: 
+            type: string
+          responseMessageTxt: 
+            type: string
+          justinNo: 
+            type: string
+          fileNumberTxt: 
+            type: string
+          homeLocationAgenId: 
+            type: string
+          courtLevelCd: 
+            enum: 
+              - P
+              - S
+              - A
+            type: string
+          courtClassCd: 
+            enum: 
+              - "A"
+              - "Y"
+              - "T"
+              - "F"
+              - "C"
+              - "M"
+              - "L"
+              - "R"
+              - "B"
+              - "D"
+              - "E"
+              - "G"
+              - "H"
+              - "N"
+              - "O"
+              - "P"
+              - "S"
+              - "V"
+            type: string
+          currentEstimateLenQty: 
+            type: string
+          currentEstimateLenUnit: 
+            enum: 
+              - "HRS"
+              - "DYS"
+              - "MTH"
+              - "MTHS"
+              - "YRS"
+              - "MIN"
+              - "WKS"
+              - "HR"
+            type: string
+          initialEstimateLenQty: 
+            type: string
+          initialEstimateLenUnit: 
+            enum: 
+              - HRS
+              - DYS
+              - MTH
+              - MTHS
+              - YRS
+              - MIN
+              - WKS
+              - HR
+            type: string
+          trialStartDt: 
+            type: string
+          witnessCount: 
+            type: string
+          mdocSubCategoryDsc: 
+            type: string
+          approvedByAgencyCd: 
+            type: string
+          approvedByPartNm: 
+            type: string
+          assignedPartNm: 
+            type: string
+          crownEstimateLenQty: 
+            type: string
+          crownEstimateLenUnit: 
+            enum: 
+              - HRS
+              - DYS
+              - MTH
+              - MTHS
+              - YRS
+              - MIN
+              - WKS
+              - HR
+              - null
+            type: string
+          caseAgeDays: 
+            type: string
+          indictableYN: 
+            enum: 
+              - Y
+              - N
+            type: string
+          complexityTypeCd: 
+            enum: 
+              - SPC
+              - GA
+              - SA
+              - ALL
+              - SG
+              - null
+            type: string
+          personnelWitnessRecCount: 
+            type: string
+          expertWitnessRecCount: 
+            type: string
+          civilianWitnessRecCount: 
+            type: string
+          enforcementAgencyFileNoTxt: 
+            type: string
+          trialRemarkTxt: 
+            type: string
+          commentToJudgeTxt: 
+            type: string
+          approvalCrownAgencyTypeCd: 
+            type: string
+          mdocCcn: 
+            type: string
+          trialRemark: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/trialRemark"
+          participant: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/criminalParticipant"
+          witness: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/criminalWitness"
+          hearingRestriction: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/hearingRestriction2"
+          crownFileNote: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/crownFileNote"
+          rcc: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/rcc"
+      cvfcParty3: 
+        type: object
+        properties: 
+          partyId: 
+            type: string
+          lastNm: 
+            type: string
+          givenNm: 
+            type: string
+          orgNm: 
+            type: string
+          roleTypeCd: 
+            type: string
+          leftRightCd: 
+            enum: 
+              - L
+              - R
+            type: string
+          selfRepresentedYN: 
+            type: string
+          counsel: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cvfcCounsel"
+      cvfcDocumentSupport: 
+        type: object
+        properties: 
+          actCd: 
+            type: string
+          actDsc: 
+            type: string
+      cvfcIssue2: 
+        type: object
+        properties: 
+          issueNumber: 
+            type: string
+          issueTypeCd: 
+            type: string
+          issueDsc: 
+            type: string
+          issueResultCd: 
+            type: string
+          issueResultDsc: 
+            type: string
+          concludedYn: 
+            enum: 
+              - Y
+              - N
+            type: string
+      cvfcDocument3: 
+        type: object
+        properties: 
+          civilDocumentId: 
+            type: string
+          imageId: 
+            type: string
+          fileSeqNo: 
+            type: string
+          documentTypeCd: 
+            type: string
+          filedDt: 
+            type: string
+          filedByName: 
+            type: string
+          commentTxt: 
+            type: string
+          concludedYn: 
+            type: string
+          lastAppearanceId: 
+            type: string
+          lastAppearanceDt: 
+            type: string
+          lastAppearanceTm: 
+            type: string
+          sealedYN: 
+            type: string
+          DateGranted: 
+            type: string
+          affidavitNo:
+            type: string
+          swornByNm:
+            type: string
+          documentSupport: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cvfcDocumentSupport"
+          appearance: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cvfcAppearance"
+          issue: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cvfcIssue2"
+      cvfcRefDocument3: 
+        type: object
+        properties: 
+          ReferenceDocumentId: 
+            type: string
+          ReferenceDocumentNo: 
+            type: string
+          AppearanceId: 
+            type: string
+          AppearanceDate: 
+            type: string
+          ObjectGuid: 
+            type: string
+          DescriptionText: 
+            type: string
+          EnterDtm: 
+            type: string
+          ReferenceDocumentTypeCd: 
+            type: string
+          ReferenceDocumentTypeDsc: 
+            type: string
+          ReferenceDocumentInterest: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/referenceDocumentInterest"
+      referenceDocumentInterest: 
+        type: object
+        properties: 
+          PartyId: 
+            type: string
+          PartyName: 
+            type: string
+          NonPartyName: 
+            type: string
+      cvfcHearingRestriction2: 
+        type: object
+        properties: 
+          hearingRestrictionId: 
+            type: string
+          adjPartId: 
+            type: string
+          adjFullNm: 
+            type: string
+          hearingRestrictionTypeCd: 
+            enum: 
+              - S
+              - D
+              - A
+              - G
+              - XXX
+            type: string
+          applyToNm: 
+            type: string
+          civilDocumentId: 
+            type: string
+          physicalFileId: 
+            type: string
+          adjInitialsTxt: 
+            type: string
+          hearingRestrictionCcn: 
+            type: string
+      civilFileDetailResponse: 
+        type: object
+        properties: 
+          responseCd: 
+            type: string
+          responseMessageTxt: 
+            type: string
+          physicalFileId: 
+            type: string
+          fileNumberTxt: 
+            type: string
+          homeLocationAgenId: 
+            type: string
+          courtLevelCd: 
+            enum: 
+              - P
+              - S
+              - A
+            type: string
+          courtClassCd: 
+            enum: 
+              - A
+              - Y
+              - T
+              - F
+              - C
+              - M
+              - L
+              - R
+              - B
+              - D
+              - E
+              - G
+              - H
+              - N
+              - O
+              - P
+              - S
+              - V
+            type: string
+          socTxt: 
+            type: string
+          leftRoleDsc: 
+            type: string
+          rightRoleDsc: 
+            type: string
+          trialRemarkTxt: 
+            type: string
+          commentToJudgeTxt: 
+            type: string
+          sheriffCommentText: 
+            type: string
+          fileCommentText: 
+            type: string
+          cfcsaFileYN: 
+            type: string
+          sealedYN: 
+            type: string
+          party: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cvfcParty3"
+          document: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cvfcDocument3"
+          referenceDocument: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cvfcRefDocument3"
+          appearance: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cvfcAppearance"
+          hearingRestriction: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/cvfcHearingRestriction2"
+      criminalAppearanceDetail: 
+        type: object
+        properties: 
+          historyYN: 
+            enum: 
+              - Y
+              - N
+            type: string
+          appearanceId: 
+            type: string
+          appearanceDt: 
+            type: string
+          appearanceTm: 
+            type: string
+          appearanceReasonCd: 
+            type: string
+          courtAgencyId: 
+            type: string
+          courtRoomCd: 
+            type: string
+          judgeFullNm: 
+            type: string
+          judgeInitials: 
+            type: string
+          counselFullNm: 
+            type: string
+          estimatedTimeHour: 
+            type: string
+          estimatedTimeMin: 
+            type: string
+          partOfTrialYN: 
+            enum: 
+              - Y
+              - N
+            type: string
+          appearanceStatusCd: 
+            enum: 
+              - SCHD
+              - CNCL
+              - UNCF
+            type: string
+          partId: 
+            type: string
+          profSeqNo: 
+            type: string
+          lastNm: 
+            type: string
+          givenNm: 
+            type: string
+          orgNm: 
+            type: string
+          appearanceResultCd: 
+            type: string
+          appearanceCcn: 
+            type: string
+          supplementalEquipmentTxt: 
+            type: string
+          securityRestrictionTxt: 
+            type: string
+          outOfTownJudgeTxt: 
+            type: string
+      civilAppearanceDetail: 
+        type: object
+        properties: 
+          historyYN: 
+            enum: 
+              - Y
+              - N
+            type: string
+          appearanceId: 
+            type: string
+          appearanceDt: 
+            type: string
+          appearanceTm: 
+            type: string
+          appearanceReasonCd: 
+            type: string
+          courtAgencyId: 
+            type: string
+          courtRoomCd: 
+            type: string
+          judgeFullNm: 
+            type: string
+          judgeInitials: 
+            type: string
+          estimatedTimeHour: 
+            type: string
+          estimatedTimeMin: 
+            type: string
+          partOfTrialYN: 
+            enum: 
+              - Y
+              - N
+            type: string
+          appearanceStatusCd: 
+            enum: 
+              - "SCHD"
+              - "CNCL"
+              - "UNCF"
+            type: string
+          appearanceResultCd: 
+            type: string
+          appearanceCcn: 
+            type: string
+          documentTypeCd: 
+            type: string
+          documentRecCount: 
+            type: string
+          supplementalEquipmentTxt: 
+            type: string
+          securityRestrictionTxt: 
+            type: string
+          outOfTownJudgeTxt: 
+            type: string
+      criminalFileAppearancesResponse: 
+        type: object
+        properties: 
+          responseCd: 
+            type: string
+          responseMessageTxt: 
+            type: string
+          futureRecCount: 
+            type: string
+          historyRecCount: 
+            type: string
+          apprDetail: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/criminalAppearanceDetail"
+      civilFileAppearancesResponse: 
+        type: object
+        properties: 
+          responseCd: 
+            type: string
+          responseMessageTxt: 
+            type: string
+          futureRecCount: 
+            type: string
+          historyRecCount: 
+            type: string
+          apprDetail: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/civilAppearanceDetail"
+      ropResponse: 
+        type: object
+        properties: 
+          resultCd: 
+            type: string
+          resultMessage: 
+            type: string
+          b64Content: 
+            type: string
+      justinReportResponse: 
+        type: object
+        properties: 
+          responseCd: 
+            type: string
+          responseMessageTxt: 
+            type: string
+          reportContent: 
+            type: string
+      civilAppearanceParty: 
+        type: object
+        properties: 
+          partyId: 
+            type: string
+          partyRoleTypeCd: 
+            type: string
+          lastNm: 
+            type: string
+          givenNm: 
+            type: string
+          orgNm: 
+            type: string
+          counselNm: 
+            type: string
+          courtParticipantId: 
+            type: string
+          courtParticipantCcn: 
+            type: string
+      civilFileAppearancePartyResponse: 
+        type: object
+        properties: 
+          responseCd: 
+            type: string
+          responseMessageTxt: 
+            type: string
+          party: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/civilAppearanceParty"
+      civilAppearanceMethod: 
+        type: object
+        properties: 
+          roleTypeCd: 
+            type: string
+          appearanceMethodCd: 
+            type: string
+          apprMethodCcn: 
+            type: string
+      civilFileAppearanceApprMethodResponse: 
+        type: object
+        properties: 
+          responseCd: 
+            type: string
+          responseMessageTxt: 
+            type: string
+          appearanceMethod: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/civilAppearanceMethod"
+      criminalAppearanceMethod: 
+        type: object
+        properties: 
+          assetUsageSeqNo: 
+            type: string
+          roleTypeCd: 
+            type: string
+          appearanceMethodCd: 
+            type: string
+          phoneNumberTxt: 
+            type: string
+          instructionTxt: 
+            type: string
+          apprMethodCcn: 
+            type: string
+      criminalFileAppearanceApprMethodResponse: 
+        type: object
+        properties: 
+          responseCd: 
+            type: string
+          responseMessageTxt: 
+            type: string
+          appearanceMethod: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/criminalAppearanceMethod"
+      criminalAppearanceCount: 
+        type: object
+        properties: 
+          printSeqNo: 
+            type: string
+          statuteSectionDsc: 
+            type: string
+          statuteDsc: 
+            type: string
+          appearanceReasonCd: 
+            type: string
+          appearanceResultCd: 
+            type: string
+          findingCd: 
+            type: string
+      criminalFileAppearanceCountResponse: 
+        type: object
+        properties: 
+          responseCd: 
+            type: string
+          responseMessageTxt: 
+            type: string
+          apprCount: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/criminalAppearanceCount"
+      courtCalendarDetailAppearanceParty: 
+        type: object
+        properties: 
+          partyId: 
+            type: string
+          partyNm: 
+            type: string
+          counselNm: 
+            type: string
+      courtCalendarDetailByDay: 
+        type: object
+        properties: 
+          responseCd: 
+            type: string
+          responseMessageTxt: 
+            type: string
+          appearance: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/courtCalendarDetailAppearance"
+      courtCalendarDetailAppearance: 
+        type: object
+        properties: 
+          courtDivisionCd: 
+            enum: 
+              - R
+              - I
+            type: string
+          courtClassCd: 
+            enum: 
+              - A
+              - Y
+              - T
+              - F
+              - C
+              - M
+              - L
+              - R
+              - B
+              - D
+              - E
+              - G
+              - H
+              - N
+              - O
+              - P
+              - S
+              - V
+            type: string
+          courtRoomCd: 
+            type: string
+          appearanceDt: 
+            type: string
+          appearanceTm: 
+            type: string
+          appearanceReasonCd: 
+            type: string
+          durationHour: 
+            type: string
+          durationMin: 
+            type: string
+          courtFileNumber: 
+            type: string
+          styleOfCause: 
+            type: string
+          adjudicatorInitials: 
+            type: string
+          adjudicatorNm: 
+            type: string
+          hearingRestrictionCd: 
+            enum: 
+              - S
+              - D
+              - A
+              - G
+              - XXX
+            type: string
+          caseAgeDays: 
+            type: string
+          videoYn: 
+            enum: 
+              - Y
+              - N
+            type: string
+          inCustodyYn: 
+            enum: 
+              - Y
+              - N
+              - null
+            type: string
+          apprId: 
+            type: string
+          accusedNm: 
+            type: string
+          accusedCounselNm: 
+            type: string
+          appearanceId: 
+            type: string
+          profPartId: 
+            type: string
+          profSeqNo: 
+            type: string
+          appearanceStatusCd: 
+            enum: 
+              - SCHD
+              - CNCL
+              - UNCF
+            type: string
+          remoteVideoYn: 
+            enum: 
+              - Y
+              - N
+            type: string
+          homeLocationAgenId: 
+            type: string
+          courtlistRefNumber: 
+            type: string
+          mdocJustinNo: 
+            type: string
+          physicalFileId: 
+            type: string
+          courtLevelCd: 
+            enum: 
+              - P
+              - S
+              - A
+            type: string
+          party: 
+            type: array
+            items: 
+              $ref: "#/components/schemas/courtCalendarDetailAppearanceParty"
+    responses: {}
+    parameters: {}
+    examples: {}
+    requestBodies: {}
+    headers: {}
+    securitySchemes: 
+      basic: 
+        type: "http"
+        scheme: "basic"
+    links: {}
+    callbacks: {}
+
