@@ -58,6 +58,12 @@ namespace CES.Business.Extensions
             return GetFormattedTime(hours, stringFormat);
 
         }
+        
+        //copied from Jasper
+        public static string EnsureEndingForwardSlash(this string target) 
+        {
+            return target.EndsWith("/") ? target : $"{target}/";
+        }
 
     }
 

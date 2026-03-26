@@ -11,12 +11,11 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using CES.API.Authentication;
 using CES.Business.Infrastructure;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
-builder.Services.AddScopedServiceCollection();
+builder.Services.AddScopedServiceCollection(builder.Configuration);
 
 //TODO: File storage service.  Change to adjust how files are saved at upload
 builder.Services.AddScoped<IFileStorage, LocalFileStorage>();
@@ -26,7 +25,6 @@ builder.Services.Configure<StorageOptions>(
 // Authentication
 builder.Services.AddCESAuthentication(builder.Configuration);
 builder.Services.AddAuthorization();
-
 
 // ** CORS **
 var corsPolicyName = "CESCorsPolicy";

@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CES.Entities\CES.Entities.csproj" />
+    <ProjectReference Include="..\jc-interface-client\jc-interface-client.csproj" />
   </ItemGroup>
 
 </Project>
