@@ -7,7 +7,8 @@ namespace CES.Business.Models.Location
 {
     public class CourtRoom
     {
-        public string Room { get; set; }
+        public string Name { get; set; }
+        public string Code { get; set; }
         public string LocationId { get; set; }
         public string Type { get; set; }
     }

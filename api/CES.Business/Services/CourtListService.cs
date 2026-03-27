@@ -34,7 +34,7 @@ namespace CES.Business.Services
             var list = new List<Models.Location.CourtList>();
             foreach(var file in courtListJC.CriminalCourtList)
             {
-                var entity = file.ToEntity();
+                var entity = file.ToLocalEntity();
                 list.Add(entity);
             }
 

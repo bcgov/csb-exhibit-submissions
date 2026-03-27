@@ -7,6 +7,7 @@ using JCCommon.Clients.FileServices;
 using JCCommon.Framework;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using CES.Business.Models.Config;
 namespace CES.Business
 {
     public static class BusinessDependencyExtensions
@@ -19,6 +20,8 @@ namespace CES.Business
             services.AddScoped<IDeveloperService, DeveloperService>();
             services.AddScoped<ISubmissionService, SubmissionService>();
             services.AddScoped<IFileService, FileService>();
+            services.AddScoped<ILocationService, LocationService>();
+            services.AddScoped<ICourtListService, CourtListService>();
             
             services.AddHttpClient<LocationServicesClient>(client => { ConfigureHttpClient(client, configuration, "LocationServicesClient"); });
             services.AddHttpClient<FileServicesClient>(client => { ConfigureHttpClient(client, configuration, "FileServicesClient"); });
@@ -32,9 +35,12 @@ namespace CES.Business
         {
 
             client.Timeout = TimeSpan.FromSeconds(timeoutInSecs);
-            var username = configuration.GetNonEmptyValue($"{prefix}:Username");
-            var password = configuration.GetNonEmptyValue($"{prefix}:Password");
-            var url = new Uri(configuration.GetNonEmptyValue($"{prefix}:Url").EnsureEndingForwardSlash());
+            var config = configuration.GetSection(prefix).Get<ApiSettings>();
+            if(config == null || string.IsNullOrEmpty(config.Username))
+                return;
+            var username = config.Username;
+            var password = config.Password;
+            var url = new Uri(config.Url ?? "/");
             // Defaults to BC Gov API if any config setting is missing
             client.DefaultRequestHeaders.Authorization = new BasicAuthenticationHeaderValue(
                 username,

@@ -13,7 +13,8 @@ export interface LocationInfo {
 
 
 export interface CourtRoomsInfo {
-  room: string;
+  name: string;
+  code: string;
   locationId: string;
   type: string;
 }

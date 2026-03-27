@@ -10,7 +10,7 @@ namespace CES.Business.Extensions.Entities
 {
     public static class JCCourtListExtensions
     {
-        public static CourtList ToEntity(this JCCommon.Clients.FileServices.ClCriminalCourtList model)
+        public static CourtList ToLocalEntity(this JCCommon.Clients.FileServices.ClCriminalCourtList model)
         {
             var entity = new CourtList
             {

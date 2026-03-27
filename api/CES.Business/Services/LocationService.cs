@@ -40,11 +40,11 @@ namespace CES.Business.Services
             foreach (var location in locations)
             {
                 location.CourtRooms = courtRooms
-                    .Where(cr => cr.LocationId == location.LocationId && (cr.Type == "CRT" || cr.Type == "HGR"))
-                    .OrderBy(cr => cr.Room).ToList();
+                    .Where(cr => cr.LocationId == location.LocationId)// && (cr.Type == "CRT" || cr.Type == "HGR"))
+                    .OrderBy(cr => cr.Name).ToList();
             }
 
-            return locations;
+            return locations.OrderBy(l => l.Name).ToList();
         }
     }
 }
