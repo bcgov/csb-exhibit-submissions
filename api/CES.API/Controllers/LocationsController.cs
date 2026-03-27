@@ -29,7 +29,7 @@ namespace CES.API.Controllers
         
         [HttpGet]
         [Route("api/files/getCourtList")]
-        public IActionResult GetCourtList([FromQuery] string agencyId, string roomCode, string proceedingDate)
+        public async Task<IActionResult> GetCourtList([FromQuery] string agencyId, string roomCode, string proceedingDate)
         {
             if(string.IsNullOrEmpty(agencyId) || string.IsNullOrEmpty(roomCode) || string.IsNullOrEmpty(proceedingDate))
                 return BadRequest("invalid parameters");
@@ -37,7 +37,7 @@ namespace CES.API.Controllers
             DateTime outProceedingDate;
             if(!DateTime.TryParse(proceedingDate, out outProceedingDate))
                 return BadRequest("Invalide date");
-            var ret = _courtListService.GetJCCourtList(agencyId, roomCode, outProceedingDate);
+            var ret = await _courtListService.GetJCCourtList(agencyId, roomCode, outProceedingDate);
 
             return Ok(ret);
         }

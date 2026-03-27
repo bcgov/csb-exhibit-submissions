@@ -4,4 +4,5 @@ export interface CourtFileList {
   appearanceTime: Date;
   courtListType: string;
   accusedName: string;
+  fileNumber: string;
 }

@@ -64,35 +64,35 @@
     </form>
   </div>
   <div v-if="hasSearched" class="card shadow-sm">
-      <div class="card-body p-0">
-        <div v-if="searchResults.length > 0" class="table-responsive">
-          <table class="table table-hover mb-0">
-            <thead class="table-light">
-              <tr>
-                <th>Appearance ID</th>
-                <th>Time</th>
-                <th>Type</th>
-                <th>Accused Name</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="file in searchResults" :key="file.appearanceID">
-                <td class="text-monospace">{{ file.appearanceID }}</td>
-                <td>{{ file.appearanceTime }}</td>
-                <td>
-                  <span class="badge bg-secondary">{{ file.courtListType }}</span>
-                </td>
-                <td class="fw-bold">{{ file.accusedName }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+    <div class="card-body p-0">
+      <div v-if="searchResults.length > 0" class="table-responsive">
+        <table class="table table-hover mb-0 submission-table">
+          <thead class="table-light">
+            <tr>
+              <th>File Number</th>
+              <th>Time</th>
+              <th>Type</th>
+              <th>Accused Name</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="file in searchResults" :key="file.appearanceID">
+              <td class="text-monospace">{{ file.fileNumber }}</td>
+              <td>{{ file.appearanceTime }}</td>
+              <td>
+                <span class="badge bg-secondary">{{ file.courtListType }}</span>
+              </td>
+              <td class="fw-bold">{{ file.accusedName }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
-        <div v-else class="text-center py-5">
-          <p class="text-muted mb-0">No court files found for the selected criteria.</p>
-        </div>
+      <div v-else class="text-center py-5">
+        <p class="text-muted mb-0">No court files found for the selected criteria.</p>
       </div>
     </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -122,19 +122,19 @@ const hasSearched = ref(false);
 const isSearching = ref(false);
 
 // --- Autocomplete State ---
-const locationSearchQuery = ref<string>('');
-const showLocationDropdown = ref<boolean>(false);
+// const locationSearchQuery = ref<string>('');
+// const showLocationDropdown = ref<boolean>(false);
 
 // --- Computed Properties ---
-const filteredLocations = computed(() => {
-  if (!locationSearchQuery.value) return locations.value;
+// const filteredLocations = computed(() => {
+//   if (!locationSearchQuery.value) return locations.value;
   
-  const query = locationSearchQuery.value.toLowerCase();
-  return locations.value.filter(loc => 
-    loc.name.toLowerCase().includes(query) || 
-    loc.code.toLowerCase().includes(query)
-  );
-});
+//   const query = locationSearchQuery.value.toLowerCase();
+//   return locations.value.filter(loc => 
+//     loc.name.toLowerCase().includes(query) || 
+//     loc.code.toLowerCase().includes(query)
+//   );
+// });
 
 const availableRooms = computed<CourtRoomsInfo[]>(() => {
   return selectedLocation.value?.courtRooms || [];
@@ -166,15 +166,15 @@ const onLocationInput = () => {
     selectedLocation.value = null;
     selectedRoom.value = null;
   }
-  showLocationDropdown.value = true;
+  // showLocationDropdown.value = true;
 };
 
-const selectLocation = (loc: LocationInfo) => {
-  selectedLocation.value = loc;
-  locationSearchQuery.value = loc.name; // Display the name in the input
-  showLocationDropdown.value = false;
-  selectedRoom.value = null; // Reset the room requirement for the new location
-};
+// const selectLocation = (loc: LocationInfo) => {
+//   selectedLocation.value = loc;
+//   locationSearchQuery.value = loc.name; // Display the name in the input
+//   // showLocationDropdown.value = false;
+//   selectedRoom.value = null; // Reset the room requirement for the new location
+// };
 
 const onSubmit = async () => {
   if (isSubmitDisabled.value || !selectedLocation.value || !selectedRoom.value) return;
@@ -210,12 +210,12 @@ onMounted(() => {
 
 // Close dropdown when clicking outside (Basic UX implementation)
 onMounted(() => {
-  document.addEventListener('click', (e) => {
-    const target = e.target as HTMLElement;
-    if (!target.closest('.autocomplete-wrapper')) {
-      showLocationDropdown.value = false;
-    }
-  });
+  // document.addEventListener('click', (e) => {
+  //   const target = e.target as HTMLElement;
+  //   if (!target.closest('.autocomplete-wrapper')) {
+  //     showLocationDropdown.value = false;
+  //   }
+  // });
 });
 </script>
 
@@ -233,6 +233,28 @@ onMounted(() => {
   flex-direction: column;
 }
 
+.submission-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+  margin-top: 2rem;
+}
+
+.submission-table th,
+.submission-table td {
+  border: 1px solid #ddd;
+  padding: 0.75rem;
+}
+
+.submission-table tr:hover {
+  background-color: #f5f5f5;
+  cursor: pointer;
+}
+
+.selected {
+  background-color: #dceeff;
+}
+
 .required {
   color: red;
 }
@@ -246,33 +268,6 @@ input, select {
 
 .autocomplete-wrapper {
   position: relative;
-}
-
-.dropdown-list {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: white;
-  border: 1px solid #ccc;
-  border-top: none;
-  max-height: 200px;
-  overflow-y: auto;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  z-index: 10;
-  border-radius: 0 0 4px 4px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-}
-
-.dropdown-item {
-  padding: 0.5rem;
-  cursor: pointer;
-}
-
-.dropdown-item:hover {
-  background-color: #f0f0f0;
 }
 
 .loading-text {

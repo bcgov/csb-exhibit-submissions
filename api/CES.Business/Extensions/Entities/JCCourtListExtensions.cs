@@ -17,7 +17,8 @@ namespace CES.Business.Extensions.Entities
                 AccusedName = model.AccusedFullName,
                 AppearanceID = model.CriminalAppearanceID,
                 AppearanceTime = model.AppearanceTime != null ? DateTime.Parse(model.AppearanceTime) : SystemDate.UtcNow(),
-                CourtListType = model.CourtListTypeCd
+                CourtListType = model.CourtListTypeCd,
+                FileNumber = model.FileNumberText
             };
 
             return entity;
