@@ -4,28 +4,29 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import type { SubmissionReviewModel, SubmissionFile } from '@/models/SubmissionReviewModel'
 import useSubmissionService from '@/services/SubmissionService'
-
+import type { AxiosError } from 'axios'
 
 const {retrieveSubmissionListing} = useSubmissionService()
 const router = useRouter();
 
+const submissions = ref<SubmissionReviewModel[] | undefined>(undefined)
+const errorMessage = ref<string | null>(null)
 
-
-const submissions = ref<SubmissionReviewModel[] | undefined>(undefined
-  // Array.from({ length: 28 }).map((_, i) => ({
-  //   id: i + 1,
-  //   date: new Date().toISOString().split('T')[0],
-  //   disputantName: `Defendant ${i + 1}`,
-  //   ticketNumber: `TK-${1000 + i}`,
-  //   officerNumber: `OF-${100 + i}`,
-  //   room: `Room ${(i % 4) + 1}`,
-  //   status: 'Pending'
-  // }))
-)
 onMounted(async () => {
+  try {
   submissions.value = await retrieveSubmissionListing()
-})
+  }catch (err: unknown) {
 
+    if((err as AxiosError).isAxiosError){
+      const error = err as AxiosError<any>;
+      if (error?.response?.status === 403) {
+        errorMessage.value = "You do not have permission to view this data."
+      } else {
+        throw error;
+      }
+    }
+  }
+})
 
 const selectedId = ref<number | null>(null)
 
@@ -37,18 +38,13 @@ const openReview = (id: number) => {
   router.push(`/admin/view/${id}`);
 }
 
-// Pagination
+// Future Pagination
 const page = ref(1);
 const pageSize = 10;
 
 const totalPages = computed(() =>
   submissions.value ? Math.ceil(submissions.value.length / pageSize) : 0
 )
-
-// const paginatedSubmissions = computed(() => {
-//   const start = (page.value - 1) * pageSize;
-//   return submissions.value.slice(start, start + pageSize);
-// })
 
 const nextPage = async () => {
   submissions.value = await retrieveSubmissionListing()
@@ -97,7 +93,9 @@ const prevPage = () => {
 <template>
   <div class="submission-list-page">
     <h1>Submission Listings</h1>
-
+<div v-if="errorMessage" class="alert alert-danger">
+  {{ errorMessage }}
+</div>
     <table class="submission-table">
       <thead>
         <tr>
@@ -118,9 +116,9 @@ const prevPage = () => {
           @click="selectRow(item.id)"
           @dblclick="openReview(item.id)"
         >
-          <td>{{ item.date }}</td>
-          <td>{{ item.disputantName }}</td>
-          <td>{{ item.ticketNumber }}</td>
+          <td>{{ item.submissionDate }}</td>
+          <td>{{ item.accusedName }}</td>
+          <td>{{ item.fileNumber }}</td>
           <td>{{ item.officerNumber }}</td>
           <td>{{ item.room }}</td>
           <td>Pending</td>
@@ -128,7 +126,7 @@ const prevPage = () => {
       </tbody>
     </table>
 
-    <div class="pagination">
+    <div class="pagination" v-show="false">
       <button @click="prevPage" :disabled="page === 1">
         Previous
       </button>

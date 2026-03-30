@@ -37,6 +37,12 @@ namespace CES.Business.Services
                 var entity = file.ToLocalEntity();
                 list.Add(entity);
             }
+            
+            // foreach(var file in courtListJC.CivilCourtList)
+            // {
+            //     var entity = file.ToLocalEntity();
+            //     list.Add(entity);
+            // }
 
             return list;
             

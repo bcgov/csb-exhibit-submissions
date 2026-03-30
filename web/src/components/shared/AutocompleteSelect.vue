@@ -30,7 +30,8 @@
       </li>
     </ul>
 
-    <span v-if="loading" class="loading-text">Loading...</span>
+    <span v-if="loading && !error" class="loading-text">Loading...</span>
+    <span v-if="error" class="error-text">{{errorText}}</span>
   </div>
 </template>
 
@@ -55,6 +56,8 @@ const props = defineProps<{
   filterFn?: (item: T, query: string) => boolean;
 
   loading?: boolean;
+  error?: boolean;
+  errorText?: string;
   disabled?: boolean;
   label?: string;
   placeholder?: string;
@@ -256,6 +259,12 @@ input, select {
 .loading-text {
   font-size: 0.8rem;
   color: #666;
+  margin-top: 0.25rem;
+}
+
+.error-text {
+  font-size: 0.8rem;
+  color: red;
   margin-top: 0.25rem;
 }
 

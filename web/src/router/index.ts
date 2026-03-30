@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import DevDashboard from '@/views/DevDashboardView.vue'
-import Submissions from '@/components/officer/Submission.vue'
 import { useAuthStore } from '@/stores/authStore';
 
 
@@ -34,55 +33,6 @@ import { useAuthStore } from '@/stores/authStore';
 //   }
 // }
 
-const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [
-    {
-      path: '/',
-      name: 'DevDashboard',
-      component: DevDashboard,
-    },
-  {
-    path: '/dev',
-    name: 'DevDashboard',
-    component: DevDashboard
-  },
-  {
-    path: '/officer/submission/:id',
-    name: 'OfficerSubmissions',
-    component: Submissions
-  },
-  {
-    path: '/officer/court-list',
-    name: 'OfficerCourtList',
-    component: () => import('@/views/officer/CourtListView.vue')
-  },
-  {
-    path: '/admin/list',
-    name: 'AdminSubmissionList',
-    component: () => import('@/views/admin/ListingView.vue')
-  },
-  {
-    path: '/admin/view/:id',
-    name: 'AdminViewSubmission',
-    component: () => import('@/views/admin/SubmissionReviewView.vue')
-  },
-  {
-    path: '/login',
-    name: 'Login',
-    component: () => import('@/views/LoginView.vue')
-  }
-    // {
-    //   path: '/about',
-    //   name: 'about',
-    //   // route level code-splitting
-    //   // this generates a separate chunk (About.[hash].js) for this route
-    //   // which is lazy-loaded when the route is visited.
-    //   component: () => import('../views/AboutView.vue'),
-    // },
-  ],
-})
-
 // To go with authGuard at top
 // router.beforeEach((to, from, next) => {
 //   if (to.path === '/') {
@@ -91,14 +41,85 @@ const router = createRouter({
 //     authGuard(to, from, next);
 //   }
 // });
+
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes: [
+    {
+      path: '/',
+      name: 'DevDashboard',
+      component: DevDashboard
+    },
+  {
+    path: '/dev',
+    name: 'DevDashboard',
+    component: DevDashboard
+  },
+  {
+    path: '/officer/court-list',
+    name: 'OfficerCourtList',
+    component: () => import('@/views/officer/CourtListView.vue'),
+    meta: { requiresAuth: true, roles: ['User'] }
+  },
+  {
+    path: '/officer/submission/',
+    name: 'OfficerSubmissions',
+    component: () => import('@/views/officer/SubmissionsView.vue'),
+    meta: { requiresAuth: true, roles: ['User'] }
+  },
+  {
+    path: '/admin/list',
+    name: 'AdminSubmissionList',
+    component: () => import('@/views/admin/ListingView.vue'),
+    meta: { requiresAuth: true, roles: ['Admin'] }
+  },
+  {
+    path: '/admin/view/:id',
+    name: 'AdminViewSubmission',
+    component: () => import('@/views/admin/SubmissionReviewView.vue'),
+    meta: { requiresAuth: true, roles: ['Admin'] }
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/views/LoginView.vue')
+  }
+  ],
+})
+
+// router.beforeEach((to, from, next) => {
+//   const authStore = useAuthStore();
+//   const requiresAuth = to.meta.requiresAuth;
+
+//   if (requiresAuth && !authStore.isAuthenticated) {
+//     next({ name: 'Login' }); // Or wherever your temporary login component is
+//   } else {
+//     next();
+//   }
+// });
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
-  const requiresAuth = to.meta.requiresAuth;
 
+  const requiresAuth = to.meta.requiresAuth as boolean | undefined;
+  const requiredRoles = to.meta.roles as string[] | undefined;
+  console.log(authStore.roles);
+
+  // Not logged in
   if (requiresAuth && !authStore.isAuthenticated) {
-    next({ name: 'Login' }); // Or wherever your temporary login component is
-  } else {
-    next();
+    return next({ name: 'Login' });
   }
+
+  // Logged in but missing role
+  if (requiredRoles && requiredRoles.length > 0) {
+    const hasRole = requiredRoles.some(role =>
+      authStore.roles.includes(role)
+    );
+
+    if (!hasRole) {
+      return next({ name: 'Forbidden' }); // create this route
+    }
+  }
+
+  next();
 });
 export default router

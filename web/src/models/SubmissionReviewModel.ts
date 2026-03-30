@@ -12,11 +12,11 @@ export interface SubmissionFile {
 
 export interface SubmissionReviewModel {
   id: number
-  date?: string
+  submissionDate?: string
   location: string
   room: string
-  ticketNumber: string
-  disputantName: string
+  fileNumber: string
+  accusedName: string
   officerNumber: string
   files: SubmissionFile[]
 }

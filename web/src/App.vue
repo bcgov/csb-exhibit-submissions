@@ -4,6 +4,7 @@ import { RouterLink, RouterView } from 'vue-router'
 import { ref } from 'vue';
 import logo from './assets/bc-logo.svg?url'
 import useAuthService from './services/AuthService';
+import { useAuthStore } from './stores/authStore';
 
 const selectedTab = ref('/officer/court-list')
 const {logout} = useAuthService();
@@ -11,6 +12,7 @@ const handleLogout = () => {
   console.log('Logging out...')
   logout()  
 }
+  const authStore = useAuthStore();
 </script>
 
 <template>
@@ -36,7 +38,7 @@ const handleLogout = () => {
                   class="text-subtitle-1"
                   variant="text"
                 >
-                  <span class="mr-2">User name goes here</span>
+                  <span class="mr-2">{{ authStore.user?.id }}</span>
                   <v-icon :icon="mdiAccountCircle" size="32" />
                 </v-btn>
               </template>

@@ -121,11 +121,11 @@ const fileIcon = (type: string) => {
 
     <div v-if="submission">
       <div class="details-grid">
-        <div><strong>Date:</strong> {{ submission.date }}</div>
+        <div><strong>Date:</strong> {{ submission.submissionDate }}</div>
         <div><strong>Location:</strong> {{ submission.location }}</div>
         <div><strong>Room:</strong> {{ submission.room }}</div>
-        <div><strong>Ticket #:</strong> {{ submission.ticketNumber }}</div>
-        <div><strong>Disputant:</strong> {{ submission.disputantName }}</div>
+        <div><strong>Ticket #:</strong> {{ submission.fileNumber }}</div>
+        <div><strong>Disputant:</strong> {{ submission.accusedName }}</div>
         <div><strong>Officer #:</strong> {{ submission.officerNumber }}</div>
       </div>
 

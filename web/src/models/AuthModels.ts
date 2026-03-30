@@ -4,6 +4,7 @@ export interface JwtPayload {
   roles?: string[];
   exp: number;
   iss?: string;
+  role: string;
 }
 
 export interface User {

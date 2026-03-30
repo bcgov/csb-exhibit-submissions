@@ -10,18 +10,41 @@ namespace CES.Business.Extensions.Entities
 {
     public static class JCCourtListExtensions
     {
-        public static CourtList ToLocalEntity(this JCCommon.Clients.FileServices.ClCriminalCourtList model)
+        public static CourtList ToLocalEntity(this JCCommon.Clients.FileServices.ClCriminalCourtList model)//, string locationId, string locationName, string courtRoomCode)
         {
             var entity = new CourtList
             {
-                AccusedName = model.AccusedFullName,
                 AppearanceID = model.CriminalAppearanceID,
-                AppearanceTime = model.AppearanceTime != null ? DateTime.Parse(model.AppearanceTime) : SystemDate.UtcNow(),
+                AppearanceDateTime = model.AppearanceTime != null ? DateTime.Parse(model.AppearanceTime) : SystemDate.UtcNow(),
                 CourtListType = model.CourtListTypeCd,
-                FileNumber = model.FileNumberText
+                FileNumberText = model.FileNumberText,
+                // LocationId = locationId,
+                // LocationNameText = locationName,
+                // RoomCode = courtRoomCode,
+                // RoomText = courtRoomCode,
+                AccusedName = model.AccusedFullName,
+                AccusedDOB = model.AccusedBirthDate
             };
 
             return entity;
         }
+        // public static CourtList ToLocalEntity(this JCCommon.Clients.FileServices.ClCivilCourtList model)//, string locationId, string locationName, string courtRoomCode)
+        // {
+        //     var entity = new CourtList
+        //     {
+        //         AppearanceID = model.AppearanceId,
+        //         AppearanceDateTime = model.AppearanceDate != null ? DateTime.Parse(model.AppearanceTime) : SystemDate.UtcNow(),
+        //         CourtListType = model.CourtListTypeCd,
+        //         FileNumberText = model.FileNumberText,
+        //         // LocationId = locationId,
+        //         // LocationNameText = locationName,
+        //         // RoomCode = courtRoomCode,
+        //         // RoomText = courtRoomCode,
+        //         AccusedName = model.AccusedFullName,
+        //         AccusedDOB = model.AccusedBirthDate
+        //     };
+
+        //     return entity;
+        // }
     }
 }

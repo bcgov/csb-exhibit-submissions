@@ -7,8 +7,10 @@ import type { JwtPayload, User } from '@/models/AuthModels'
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem('jwt_token'));
   const user = ref<User | null>(null);
+  const roles = ref<string[]>([])
 
   const isAuthenticated = computed(() => !!token.value && !isTokenExpired());
+  const hasRole = (role: string) => roles.value.includes(role)
 
   function setToken(newToken: string) {
     token.value = newToken;
@@ -19,11 +21,15 @@ export const useAuthStore = defineStore('auth', () => {
   function decodeAndSetUser(jwt: string) {
     try {
       const decoded = jwtDecode<JwtPayload>(jwt);
+      console.log(decoded, decoded.roles)
       user.value = {
         id: decoded.sub,
         email: decoded.email,
         roles: decoded.roles || [],
       };
+      roles.value = Array.isArray(decoded.role)
+        ? decoded.role
+        : [decoded.role]
     } catch (error) {
       console.error("Invalid token format", error);
       clearAuth();
@@ -52,5 +58,11 @@ export const useAuthStore = defineStore('auth', () => {
     decodeAndSetUser(token.value);
   }
 
-  return { token, user, isAuthenticated, setToken, clearAuth };
+  return { token, 
+    user, 
+    isAuthenticated, 
+    roles,
+    hasRole,
+    setToken, 
+    clearAuth };
 });

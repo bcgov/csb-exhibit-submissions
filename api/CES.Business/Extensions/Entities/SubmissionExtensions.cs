@@ -9,11 +9,17 @@ namespace CES.Business.Extensions.Entities
         {
             var entity = new Submission
             {
-                DisputantName = model.DisputantName,
-                Location = model.Location,
-                OfficerNumber = model.OfficerNumber,
-                Room = model.Room,
-                TicketNumber = model.TicketNumber
+                AccusedDOB = model.AccusedDOB,
+                AccusedName = model.AccusedName,
+                AppearanceDateTime = model.AppearanceDateTime,
+                AppearanceID = model.AppearanceID,
+                CourtListType = model.CourtListType,
+                FileNumberText = model.FileNumberText,
+                LocationId = model.LocationId,
+                LocationNameText = model.LocationNameText,
+                RoomCode = model.RoomCode,
+                RoomText = model.RoomText,
+                OfficerNumber = model.OfficerNumber
             };
 
             return entity;
@@ -23,13 +29,13 @@ namespace CES.Business.Extensions.Entities
         {
             return new SubmissionReviewModel
             {
-                Date = entity.UploadDate,
-                DisputantName = entity.DisputantName,
+                SubmissionDate = entity.UploadDate,
+                AccusedName = entity.AccusedName,
                 Id = entity.Id,
-                Location = entity.Location,
+                Location = entity.LocationNameText,
                 OfficerNumber = entity.OfficerNumber,
-                Room = entity.Room,
-                TicketNumber = entity.TicketNumber,
+                Room = entity.RoomText,
+                FileNumber = entity.FileNumberText,
 
                 Files = entity.Files.Select(f => new SubmissionFile
                             {

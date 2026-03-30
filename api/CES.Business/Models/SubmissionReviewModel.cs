@@ -6,14 +6,11 @@ namespace CES.Business.Models
     public class SubmissionReviewModel
     {
         public int Id { get; set; }
-
-        // Using DateTime? because 'date' was optional (?) in TypeScript
-        public DateTime? Date { get; set; }
-
+        public DateTime? SubmissionDate { get; set; }
         public string Location { get; set; } = string.Empty;
         public string Room { get; set; } = string.Empty;
-        public string TicketNumber { get; set; } = string.Empty;
-        public string DisputantName { get; set; } = string.Empty;
+        public string FileNumber { get; set; } = string.Empty;
+        public string AccusedName { get; set; } = string.Empty;
         public string OfficerNumber { get; set; } = string.Empty;
 
         // Using List<T> for the array of files

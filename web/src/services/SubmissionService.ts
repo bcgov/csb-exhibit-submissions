@@ -2,10 +2,14 @@ import type { ExhibitFormModel } from '@/models/ExhibitFormModel'
 import api from './apiClient'
 import type { SubmissionReviewModel } from '@/models/SubmissionReviewModel'
 import type { SubmissionAcceptanceModel } from '@/models/SubmissionAcceptanceModel'
+import type { CourtFileList } from '@/models/CourtFileList'
+import type { ExhibitSubmissionModel } from '@/models/ExhibitSubmissionModel'
+import { localDateToUtc } from '@/helpers/formatters'
 
 export default function useSubmissionService() {
+
   const submitExhibits = async (
-    model: ExhibitFormModel,
+    model: ExhibitSubmissionModel,
     files: File[],
     progressCallback?: (percent: number) => void,
   ): Promise<boolean> => {
@@ -14,14 +18,20 @@ export default function useSubmissionService() {
 
     try {
       const formData = new FormData()
-
+      const date = localDateToUtc(model.appearanceDateTime) ?? ""
       // Append text fields
-      formData.append('date', model.date)
-      formData.append('location', model.location)
-      formData.append('room', model.room)
-      formData.append('ticketNumber', model.ticketNumber)
-      formData.append('disputantName', model.disputantName)
-      formData.append('officerNumber', model.officerNumber)
+      formData.append('appearanceID', model.appearanceId)
+      formData.append('appearanceDateTime', date)
+      formData.append('courtListType', model.courtListType)
+      formData.append('FileNumberText', model.fileNumberText)
+      formData.append('LocationId', model.locationId)
+      formData.append('LocationNameText', model.locationNameText)
+      formData.append('RoomCode', model.roomCode)
+      formData.append('RoomText', model.roomText)
+      formData.append('AccusedName', model.accusedName)
+      formData.append('AccusedDOB', model.accusedDOB)
+      formData.append('OfficerNumber', model.officerNumber)
+      
       // Append files
       files.forEach((file) => {
         formData.append('files', file)
@@ -52,27 +62,16 @@ export default function useSubmissionService() {
 
   const retrieveSubmission = async (fileId: number): Promise<SubmissionReviewModel | undefined> => {
     const url = `/submissions/retrieve/`
-    let apiReturn
-    try {
-      apiReturn = await api.get<SubmissionReviewModel>(url, {
+    let apiReturn = await api.get<SubmissionReviewModel>(url, {
         params: { fileId: fileId },
       })
-    } catch (err) {
-      console.error(err)
-    }
 
     return apiReturn?.data
   }
 
   const retrieveSubmissionListing = async (): Promise<SubmissionReviewModel[] | undefined> => {
     const url = `/submissions/listing/`
-    let apiReturn = undefined
-    try {
-      apiReturn = await api.get<SubmissionReviewModel[]>(url)
-    } catch (err) {
-      console.error(err)
-      return undefined
-    }
+    const apiReturn = await api.get<SubmissionReviewModel[]>(url)
 
     return apiReturn?.data
   }
@@ -81,12 +80,8 @@ export default function useSubmissionService() {
 
     const url = `/submissions/accept/`
     let retVal = false
-    try {
-      const apiReturn = await api.post(url, model)
-      retVal = apiReturn.data ?? false
-    } catch (err) {
-      console.error(err)
-    }
+    const apiReturn = await api.post(url, model)
+    retVal = apiReturn.data ?? false
     return retVal
   }
 
@@ -94,12 +89,8 @@ export default function useSubmissionService() {
 
     const url = `/submissions/reject/`
     let retVal = false
-    try {
-      const apiReturn = await api.post(url, model)
-      retVal = apiReturn.data ?? false
-    } catch (err) {
-      console.error(err)
-    }
+    const apiReturn = await api.post(url, model)
+    retVal = apiReturn.data ?? false
     return retVal
   }
 

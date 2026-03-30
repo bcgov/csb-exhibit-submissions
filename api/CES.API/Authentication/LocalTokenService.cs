@@ -28,7 +28,7 @@ namespace CES.Business.Infrastructure
             var claims = new[]
             {
             new Claim(JwtRegisteredClaimNames.Sub, username),
-            new Claim(ClaimTypes.Role, role),
+            new Claim("role", role),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 

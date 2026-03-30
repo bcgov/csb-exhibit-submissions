@@ -24,7 +24,7 @@ namespace CES.Business.Services
 
             foreach (var file in model.fileUploads)
             {
-                var newFile = await _fileStorage.SaveAsync(file, entity.TicketNumber);
+                var newFile = await _fileStorage.SaveAsync(file, entity.FileNumberText);
                 entity.Files.Add(newFile);
                 await _datastore.StoredFiles.AddAsync(newFile);
             }

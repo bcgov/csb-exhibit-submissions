@@ -2,7 +2,7 @@ export interface ExhibitFormModel {
   date: string
   location: string
   room: string
-  ticketNumber: string
+  fileNumberText: string
   disputantName: string
   officerNumber: string
 }

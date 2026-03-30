@@ -22,6 +22,8 @@
           :items="locations"
           :loading="isLoadingLocations"
           :disabled="isLoadingLocations"
+          :error="isLocationError"
+          :errorText="locationErrorText"
           placeholder="Start typing to search locations..."
           required
           :getLabel="(loc:LocationInfo) => loc.name"
@@ -76,9 +78,13 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="file in searchResults" :key="file.appearanceID">
-              <td class="text-monospace">{{ file.fileNumber }}</td>
-              <td>{{ file.appearanceTime }}</td>
+            <tr v-for="file in searchResults" 
+            :key="file.appearanceID" 
+            @click="singleClickSelect(file)"
+            @dblclick="selectFile(file)"
+            :class="{ selected: selectionStore.selectedFile?.appearanceID === file.appearanceID }">
+              <td class="text-monospace">{{ file.fileNumberText }}</td>
+              <td>{{ formatDateTo24hrTime(file.appearanceDateTime) }}</td>
               <td>
                 <span class="badge bg-secondary">{{ file.courtListType }}</span>
               </td>
@@ -102,39 +108,29 @@ import useCourtFileService from '@/services/CourtFileService';
 import type { CourtRoomsInfo, LocationInfo } from '@/models/LocationInfo';
 import type { CourtFileList } from '@/models/CourtFileList';
 import AutocompleteSelect from '../shared/AutocompleteSelect.vue';
+import type { AxiosError } from 'axios';
+import { formatDateTo24hrTime } from '@/helpers/formatters';
+import { useCourtFileSelectionStore } from '@/stores/useCourtFileSelectionStore';
+import { useRouter } from 'vue-router';
 
-
-// --- Service Instantiation ---
 const { getLocations } = useLocationService();
 const { getCourtList } = useCourtFileService();
+const router = useRouter()
 
-// --- Form State ---
-// Initialize date to today in YYYY-MM-DD format
+const selectionStore = useCourtFileSelectionStore();
+
 const appearanceDate = ref<string>(new Date().toISOString().split('T')[0]!);
 const selectedLocation = ref<LocationInfo | null>(null);
 const selectedRoom = ref<CourtRoomsInfo | null>(null);
 
-// --- Data State ---
 const locations = ref<LocationInfo[]>([]);
 const isLoadingLocations = ref<boolean>(true);
+const isLocationError = ref<boolean>(true);
+const locationErrorText = ref<string>("");
 const searchResults = ref<CourtFileList[]>([]);
 const hasSearched = ref(false);
 const isSearching = ref(false);
 
-// --- Autocomplete State ---
-// const locationSearchQuery = ref<string>('');
-// const showLocationDropdown = ref<boolean>(false);
-
-// --- Computed Properties ---
-// const filteredLocations = computed(() => {
-//   if (!locationSearchQuery.value) return locations.value;
-  
-//   const query = locationSearchQuery.value.toLowerCase();
-//   return locations.value.filter(loc => 
-//     loc.name.toLowerCase().includes(query) || 
-//     loc.code.toLowerCase().includes(query)
-//   );
-// });
 
 const availableRooms = computed<CourtRoomsInfo[]>(() => {
   return selectedLocation.value?.courtRooms || [];
@@ -148,41 +144,41 @@ const isSubmitDisabled = computed(() => {
   return isLoadingLocations.value || isSearching.value || !appearanceDate.value || !selectedLocation.value || !selectedRoom.value;
 });
 
-// --- Methods ---
 const fetchLocations = async () => {
   isLoadingLocations.value = true;
   try {
     locations.value = await getLocations();
-  } catch (error) {
-    console.error("Failed to load locations API:", error);
+  } catch (error: unknown) {
+  console.error("Failed to load locations API:", error);
+
+  isLocationError.value = true;
+
+  let message = 'Failed to load locations';
+  let code: string | number | undefined;
+
+  if ((error as AxiosError).isAxiosError) {
+    const axiosError = error as AxiosError<any>;
+
+    message =
+      axiosError.response?.data?.message ||
+      axiosError.message;
+
+    code = axiosError.response?.status;
+  } else if (error instanceof Error) {
+    message = error.message;
+  }
+
+  locationErrorText.value = `${code ? `[${code}] ` : ''}${message}`;
   } finally {
     isLoadingLocations.value = false;
   }
 };
-
-const onLocationInput = () => {
-  // If the user alters the input after selecting, invalidate the current selection and rooms
-  if (selectedLocation.value) {
-    selectedLocation.value = null;
-    selectedRoom.value = null;
-  }
-  // showLocationDropdown.value = true;
-};
-
-// const selectLocation = (loc: LocationInfo) => {
-//   selectedLocation.value = loc;
-//   locationSearchQuery.value = loc.name; // Display the name in the input
-//   // showLocationDropdown.value = false;
-//   selectedRoom.value = null; // Reset the room requirement for the new location
-// };
 
 const onSubmit = async () => {
   if (isSubmitDisabled.value || !selectedLocation.value || !selectedRoom.value) return;
   isSearching.value = true;
   hasSearched.value = false;
   try {
-    // Assuming agencyIdentifierCd maps to the agencyId parameter. 
-    // If the API expects the location 'code' instead, swap it to: selectedLocation.value.code
     const agencyId = selectedLocation.value.locationId; 
     const roomCode = selectedRoom.value.code;
 
@@ -191,9 +187,15 @@ const onSubmit = async () => {
       roomCode, 
       appearanceDate.value
     );
+
+    searchResults.value.forEach(s => {
+      s.locationId = selectedLocation.value?.locationId ?? "N/A";
+      s.locationNameText = selectedLocation.value?.name ?? "N/A";
+      s.roomCode = selectedRoom.value?.code ?? "";
+      s.roomText = selectedRoom.value?.code ?? "";
+    })
     
-    // Handle the results (e.g., emit to parent, pass to a store, or render locally)
-    console.log("Results fetched:", searchResults.value);
+    console.log("Results fetched:", searchResults.value, typeof searchResults.value[0]?.appearanceDateTime);
     hasSearched.value = true;
     
   } catch (error) {
@@ -203,24 +205,28 @@ const onSubmit = async () => {
   }
 };
 
-// --- Lifecycle Hooks ---
+const singleClickSelect = (file: CourtFileList) => {
+  
+  selectionStore.setSelectedFile(file)
+}
+
+const selectFile = (file: CourtFileList) => {
+  selectionStore.setSelectedFile(file)
+
+  router.push({
+    name: 'OfficerSubmissions'
+  })
+}
+
 onMounted(() => {
   fetchLocations();
 });
 
-// Close dropdown when clicking outside (Basic UX implementation)
 onMounted(() => {
-  // document.addEventListener('click', (e) => {
-  //   const target = e.target as HTMLElement;
-  //   if (!target.closest('.autocomplete-wrapper')) {
-  //     showLocationDropdown.value = false;
-  //   }
-  // });
 });
 </script>
 
 <style scoped>
-/* Basic styling to make the custom autocomplete behave like a native dropdown */
 .search-container {
   max-width: 500px;
   margin: 0 auto;

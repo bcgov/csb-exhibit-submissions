@@ -40,38 +40,96 @@ export const shortenString = (value: string, maxLength = 30): string => {
   return `${start}...${end}${ext}`
 }
 
+/**
+ * Extracts a 24-hour time string from an ISO date string.
+ * @param isoString - The ISO date string (e.g., "2026-03-30T09:30:00")
+ * @returns A 24-hour formatted string (e.g., "09:30")
+ */
+export const formatStringTo24hrTime = (isoString: string): string => {
+	if (!isoString) return '';
+
+	const date = new Date(isoString);
+
+	if (isNaN(date.getTime())) {
+		return '';
+	}
+
+	return new Intl.DateTimeFormat('en-GB', { // 'en-GB' defaults to 24h
+		hour: '2-digit',
+		minute: '2-digit',
+		hour12: false,
+	}).format(date);
+};
+
+/**
+ * Extracts a 24-hour time string from a Date object or string.
+ * @param date - The date object
+ * @returns A 24-hour formatted string (e.g., "09:30")
+ */
+export const formatDateTo24hrTime = (dateInput: Date | string): string => {
+    if (!dateInput) return '';
+
+    // Ensure we are working with a Date object
+    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+
+    // Check if the Date object is valid (e.g., not "Invalid Date")
+    if (!(date instanceof Date) || isNaN(date.getTime())) {
+        return '';
+    }
+
+    return new Intl.DateTimeFormat('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    }).format(date);
+};
+
 export const formatDate = (dateInput: string | Date): string => {
-		const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+	const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+// console.log(dateInput, typeof dateInput, date);
 
-		return date.toLocaleDateString("en-US", {
-			year: "numeric",
-			month: "short",
-			day: "numeric",
-		});
-	};
+	return date.toLocaleDateString("en-CA", {
+		year: "numeric",
+		month: "short",
+		day: "numeric",
+	});
+};
 
-	export const formatDateTime = (dateInput: string | Date): string => {
-		const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
 
-		return date.toLocaleString("en-US", {
-			year: "numeric",
-			month: "short",
-			day: "numeric",
-			hour: "2-digit",
-			minute: "2-digit",
-		});
-	};
+export const formatDateyyyymmdd = (dateInput: string | Date): string => {
+	const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+// console.log(dateInput, typeof dateInput, date);
 
-	export const localDateToUtc = (date: string, endOfDay: boolean = false): string | undefined => {
-		if (!date) return undefined;
+	return date.toLocaleDateString("en-CA", {
+		year: "numeric",
+		month: "numeric",
+		day: "numeric",
+	});
+};
 
-		const [year, month, day] = date.split("-").map(Number);
+export const formatDateTime = (dateInput: string | Date): string => {
+	const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+	console.log(dateInput, typeof dateInput, date);
 
-		if (!year || !month || !day) return undefined;
+	return date.toLocaleString("en-CA", {
+		year: "numeric",
+		month: "short",
+		day: "numeric",
+		hour: "2-digit",
+		minute: "2-digit",
+	});
+};
 
-		const localDate = endOfDay
-			? new Date(year, month - 1, day, 23, 59, 59, 999)
-			: new Date(year, month - 1, day, 0, 0, 0, 0);
+export const localDateToUtc = (date: string, endOfDay: boolean = false): string | null => {
+	if (!date) return null;
 
-		return localDate.toISOString();
-	};
+	const [year, month, day] = date.split("-").map(Number);
+
+	if (!year || !month || !day) return null;
+
+	const localDate = endOfDay
+		? new Date(year, month - 1, day, 23, 59, 59, 999)
+		: new Date(year, month - 1, day, 0, 0, 0, 0);
+
+	return localDate.toISOString();
+};

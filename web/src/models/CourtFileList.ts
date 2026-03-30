@@ -1,8 +1,13 @@
 
 export interface CourtFileList {
   appearanceID: string;
-  appearanceTime: Date;
+  appearanceDateTime: string;
   courtListType: string;
+  fileNumberText: string;
+  locationId: string;
+  locationNameText: string;
+  roomCode: string;
+  roomText: string;
   accusedName: string;
-  fileNumber: string;
+  accusedDOB: string;
 }

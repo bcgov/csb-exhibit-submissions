@@ -32,15 +32,19 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (axios.isAxiosError(error) && error.response?.status === 401) {
-      // Grab the URL the user is currently on so we can send them back later
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
       const currentPath = window.location.pathname;
-      
-      // Trigger our abstracted redirect logic
-      handleUnauthorized(currentPath);
+
+      if (status === 401) {
+        handleUnauthorized(currentPath); // login redirect
+      }
+
+      if (status === 403) {
+        console.warn('Forbidden request', error.config?.url);
+      }
     }
 
-    // Still reject the promise so the individual component knows the call failed
     return Promise.reject(error);
   }
 )
