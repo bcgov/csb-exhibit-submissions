@@ -2,6 +2,8 @@
 export interface CourtFileList {
   appearanceID: string;
   appearanceDateTime: string;
+  appearanceSequenceNumber: string;
+  appearanceReasonCode: string;
   courtListType: string;
   fileNumberText: string;
   locationId: string;

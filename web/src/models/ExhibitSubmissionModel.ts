@@ -1,6 +1,9 @@
 export interface ExhibitSubmissionModel {
   appearanceId: string,
   appearanceDateTime: string,
+  shortDate: string,
+  appearanceSequenceNumber: string,
+  appearanceReasonCode: string,
   courtListType: string,
   fileNumberText: string,
   locationId: string,

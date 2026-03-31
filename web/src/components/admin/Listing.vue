@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import type { SubmissionReviewModel, SubmissionFile } from '@/models/SubmissionReviewModel'
 import useSubmissionService from '@/services/SubmissionService'
 import type { AxiosError } from 'axios'
+import { formatDateTime, formatDateTo24hrTime, splitDateTimeForDisplay } from '@/helpers/formatters'
 
 const {retrieveSubmissionListing} = useSubmissionService()
 const router = useRouter();
@@ -73,7 +74,7 @@ const prevPage = () => {
 }
 
 .submission-table tr:hover {
-  background-color: #f5f5f5;
+  background-color: #cac8c8;
   cursor: pointer;
 }
 
@@ -99,10 +100,12 @@ const prevPage = () => {
     <table class="submission-table">
       <thead>
         <tr>
-          <th>Date</th>
-          <th>Disputant</th>
-          <th>Ticket #</th>
-          <th>Officer #</th>
+          <th>Submission Date</th>
+          <th>Court Date</th>
+          <th>Time</th>
+          <th>Accused name</th>
+          <th>File #</th>
+          <th>Location</th>
           <th>Room</th>
           <th>Status</th>
         </tr>
@@ -116,10 +119,12 @@ const prevPage = () => {
           @click="selectRow(item.id)"
           @dblclick="openReview(item.id)"
         >
-          <td>{{ item.submissionDate }}</td>
+          <td>{{ formatDateTime(item.submissionDate ?? "", true) }}</td>
+          <td>{{ splitDateTimeForDisplay(item.courtDateTime).date }}</td>
+          <td>{{ splitDateTimeForDisplay(item.courtDateTime).time }}</td>
           <td>{{ item.accusedName }}</td>
           <td>{{ item.fileNumber }}</td>
-          <td>{{ item.officerNumber }}</td>
+          <td>{{ item.location }}</td>
           <td>{{ item.room }}</td>
           <td>Pending</td>
         </tr>

@@ -30,11 +30,11 @@ namespace CES.Business.Extensions.Entities
             return new SubmissionReviewModel
             {
                 SubmissionDate = entity.UploadDate,
-                AccusedName = entity.AccusedName,
+                CourtDateTime = entity.AppearanceDateTime ?? "",
+                AccusedName = entity.AccusedName ?? "",
                 Id = entity.Id,
-                Location = entity.LocationNameText,
-                OfficerNumber = entity.OfficerNumber,
-                Room = entity.RoomText,
+                Location = entity.LocationNameText ?? "",
+                Room = entity.RoomText ?? "",
                 FileNumber = entity.FileNumberText,
 
                 Files = entity.Files.Select(f => new SubmissionFile

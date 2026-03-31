@@ -19,18 +19,22 @@ export default function useSubmissionService() {
     try {
       const formData = new FormData()
       const date = localDateToUtc(model.appearanceDateTime) ?? ""
+      console.log(model.appearanceDateTime, date, 'appearance datetime');
       // Append text fields
       formData.append('appearanceID', model.appearanceId)
-      formData.append('appearanceDateTime', date)
+      formData.append('appearanceDateTime', model.appearanceDateTime)
+      formData.append('shortDate', model.shortDate)
+      formData.append('appearanceSequenceNumber', model.appearanceSequenceNumber)
+      formData.append('appearanceReasonCode', model.appearanceReasonCode)
       formData.append('courtListType', model.courtListType)
-      formData.append('FileNumberText', model.fileNumberText)
-      formData.append('LocationId', model.locationId)
-      formData.append('LocationNameText', model.locationNameText)
-      formData.append('RoomCode', model.roomCode)
-      formData.append('RoomText', model.roomText)
-      formData.append('AccusedName', model.accusedName)
-      formData.append('AccusedDOB', model.accusedDOB)
-      formData.append('OfficerNumber', model.officerNumber)
+      formData.append('fileNumberText', model.fileNumberText)
+      formData.append('locationId', model.locationId)
+      formData.append('locationNameText', model.locationNameText)
+      formData.append('roomCode', model.roomCode)
+      formData.append('roomText', model.roomText)
+      formData.append('accusedName', model.accusedName)
+      formData.append('accusedDOB', model.accusedDOB)
+      formData.append('officerNumber', model.officerNumber)
       
       // Append files
       files.forEach((file) => {
@@ -42,7 +46,8 @@ export default function useSubmissionService() {
       const apiReturn = await api.post(url, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-        },
+        }, 
+        timeout: 0, //disabled timeouts to support larger files
         onUploadProgress: (event) => {
           const percent = Math.round((event.loaded * 100) / (event.total ?? 1))
 

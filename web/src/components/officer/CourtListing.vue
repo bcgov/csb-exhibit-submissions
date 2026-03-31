@@ -51,7 +51,7 @@
             :key="room.code" 
             :value="room"
           >
-            {{ room.name }}
+            {{ room.code }}
           </option>
         </select>
       </div>
@@ -71,10 +71,11 @@
         <table class="table table-hover mb-0 submission-table">
           <thead class="table-light">
             <tr>
-              <th>File Number</th>
+              <th>Order</th>
               <th>Time</th>
-              <th>Type</th>
+              <th>Ticket Number</th>
               <th>Accused Name</th>
+              <th>Appearance Reason</th>
             </tr>
           </thead>
           <tbody>
@@ -83,12 +84,13 @@
             @click="singleClickSelect(file)"
             @dblclick="selectFile(file)"
             :class="{ selected: selectionStore.selectedFile?.appearanceID === file.appearanceID }">
-              <td class="text-monospace">{{ file.fileNumberText }}</td>
+              <td>{{file.appearanceSequenceNumber}}</td>
               <td>{{ formatDateTo24hrTime(file.appearanceDateTime) }}</td>
-              <td>
-                <span class="badge bg-secondary">{{ file.courtListType }}</span>
-              </td>
+              <td class="text-monospace">{{ file.fileNumberText }}</td>
               <td class="fw-bold">{{ file.accusedName }}</td>
+              <td>
+                <span class="badge bg-secondary">{{ file.appearanceReasonCode }}</span>
+              </td>
             </tr>
           </tbody>
         </table>

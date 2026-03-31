@@ -7,11 +7,11 @@ namespace CES.Business.Models
     {
         public int Id { get; set; }
         public DateTime? SubmissionDate { get; set; }
+        public string CourtDateTime { get; set; } = string.Empty;
         public string Location { get; set; } = string.Empty;
         public string Room { get; set; } = string.Empty;
         public string FileNumber { get; set; } = string.Empty;
         public string AccusedName { get; set; } = string.Empty;
-        public string OfficerNumber { get; set; } = string.Empty;
 
         // Using List<T> for the array of files
         public List<SubmissionFile> Files { get; set; } = new List<SubmissionFile>();

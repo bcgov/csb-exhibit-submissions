@@ -28,10 +28,11 @@ namespace CES.Business.Services
             var proceedingDateString = proceeding.ToString("yyyy-MM-dd");
             var courtListJC =  await _filesClient.FilesCourtlistAsync(_requestAgencyIdentifierId, _requestPartId, _applicationCode, agencyId, roomCode, proceedingDateString, null, null);
             
-            if(courtListJC.CriminalCourtList.Count() == 0)
-                return new List<Models.Location.CourtList>();
-
             var list = new List<Models.Location.CourtList>();
+
+            if(courtListJC.CriminalCourtList.Count() == 0)
+                return list;
+
             foreach(var file in courtListJC.CriminalCourtList)
             {
                 var entity = file.ToLocalEntity();

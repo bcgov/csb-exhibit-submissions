@@ -25,8 +25,8 @@ const handleLogout = () => {
           </router-link>
         </v-app-bar-title>
         <v-tabs align-tabs="start" v-model="selectedTab">
-          <v-tab value="admin-list" to="/admin/list">Admin Listing</v-tab>
-          <v-tab value="court-list" to="/officer/court-list">Court list</v-tab>
+          <v-tab value="admin-list" to="/admin/list" v-if="authStore.hasRole('Admin')">Admin Listing</v-tab>
+          <v-tab value="court-list" to="/officer/court-list" v-if="authStore.hasRole('User')">Court list</v-tab>
           
           <v-spacer></v-spacer>
           <div class="d-flex align-center mr-4">

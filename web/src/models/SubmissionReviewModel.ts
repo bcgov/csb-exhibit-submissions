@@ -17,6 +17,7 @@ export interface SubmissionReviewModel {
   room: string
   fileNumber: string
   accusedName: string
-  officerNumber: string
+  locationName: string
+  courtDateTime: string
   files: SubmissionFile[]
 }

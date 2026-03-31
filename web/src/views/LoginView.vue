@@ -64,10 +64,11 @@ import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import useAuthService from '@/services/AuthService'
 import axios from 'axios'
+import { useAuthStore } from '@/stores/authStore'
 
 const router = useRouter()
 const route = useRoute()
-const { login, logout } = useAuthService()
+const { login } = useAuthService()
 
 // State
 const email = ref('')
@@ -86,8 +87,20 @@ const handleLogin = async () => {
     await login(email.value, password.value)
 
     // Redirect to the originally requested route, or default to home/dashboard
-    const redirectPath = (route.query.redirect as string) || '/'
-    await router.push(redirectPath)
+    const redirectPath = (route.query.redirect as string)
+
+    //if no redirectPath send to determined base route for role
+    if(!redirectPath)
+    {
+      const authStore = useAuthStore();
+      if(authStore.hasRole("Admin"))
+        await router.push({name: 'AdminSubmissionList'});
+      else if(authStore.hasRole("User"))
+        await router.push({name: 'OfficerCourtList'});
+
+    }
+    else
+      await router.push(redirectPath)
   } catch (error) {
     // Strictly typed error handling
     if (axios.isAxiosError(error)) {

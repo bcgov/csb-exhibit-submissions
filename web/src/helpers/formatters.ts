@@ -77,7 +77,7 @@ export const formatDateTo24hrTime = (dateInput: Date | string): string => {
         return '';
     }
 
-    return new Intl.DateTimeFormat('en-GB', {
+    return new Intl.DateTimeFormat('en-CA', {
         hour: '2-digit',
         minute: '2-digit',
         hour12: false,
@@ -97,6 +97,7 @@ export const formatDate = (dateInput: string | Date): string => {
 
 
 export const formatDateyyyymmdd = (dateInput: string | Date): string => {
+	if(typeof dateInput === "string" && dateInput == "") dateInput = new Date();
 	const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
 // console.log(dateInput, typeof dateInput, date);
 
@@ -107,29 +108,74 @@ export const formatDateyyyymmdd = (dateInput: string | Date): string => {
 	});
 };
 
-export const formatDateTime = (dateInput: string | Date): string => {
+export const formatDateTime = (dateInput: string | Date, twentyFourHourFormat: boolean = false): string => {
 	const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
 	console.log(dateInput, typeof dateInput, date);
 
-	return date.toLocaleString("en-CA", {
-		year: "numeric",
-		month: "short",
-		day: "numeric",
-		hour: "2-digit",
-		minute: "2-digit",
-	});
+	if(twentyFourHourFormat)
+		return new Intl.DateTimeFormat('en-CA', {
+			year: "numeric",
+			month: "short",
+			day: "numeric",
+			hour: '2-digit',
+			minute: '2-digit',
+			hour12: false,
+		}).format(date);
+	else
+		return date.toLocaleString("en-CA", {
+			year: "numeric",
+			month: "short",
+			day: "numeric",
+			hour: "2-digit",
+			minute: "2-digit",
+		});
 };
 
-export const localDateToUtc = (date: string, endOfDay: boolean = false): string | null => {
-	if (!date) return null;
+export const localDateToUtc = (date: string, endOfDay: boolean = false): string => {
+	if (!date) return "";
 
 	const [year, month, day] = date.split("-").map(Number);
 
-	if (!year || !month || !day) return null;
+	if (!year || !month || !day) return "";
 
 	const localDate = endOfDay
 		? new Date(year, month - 1, day, 23, 59, 59, 999)
 		: new Date(year, month - 1, day, 0, 0, 0, 0);
 
 	return localDate.toISOString();
+};
+
+
+export const splitDateTimeForDisplay = (dateTimeStr: string): { date: string; time: string } => {
+	
+    if (!dateTimeStr) {
+        return { date: '', time: '' };
+    }
+
+    const parts = dateTimeStr.split(' ');
+
+    if (parts.length !== 2) {
+        return { date: dateTimeStr, time: '' };
+    }
+
+    const datePart = parts[0]; // "2026-03-31"
+    let timePart = parts[1];   // "09:30:00.0"
+	if (!timePart) {
+        return { date: dateTimeStr, time: '' };
+    }
+
+	if (timePart.includes('.')) {
+        timePart = timePart.split('.')[0]; // Result: "09:30:00"
+    }
+
+    // 2. Strip the seconds so it just shows HH:mm
+    const timeSegments = timePart!.split(':');
+    if (timeSegments.length >= 2) {
+        timePart = `${timeSegments[0]}:${timeSegments[1]}`; // Result: "09:30"
+    }
+
+    return {
+        date: datePart!,
+        time: timePart!
+    };
 };

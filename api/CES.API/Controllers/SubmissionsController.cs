@@ -27,6 +27,10 @@ namespace CES.API.Controllers
 
             model.fileUploads = model.Files.Select(f => new FileUpload
                                                             {
+                                                                Location = model.LocationId,
+                                                                Date = model.ShortDate,
+                                                                Room = model.RoomCode,
+                                                                FileNumber = model.FileNumberText,
                                                                 FileName = f.FileName,
                                                                 ContentType = f.ContentType,
                                                                 Length = f.Length,

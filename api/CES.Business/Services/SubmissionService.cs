@@ -1,6 +1,7 @@
 using CES.Business.Extensions.Entities;
 using CES.Business.Interfaces;
 using CES.Business.Models;
+using CES.Entities.Infrastructure;
 using CES.Entities.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,7 +25,8 @@ namespace CES.Business.Services
 
             foreach (var file in model.fileUploads)
             {
-                var newFile = await _fileStorage.SaveAsync(file, entity.FileNumberText);
+                var path = Path.Combine(file.Location, file.Date, file.Room, file.FileNumber);
+                var newFile = await _fileStorage.SaveAsync(file, path);
                 entity.Files.Add(newFile);
                 await _datastore.StoredFiles.AddAsync(newFile);
             }
@@ -64,7 +66,7 @@ namespace CES.Business.Services
 
                 if(storedfile == null)
                     return false;
-
+                    
                 await _fileStorage.AcceptAsync(storedfile);
                 storedfile.IsDeleted = true;
                 processedCount += 1;

@@ -4,7 +4,8 @@ namespace CES.Business.Models
 {
     public class EvidenceSubmissionModel : CourtList
     {
-        public string OfficerNumber { get; set; } = string.Empty;
+        public string? OfficerNumber { get; set; } = string.Empty;
+        public required string ShortDate { get; set; }
 
         public List<FileUpload> fileUploads {get;set;} = new List<FileUpload>();
     }
