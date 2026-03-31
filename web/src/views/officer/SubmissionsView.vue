@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import Submissions from '@/components/officer/Submission.vue';
+import Submissions from '@/components/officer/SubmissionForm.vue';
 </script>
 
 <template>

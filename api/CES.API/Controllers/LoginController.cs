@@ -21,7 +21,7 @@ namespace CES.API.Controllers
             var mockUsers = new Dictionary<string, (string Password, string Role)>
             {
                 { "admin@gov.bc.ca", ("pass123", "Admin") },
-                { "user@gov.bc.ca", ("pass123", "User") }
+                { "officer@gov.bc.ca", ("pass123", "User") }
             };
             if (mockUsers.TryGetValue(model.Username.ToLower(), out var userRecord) && 
                 userRecord.Password == model.Password)

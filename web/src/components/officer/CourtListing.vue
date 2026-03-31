@@ -41,51 +41,53 @@
 
     </form>
   </div>
-  <div v-if="hasSearched" class="card shadow-sm">
-    <div class="card-body p-0">
-      <div v-if="searchResults.length > 0" class="table-responsive">
-        <table class="table table-hover mb-0 submission-table">
-          <thead class="table-light">
-            <tr>
-              <th>Order</th>
-              <th>Time</th>
-              <th>Ticket Number</th>
-              <th>Accused Name</th>
-              <th>Appearance Reason</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="file in searchResults" :key="file.appearanceID" @click="singleClickSelect(file)"
-              @dblclick="selectFile(file)"
-              :class="{ selected: selectionStore.selectedFile?.appearanceID === file.appearanceID }">
-              <td>{{ file.appearanceSequenceNumber }}</td>
-              <td>{{ formatDateTo24hrTime(file.appearanceDateTime) }}</td>
-              <td class="text-monospace">{{ file.fileNumberText }}</td>
-              <td class="fw-bold">{{ file.accusedName }}</td>
-              <td>
-                <div class="d-flex align-items-start">
-                  <span class="badge bg-secondary me-2 align-self-start">
-                    {{ file.appearanceReasonCode }}
-                  </span>
+  <div v-if="hasSearched" class="px-4 pb-4"> 
+    <div class="card shadow-sm">
+      <div class="card-body p-0">
+        <div v-if="searchResults.length > 0" class="table-responsive">
+          <table class="table table-hover mb-0 submission-table">
+            <thead class="table-light">
+              <tr>
+                <th>Order</th>
+                <th>Time</th>
+                <th>Ticket Number</th>
+                <th>Accused Name</th>
+                <th>Appearance Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="file in searchResults" :key="file.appearanceID" @click="singleClickSelect(file)"
+                @dblclick="selectFile(file)"
+                :class="{ selected: selectionStore.selectedFile?.appearanceID === file.appearanceID }">
+                <td>{{ file.appearanceSequenceNumber }}</td>
+                <td>{{ formatDateTo24hrTime(file.appearanceDateTime) }}</td>
+                <td class="text-monospace">{{ file.fileNumberText }}</td>
+                <td class="fw-bold">{{ file.accusedName }}</td>
+                <td>
+                  <div class="d-flex align-items-start">
+                    <span class="badge bg-secondary me-2 align-self-start">
+                      {{ file.appearanceReasonCode }}
+                    </span>
 
-                  <div>
-                    <div 
-                      v-for="(appearance, index) in file.appearanceDetails" 
-                      :key="index"
-                      class="lh-sm mb-1 offence-list"
-                    >
-                      {{appearance.countPrintSequenceNumber}}: {{ appearance.statuteDescription }}
+                    <div>
+                      <div 
+                        v-for="(appearance, index) in file.appearanceDetails" 
+                        :key="index"
+                        class="lh-sm mb-1 offence-list"
+                      >
+                        {{appearance.countPrintSequenceNumber}}: {{ appearance.statuteDescription }}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-      <div v-else class="text-center py-5">
-        <p class="text-muted mb-0">No court files found for the selected criteria.</p>
+        <div v-else class="text-center py-5">
+          <p class="text-muted mb-0">No court files found for the selected criteria.</p>
+        </div>
       </div>
     </div>
   </div>
@@ -124,10 +126,6 @@ const isSearching = ref(false);
 
 const availableRooms = computed<CourtRoomsInfo[]>(() => {
   return selectedLocation.value?.courtRooms || [];
-});
-
-const isFormValid = computed(() => {
-  return !!(appearanceDate.value && selectedLocation.value && selectedRoom.value);
 });
 
 const isSubmitDisabled = computed(() => {
@@ -232,8 +230,6 @@ onMounted(() => {
 .submission-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 1rem;
-  margin-top: 2rem;
 }
 
 .submission-table th,

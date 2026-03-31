@@ -67,7 +67,7 @@ export default function useSubmissionService() {
 
   const retrieveSubmission = async (fileId: number): Promise<SubmissionReviewModel | undefined> => {
     const url = `/submissions/retrieve/`
-    let apiReturn = await api.get<SubmissionReviewModel>(url, {
+    const apiReturn = await api.get<SubmissionReviewModel>(url, {
         params: { fileId: fileId },
       })
 

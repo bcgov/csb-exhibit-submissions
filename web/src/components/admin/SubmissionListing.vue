@@ -2,10 +2,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import type { SubmissionReviewModel, SubmissionFile } from '@/models/SubmissionReviewModel'
+import type { SubmissionReviewModel } from '@/models/SubmissionReviewModel'
 import useSubmissionService from '@/services/SubmissionService'
 import type { AxiosError } from 'axios'
-import { formatDateTime, formatDateTo24hrTime, splitDateTimeForDisplay } from '@/helpers/formatters'
+import { formatDateTime, splitDateTimeForDisplay } from '@/helpers/formatters'
 
 const {retrieveSubmissionListing} = useSubmissionService()
 const router = useRouter();

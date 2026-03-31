@@ -41,7 +41,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { getHealth, type HealthResponse } from '@/services/devService'
+import { getHealth } from '@/services/devService'
 
 interface DevTool {
   name: string

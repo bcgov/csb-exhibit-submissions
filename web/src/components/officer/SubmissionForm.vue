@@ -5,16 +5,14 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import FileDropZone from '../shared/FileDropZone.vue'
 import { useCourtFileSelectionStore } from '@/stores/useCourtFileSelectionStore'
-import { formatDate, formatDateTime, formatDateyyyymmdd } from '@/helpers/formatters'
+import { formatDateyyyymmdd } from '@/helpers/formatters'
 import type { ExhibitSubmissionModel } from '@/models/ExhibitSubmissionModel'
 
-const route = useRoute()
 const router = useRouter()
 
 const { submitExhibits } = useSubmissionService()
 const selectionStore = useCourtFileSelectionStore()
 
-const caseId = Number(route.params.id)
 const uploading = ref(false)
 const errorMessage = ref('')
 const uploadProgress = ref<number>(0);
@@ -58,7 +56,7 @@ const submitForm = async () => {
   uploading.value = true
   errorMessage.value = ''
 
-  var submission: ExhibitSubmissionModel = {
+  const submission: ExhibitSubmissionModel = {
     accusedDOB: selectedFile.value?.accusedDOB ?? "",
     accusedName: selectedFile.value?.accusedName ?? "",
     appearanceDateTime: selectedFile.value?.appearanceDateTime ?? "",
@@ -89,7 +87,7 @@ const submitForm = async () => {
       if (success) router.push(`/officer/court-list`)
       else errorMessage.value = 'Upload failed. Please ensure at least one file is selected.'
       uploading.value = false;
-    }, 5000);
+    }, 500);
   }
   console.log('api return:', success)
 }

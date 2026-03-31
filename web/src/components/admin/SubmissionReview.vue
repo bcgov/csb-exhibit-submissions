@@ -4,7 +4,7 @@ import useSubmissionService from '@/services/SubmissionService'
 import FileViewer from '../shared/FileViewer.vue'
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { formatFileSize, shortenString } from '@/helpers/formatters'
+import { convertUtcToLocal, formatDateTime, formatFileSize, shortenString, splitDateTimeForDisplay } from '@/helpers/formatters'
 import type { SubmissionAcceptanceModel } from '@/models/SubmissionAcceptanceModel'
 
 const route = useRoute()
@@ -82,7 +82,7 @@ const acceptSubmission = async () => {
     return
   }
 
-  if (!confirm('Accept selected files?')) return
+  // if (!confirm('Accept selected files?')) return
 
   const payload:SubmissionAcceptanceModel = {
     fileId: submissionId,
@@ -97,12 +97,12 @@ const acceptSubmission = async () => {
 }
 
 const removeSubmission = async () => {
-  if (!confirm('Reject and delete this submission?')) return
+  if (!confirm('Reject and delete this submission? Any unaccepted submissions will be removed!')) return
   const payload:SubmissionAcceptanceModel = {
     fileId: submissionId,
     acceptedFiles: selectedFiles.value
   }
-  const returnvalue = await rejectAndCloseSubmission(payload);
+  await rejectAndCloseSubmission(payload);
   router.push('/admin/list')
 }
 
@@ -121,12 +121,13 @@ const fileIcon = (type: string) => {
 
     <div v-if="submission">
       <div class="details-grid">
-        <div><strong>Date:</strong> {{ submission.submissionDate }}</div>
+        <div><strong>Court Date:</strong> {{ splitDateTimeForDisplay(submission.courtDateTime).date }}</div>
+        <div><strong>Court Time:</strong> {{ splitDateTimeForDisplay(submission.courtDateTime).time }}</div>
         <div><strong>Location:</strong> {{ submission.location }}</div>
         <div><strong>Room:</strong> {{ submission.room }}</div>
         <div><strong>Ticket #:</strong> {{ submission.fileNumber }}</div>
         <div><strong>Disputant:</strong> {{ submission.accusedName }}</div>
-        <div><strong>Officer #:</strong> {{ submission.officerNumber }}</div>
+        <div><strong>Submission Date:</strong> {{ submission.submissionDate ? formatDateTime(convertUtcToLocal(submission.submissionDate), true) : "" }}</div>
       </div>
 
       <h3>Submitted Evidence</h3>
@@ -192,7 +193,7 @@ const fileIcon = (type: string) => {
 
 .details-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(275px, 1fr));
   gap: 10px;
   margin-bottom: 30px;
 }

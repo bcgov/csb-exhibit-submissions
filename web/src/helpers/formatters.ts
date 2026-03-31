@@ -108,14 +108,15 @@ export const formatDateyyyymmdd = (dateInput: string | Date): string => {
 	});
 };
 
-export const formatDateTime = (dateInput: string | Date, twentyFourHourFormat: boolean = false): string => {
+export const formatDateTime = (dateInput: string | Date | null, twentyFourHourFormat: boolean = false): string => {
+	if(!dateInput) return "";
 	const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
 	console.log(dateInput, typeof dateInput, date);
 
 	if(twentyFourHourFormat)
 		return new Intl.DateTimeFormat('en-CA', {
 			year: "numeric",
-			month: "short",
+			month: "numeric",
 			day: "numeric",
 			hour: '2-digit',
 			minute: '2-digit',
@@ -124,7 +125,7 @@ export const formatDateTime = (dateInput: string | Date, twentyFourHourFormat: b
 	else
 		return date.toLocaleString("en-CA", {
 			year: "numeric",
-			month: "short",
+			month: "numeric",
 			day: "numeric",
 			hour: "2-digit",
 			minute: "2-digit",
@@ -145,6 +146,23 @@ export const localDateToUtc = (date: string, endOfDay: boolean = false): string 
 	return localDate.toISOString();
 };
 
+export const convertLocalToUtc = (dateInput: string | Date): string => {
+    const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+    
+    if (isNaN(date.getTime())) return "";
+
+    return date.toISOString(); 
+};
+
+export const convertUtcToLocal = (utcString: string): Date | null => {
+    if (!utcString) return null;
+
+    // Append 'Z' if it's missing to force JS to treat it as UTC
+    const normalizedUtc = utcString.endsWith('Z') ? utcString : `${utcString}Z`;
+    const date = new Date(normalizedUtc);
+
+    return isNaN(date.getTime()) ? null : date;
+};
 
 export const splitDateTimeForDisplay = (dateTimeStr: string): { date: string; time: string } => {
 	
