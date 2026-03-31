@@ -12,4 +12,11 @@ export interface CourtFileList {
   roomText: string;
   accusedName: string;
   accusedDOB: string;
+  appearanceDetails: [AppearanceDetails]
+}
+
+export interface AppearanceDetails {
+  countPrintSequenceNumber: string;
+  statuteDescription: string;
+  appearanceReasonCode: string;
 }
