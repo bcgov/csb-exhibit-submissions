@@ -23,8 +23,12 @@ usage() {
           Examples:
           - Build everything:
             $0 build
+          - Rebuild everything without cache:
+            $0 build --no-cache
           - Build the api only:
             $0 build api
+          - Rebuild only the api image without cache:
+            $0 build api --no-cache
           - Build the api-dev only:
             $0 build api-dev
           - Build the web release image only:
@@ -60,6 +64,7 @@ exit 1
 # -----------------------------------------------------------------------------------------------------------------
 RUNTIME_CONTAINERS="db api web"
 DEBUG_CONTAINERS="db api-dev web-dev"
+DOCKER_BUILD_FLAGS=""
 # -----------------------------------------------------------------------------------------------------------------
 # Functions:
 # -----------------------------------------------------------------------------------------------------------------
@@ -78,6 +83,7 @@ build-web() {
   echo -e "Building the ${COMPOSE_PROJECT_NAME}-web (release) image using Docker ..."
   echo -e "----------------------------------------------------------------------------------------------------"
   docker build \
+    ${DOCKER_BUILD_FLAGS} \
     -t "${COMPOSE_PROJECT_NAME}-web" \
     --build-arg NODE_VERSION=22 \
     --build-arg NGINX_RUNTIME_SRC='./docker/nginx-runtime' \
@@ -95,6 +101,7 @@ build-web-dev() {
   echo -e "Building the ${COMPOSE_PROJECT_NAME}-web-dev image using Docker ..."
   echo -e "----------------------------------------------------------------------------------------------------"
   docker build \
+    ${DOCKER_BUILD_FLAGS} \
     -t "${COMPOSE_PROJECT_NAME}-web-dev" \
     --build-arg NODE_VERSION=22 \
     --build-arg VITE_PORT=8080 \
@@ -111,6 +118,7 @@ build-api() {
   echo -e "Building api (release) image using docker ..."
   echo -e "----------------------------------------------------------------------------------------------------"
   docker build \
+    ${DOCKER_BUILD_FLAGS} \
     -t "${COMPOSE_PROJECT_NAME}-api" \
     -f './api/Dockerfile.release' '..'
   echo -e "===================================================================================================="
@@ -124,6 +132,7 @@ build-api-dev() {
   echo -e "Building api-dev image using docker ..."
   echo -e "----------------------------------------------------------------------------------------------------"
   docker build \
+    ${DOCKER_BUILD_FLAGS} \
     -t "${COMPOSE_PROJECT_NAME}-api-dev" \
     -f './api/Dockerfile.dev' '..'
   echo -e "===================================================================================================="
@@ -201,6 +210,31 @@ functionExists() {
   )
 }
 
+parseBuildArgs() {
+  buildImage="all"
+  DOCKER_BUILD_FLAGS=""
+
+  for arg in "$@"; do
+    case "$arg" in
+      --no-cache)
+        DOCKER_BUILD_FLAGS+=" --no-cache"
+        ;;
+      *=*)
+        # Skip env overrides
+        ;;
+      -*)
+        DOCKER_BUILD_FLAGS+=" ${arg}"
+        ;;
+      *)
+        if [ "${buildImage}" = "all" ]; then
+          buildImage=$(toLower ${arg})
+          buildImage=$(echo ${buildImage} | sed s~^vcr-~~)
+        fi
+        ;;
+    esac
+  done
+}
+
 deleteVolumes() {
   _projectName=${COMPOSE_PROJECT_NAME:-docker}
 
@@ -248,14 +282,7 @@ case "$COMMAND" in
     deleteVolumes
     ;;
   build)
-    buildImage=$(toLower ${1})
-    shift || buildImage=all
-    buildImage=$(echo ${buildImage} | sed s~^vcr-~~)
-    case "$buildImage" in
-      *=*)
-        buildImage=all
-        ;;
-    esac
+    parseBuildArgs "$@"
 
     if functionExists "build-${buildImage}"; then
       eval "build-${buildImage}"
