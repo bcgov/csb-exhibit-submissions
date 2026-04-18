@@ -1,27 +1,30 @@
 name: csb-exhibit-submissions
 services:
-  nginx:
-    build:
-      context: ./nginx-proxy
-      dockerfile: Dockerfile
-    image: "${COMPOSE_PROJECT_NAME}-nginx"
-    ports:
-      - 9080:8080
-    networks:
-      - app-network
-
   web:
     image: "${COMPOSE_PROJECT_NAME}-web"
+    environment:
+      - API_URL=${API_URL:-http://api:8080/api/}
+      - WEB_BASE_HREF=${WEB_BASE_HREF:-/}
+    ports:
+      - 9080:8080
+    depends_on:
+      - api
     networks:
       - app-network
 
   web-dev:
     image: "${COMPOSE_PROJECT_NAME}-web-dev"
     environment:
+      - API_URL=${API_URL:-http://api:8080/api/}
+      - WEB_BASE_HREF=${WEB_BASE_HREF:-/}
       - APP_ENVIRONMENT=${APP_ENVIRONMENT:-dev}
       - NODE_ENV=development
       - VITE_PORT=8080
       - CHOKIDAR_USEPOLLING=true
+    ports:
+      - 9080:8080
+    depends_on:
+      - api-dev
     volumes:
       - ${LOCAL_WORKSPACE_FOLDER-..}/web/:/opt/app-root/src
       - /opt/app-root/src/node_modules
@@ -37,6 +40,9 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - CORS_DOMAIN=${CORS_DOMAIN:-http://localhost:9080}
       - ConnectionStrings__CESDataStore=${DatabaseConnectionString}
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - app-network
 

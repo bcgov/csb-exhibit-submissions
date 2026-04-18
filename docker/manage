@@ -31,11 +31,7 @@ usage() {
             $0 build web
           - Build the web-dev image only:
             $0 build web-dev
-          - Build the nginx proxy only:
-            $0 build nginx
-
           Containers:
-            - nginx
             - api
             - api-dev
             - web
@@ -62,30 +58,16 @@ exit 1
 # -----------------------------------------------------------------------------------------------------------------
 # Default Settings:
 # -----------------------------------------------------------------------------------------------------------------
-RUNTIME_CONTAINERS="db api web nginx"
-DEBUG_CONTAINERS="db api-dev web-dev nginx"
+RUNTIME_CONTAINERS="db api web"
+DEBUG_CONTAINERS="db api-dev web-dev"
 # -----------------------------------------------------------------------------------------------------------------
 # Functions:
 # -----------------------------------------------------------------------------------------------------------------
 build-all() {
-  build-nginx
   build-web
   build-web-dev
   build-api
   build-api-dev
-}
-
-build-nginx() {
-  #
-  # nginx reverse proxy
-  #
-  echo -e "\n\n===================================================================================================="
-  echo -e "Building nginx reverse proxy image using docker ..."
-  echo -e "----------------------------------------------------------------------------------------------------"
-  docker build \
-    -t "${COMPOSE_PROJECT_NAME}-nginx" \
-    -f './nginx-proxy/Dockerfile' './nginx-proxy'
-  echo -e "===================================================================================================="
 }
 
 build-web() {
@@ -173,6 +155,8 @@ configureEnvironment () {
   # Default API startup parameters
   export ASPNETCORE_URLS=${ASPNETCORE_URLS:-http://+:8080}
   export CORS_DOMAIN=${CORS_DOMAIN:-http://localhost:9080}
+  export API_URL=${API_URL:-http://api:8080/api/}
+  export WEB_BASE_HREF=${WEB_BASE_HREF:-/}
   export APP_ENVIRONMENT=${APP_ENVIRONMENT:-dev}
 }
 

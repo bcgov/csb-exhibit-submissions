@@ -1,8 +1,8 @@
 ## Using the Application
 
 - The web application is available at: http://localhost:9080/
-- The Swagger API and documentation is available at: http://localhost:9080/swagger
-- The API is also proxied at: http://localhost:9080/api
+- The API is proxied through web/web-dev at: http://localhost:9080/api
+- The Swagger API and documentation is available directly at: http://localhost:8080/swagger
 
 # Running the Application on Docker
 
@@ -39,7 +39,6 @@ To get full usage information on the script, run:
 ./manage build api-dev
 ./manage build web
 ./manage build web-dev
-./manage build nginx
 ```
 
 ### Start services
@@ -48,7 +47,7 @@ To get full usage information on the script, run:
 ./manage start
 ```
 
-`start` runs the release image services: `api`, `web`, `nginx`, and `db`.
+`start` runs the release image services: `api`, `web`, and `db`.
 
 ### Start in debug mode (with hot reload)
 
@@ -56,7 +55,7 @@ To get full usage information on the script, run:
 ./manage debug
 ```
 
-`debug` runs the development image services: `api-dev`, `web-dev`, `nginx`, and `db`.
+`debug` runs the development image services: `api-dev`, `web-dev`, and `db`.
 
 ### Stop services
 
@@ -76,9 +75,8 @@ To get full usage information on the script, run:
 
 | Service | Internal Port | External Access       |
 | ------- | ------------- | --------------------- |
-| nginx   | 8080          | http://localhost:9080 |
-| api     | 8080          | via nginx proxy (release) |
-| api-dev | 8080          | via nginx proxy (debug) |
-| web     | 8080          | via nginx proxy (release) |
-| web-dev | 8080          | via nginx proxy (debug) |
+| web     | 8080          | http://localhost:9080 (release) |
+| web-dev | 8080          | http://localhost:9080 (debug) |
+| api     | 8080          | proxied by web on /api (release) |
+| api-dev | 8080          | proxied by web-dev on /api (debug) |
 | db      | 5432          | localhost:5432        |
