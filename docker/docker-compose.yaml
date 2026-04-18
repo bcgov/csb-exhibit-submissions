@@ -1,0 +1,92 @@
+name: csb-exhibit-submissions
+services:
+  nginx:
+    build:
+      context: ./nginx-proxy
+      dockerfile: Dockerfile
+    image: "${COMPOSE_PROJECT_NAME}-nginx"
+    ports:
+      - 9080:8080
+    depends_on:
+      - web
+      - api
+    networks:
+      - app-network
+
+  web:
+    build:
+      context: ${LOCAL_WORKSPACE_FOLDER-.}
+      dockerfile: ./docker/web/Dockerfile.dev
+      args:
+        WEB_SRC: ./web
+    image: "${COMPOSE_PROJECT_NAME}-web"
+    ports:
+      - 9081:8080
+    environment:
+      - APP_ENVIRONMENT=${APP_ENVIRONMENT:-dev}
+      - NODE_ENV=development
+      - VITE_PORT=8080
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      - ${LOCAL_WORKSPACE_FOLDER-..}/web/:/opt/app-root/src
+      - /opt/app-root/src/node_modules
+    networks:
+      - app-network
+
+  api:
+    image: "${COMPOSE_PROJECT_NAME}-api"
+    ports:
+      - 9082:8080
+    environment:
+      - ASPNETCORE_URLS=${ASPNETCORE_URLS:-http://+:8080}
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
+      - CORS_DOMAIN=${CORS_DOMAIN:-http://localhost:9080}
+      - ConnectionStrings__CESDataStore=${DatabaseConnectionString}
+    networks:
+      - app-network
+    volumes:
+      - ${LOCAL_WORKSPACE_FOLDER-..}/api/:/opt/app-root/src/api
+      - api-dev-bin:/opt/app-root/src/api/CES.API/bin
+      - api-dev-obj:/opt/app-root/src/api/CES.API/obj
+      - api-temp:/opt/app-root/src/api/CES.API/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      /bin/bash -c "
+        echo Database is ready, starting API ...;
+        dotnet watch run --project /opt/app-root/src/api/CES.API/CES.API.csproj --urls='http://+:8080';"
+
+  db:
+    image: postgres:16
+    environment:
+      - POSTGRES_USER=${POSTGRESQL_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRESQL_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRESQL_DATABASE:-cesdb}
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRESQL_USER:-postgres} -d
+            ${POSTGRESQL_DATABASE:-cesdb}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  api-dev-bin:
+  api-dev-obj:
+  api-temp:
+  postgres-data:
