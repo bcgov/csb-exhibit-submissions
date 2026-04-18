@@ -116,8 +116,18 @@ var enableSwagger = app.Environment.IsDevelopment() ||
 
 if (enableSwagger)
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    var swaggerRoutePrefix = (builder.Configuration["SwaggerRoutePrefix"] ?? "api/swagger").Trim('/');
+
+    app.UseSwagger(c =>
+    {
+        c.RouteTemplate = $"{swaggerRoutePrefix}/{{documentName}}/swagger.json";
+    });
+
+    app.UseSwaggerUI(c =>
+    {
+        c.RoutePrefix = swaggerRoutePrefix;
+        c.SwaggerEndpoint($"/{swaggerRoutePrefix}/v1/swagger.json", "CSB EXHITBIT SUBMISSIONS v1");
+    });
 }
 
 app.UseHttpsRedirection();
