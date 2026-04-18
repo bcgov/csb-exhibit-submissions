@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Restores .NET and Node.js dependencies.
+
+pushd "${SCRIPT_DIR}/.." > /dev/null
+dotnet restore api/CES.API/CES.API.sln
+popd > /dev/null
+
+pushd "${SCRIPT_DIR}/../web" > /dev/null
+npm install
+popd > /dev/null

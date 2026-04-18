@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Installs the OpenShift CLI (oc) used in BC Gov OpenShift workflows.
+curl -s -L https://downloads-openshift-console.apps.silver.devops.gov.bc.ca/amd64/linux/oc.tar | \
+tar -xv -C /usr/local/bin
+
+echo "oc CLI installed: $(oc version --client 2>/dev/null || oc version)"
