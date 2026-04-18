@@ -25,15 +25,21 @@ usage() {
             $0 build
           - Build the api only:
             $0 build api
-          - Build the web only:
+          - Build the api-dev only:
+            $0 build api-dev
+          - Build the web release image only:
             $0 build web
+          - Build the web-dev image only:
+            $0 build web-dev
           - Build the nginx proxy only:
             $0 build nginx
 
           Containers:
             - nginx
             - api
+            - api-dev
             - web
+            - web-dev
 
   start - Creates the application containers from the built images
           and starts the services based on the docker-compose.yaml file.
@@ -56,15 +62,17 @@ exit 1
 # -----------------------------------------------------------------------------------------------------------------
 # Default Settings:
 # -----------------------------------------------------------------------------------------------------------------
-RUNTIME_CONTAINERS="nginx web api db"
-DEBUG_CONTAINERS="nginx web api db"
+RUNTIME_CONTAINERS="db api web nginx"
+DEBUG_CONTAINERS="db api-dev web-dev nginx"
 # -----------------------------------------------------------------------------------------------------------------
 # Functions:
 # -----------------------------------------------------------------------------------------------------------------
 build-all() {
   build-nginx
   build-web
+  build-web-dev
   build-api
+  build-api-dev
 }
 
 build-nginx() {
@@ -82,13 +90,30 @@ build-nginx() {
 
 build-web() {
   #
-  # web-dev
+  # web (release)
   #
   echo -e "\n\n===================================================================================================="
-  echo -e "Building the ${COMPOSE_PROJECT_NAME}-web (dev) image using Docker ..."
+  echo -e "Building the ${COMPOSE_PROJECT_NAME}-web (release) image using Docker ..."
   echo -e "----------------------------------------------------------------------------------------------------"
   docker build \
     -t "${COMPOSE_PROJECT_NAME}-web" \
+    --build-arg NODE_VERSION=22 \
+    --build-arg NGINX_RUNTIME_SRC='./docker/nginx-runtime' \
+    --build-arg VUE_ON_NGINX_SRC='./docker/vue-on-nginx' \
+    --build-arg WEB_SRC='./web' \
+    -f './web/Dockerfile.release' '..'
+  echo -e "===================================================================================================="
+}
+
+build-web-dev() {
+  #
+  # web-dev
+  #
+  echo -e "\n\n===================================================================================================="
+  echo -e "Building the ${COMPOSE_PROJECT_NAME}-web-dev image using Docker ..."
+  echo -e "----------------------------------------------------------------------------------------------------"
+  docker build \
+    -t "${COMPOSE_PROJECT_NAME}-web-dev" \
     --build-arg NODE_VERSION=22 \
     --build-arg VITE_PORT=8080 \
     --build-arg WEB_SRC='./web' \
@@ -98,13 +123,26 @@ build-web() {
 
 build-api() {
   #
-  # api
+  # api (release)
   #
   echo -e "\n\n===================================================================================================="
-  echo -e "Building api image using docker ..."
+  echo -e "Building api (release) image using docker ..."
   echo -e "----------------------------------------------------------------------------------------------------"
   docker build \
     -t "${COMPOSE_PROJECT_NAME}-api" \
+    -f './api/Dockerfile.release' '..'
+  echo -e "===================================================================================================="
+}
+
+build-api-dev() {
+  #
+  # api-dev
+  #
+  echo -e "\n\n===================================================================================================="
+  echo -e "Building api-dev image using docker ..."
+  echo -e "----------------------------------------------------------------------------------------------------"
+  docker build \
+    -t "${COMPOSE_PROJECT_NAME}-api-dev" \
     -f './api/Dockerfile.dev' '..'
   echo -e "===================================================================================================="
 }
@@ -135,6 +173,7 @@ configureEnvironment () {
   # Default API startup parameters
   export ASPNETCORE_URLS=${ASPNETCORE_URLS:-http://+:8080}
   export CORS_DOMAIN=${CORS_DOMAIN:-http://localhost:9080}
+  export APP_ENVIRONMENT=${APP_ENVIRONMENT:-dev}
 }
 
 getStartupParams() {

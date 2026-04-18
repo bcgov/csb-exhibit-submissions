@@ -7,21 +7,16 @@ services:
     image: "${COMPOSE_PROJECT_NAME}-nginx"
     ports:
       - 9080:8080
-    depends_on:
-      - web
-      - api
     networks:
       - app-network
 
   web:
-    build:
-      context: ${LOCAL_WORKSPACE_FOLDER-.}
-      dockerfile: ./docker/web/Dockerfile.dev
-      args:
-        WEB_SRC: ./web
     image: "${COMPOSE_PROJECT_NAME}-web"
-    ports:
-      - 9081:8080
+    networks:
+      - app-network
+
+  web-dev:
+    image: "${COMPOSE_PROJECT_NAME}-web-dev"
     environment:
       - APP_ENVIRONMENT=${APP_ENVIRONMENT:-dev}
       - NODE_ENV=development
@@ -31,19 +26,31 @@ services:
       - ${LOCAL_WORKSPACE_FOLDER-..}/web/:/opt/app-root/src
       - /opt/app-root/src/node_modules
     networks:
-      - app-network
+      app-network:
+        aliases:
+          - web
 
   api:
     image: "${COMPOSE_PROJECT_NAME}-api"
-    ports:
-      - 9082:8080
+    environment:
+      - ASPNETCORE_URLS=${ASPNETCORE_URLS:-http://+:8080}
+      - ASPNETCORE_ENVIRONMENT=Production
+      - CORS_DOMAIN=${CORS_DOMAIN:-http://localhost:9080}
+      - ConnectionStrings__CESDataStore=${DatabaseConnectionString}
+    networks:
+      - app-network
+
+  api-dev:
+    image: "${COMPOSE_PROJECT_NAME}-api-dev"
     environment:
       - ASPNETCORE_URLS=${ASPNETCORE_URLS:-http://+:8080}
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
       - CORS_DOMAIN=${CORS_DOMAIN:-http://localhost:9080}
       - ConnectionStrings__CESDataStore=${DatabaseConnectionString}
     networks:
-      - app-network
+      app-network:
+        aliases:
+          - api
     volumes:
       - ${LOCAL_WORKSPACE_FOLDER-..}/api/:/opt/app-root/src/api
       - api-dev-bin:/opt/app-root/src/api/CES.API/bin

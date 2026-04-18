@@ -36,7 +36,9 @@ To get full usage information on the script, run:
 
 ```bash
 ./manage build api
+./manage build api-dev
 ./manage build web
+./manage build web-dev
 ./manage build nginx
 ```
 
@@ -46,11 +48,15 @@ To get full usage information on the script, run:
 ./manage start
 ```
 
+`start` runs the release image services: `api`, `web`, `nginx`, and `db`.
+
 ### Start in debug mode (with hot reload)
 
 ```bash
 ./manage debug
 ```
+
+`debug` runs the development image services: `api-dev`, `web-dev`, `nginx`, and `db`.
 
 ### Stop services
 
@@ -71,6 +77,8 @@ To get full usage information on the script, run:
 | Service | Internal Port | External Access       |
 | ------- | ------------- | --------------------- |
 | nginx   | 8080          | http://localhost:9080 |
-| api     | 8080          | via nginx proxy       |
-| web     | 8080          | via nginx proxy       |
+| api     | 8080          | via nginx proxy (release) |
+| api-dev | 8080          | via nginx proxy (debug) |
+| web     | 8080          | via nginx proxy (release) |
+| web-dev | 8080          | via nginx proxy (debug) |
 | db      | 5432          | localhost:5432        |
