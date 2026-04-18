@@ -111,7 +111,10 @@ builder.Services.AddScoped<ICESDataStore, CESDataStore>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+var enableSwagger = app.Environment.IsDevelopment() ||
+    bool.TryParse(builder.Configuration["EnableSwagger"], out var result) && result;
+
+if (enableSwagger)
 {
     app.UseSwagger();
     app.UseSwaggerUI();
