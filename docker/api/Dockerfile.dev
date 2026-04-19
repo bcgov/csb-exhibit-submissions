@@ -1,0 +1,20 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0
+
+ENV ASPNETCORE_ENVIRONMENT='Development'
+ENV ASPNETCORE_URLS='http://+:8080'
+ENV CORS_DOMAIN='http://localhost:9080'
+ENV DOTNET_USE_POLLING_FILE_WATCHER=1
+
+RUN curl -sSL https://aka.ms/getvsdbgsh | /bin/sh /dev/stdin -v latest -l /vsdbg
+
+RUN dotnet tool install --global dotnet-ef
+ENV PATH="$PATH:/root/.dotnet/tools"
+
+# Copy project files and restore NuGet packages
+WORKDIR /opt/app-root/src
+COPY ../api/CES.API/CES.API.csproj ./api/CES.API/
+COPY ../api/CES.Business/CES.Business.csproj ./api/CES.Business/
+COPY ../api/CES.EF/CES.EF.csproj ./api/CES.EF/
+COPY ../api/CES.Entities/CES.Entities.csproj ./api/CES.Entities/
+COPY ../api/jc-interface-client/jc-interface-client.csproj ./api/jc-interface-client/
+RUN dotnet restore ./api/CES.API/CES.API.csproj

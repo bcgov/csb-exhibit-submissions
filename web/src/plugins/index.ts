@@ -1,5 +1,6 @@
+import type { App } from 'vue';
 import vuetify from './vuetify';
 
-export function registerPlugins(app) {
+export function registerPlugins(app: App): void {
   app.use(vuetify);
 }

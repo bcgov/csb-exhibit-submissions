@@ -111,10 +111,23 @@ builder.Services.AddScoped<ICESDataStore, CESDataStore>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+var enableSwagger = app.Environment.IsDevelopment() ||
+    bool.TryParse(builder.Configuration["EnableSwagger"], out var result) && result;
+
+if (enableSwagger)
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    var swaggerRoutePrefix = (builder.Configuration["SwaggerRoutePrefix"] ?? "api/swagger").Trim('/');
+
+    app.UseSwagger(c =>
+    {
+        c.RouteTemplate = $"{swaggerRoutePrefix}/{{documentName}}/swagger.json";
+    });
+
+    app.UseSwaggerUI(c =>
+    {
+        c.RoutePrefix = swaggerRoutePrefix;
+        c.SwaggerEndpoint($"/{swaggerRoutePrefix}/v1/swagger.json", "CSB EXHITBIT SUBMISSIONS v1");
+    });
 }
 
 app.UseHttpsRedirection();

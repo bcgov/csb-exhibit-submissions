@@ -1,0 +1,106 @@
+name: csb-exhibit-submissions
+services:
+  web:
+    image: "${COMPOSE_PROJECT_NAME}-web"
+    environment:
+      - API_URL=${API_URL:-http://api:8080/api/}
+      - WEB_BASE_HREF=${WEB_BASE_HREF:-/}
+    ports:
+      - 9080:8080
+    depends_on:
+      - api
+    networks:
+      - app-network
+
+  web-dev:
+    image: "${COMPOSE_PROJECT_NAME}-web-dev"
+    environment:
+      - API_URL=${API_URL:-http://api:8080/api/}
+      - WEB_BASE_HREF=${WEB_BASE_HREF:-/}
+      - APP_ENVIRONMENT=${APP_ENVIRONMENT:-dev}
+      - NODE_ENV=development
+      - VITE_PORT=8080
+      - CHOKIDAR_USEPOLLING=true
+    ports:
+      - 9080:8080
+    depends_on:
+      - api-dev
+    volumes:
+      - ${LOCAL_WORKSPACE_FOLDER-..}/web/:/opt/app-root/src
+      - /opt/app-root/src/node_modules
+    networks:
+      app-network:
+        aliases:
+          - web
+
+  api:
+    image: "${COMPOSE_PROJECT_NAME}-api"
+    environment:
+      - ASPNETCORE_URLS=${ASPNETCORE_URLS:-http://+:8080}
+      - ASPNETCORE_ENVIRONMENT=Production
+      - CORS_DOMAIN=${CORS_DOMAIN:-http://localhost:9080}
+      - ConnectionStrings__CESDataStore=${DatabaseConnectionString}
+      - EnableSwagger=${ENABLE_SWAGGER:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  api-dev:
+    image: "${COMPOSE_PROJECT_NAME}-api-dev"
+    environment:
+      - ASPNETCORE_URLS=${ASPNETCORE_URLS:-http://+:8080}
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
+      - CORS_DOMAIN=${CORS_DOMAIN:-http://localhost:9080}
+      - ConnectionStrings__CESDataStore=${DatabaseConnectionString}
+    networks:
+      app-network:
+        aliases:
+          - api
+    volumes:
+      - ${LOCAL_WORKSPACE_FOLDER-..}/api/:/opt/app-root/src/api
+      - api-dev-bin:/opt/app-root/src/api/CES.API/bin
+      - api-dev-obj:/opt/app-root/src/api/CES.API/obj
+      - api-temp:/opt/app-root/src/api/CES.API/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      /bin/bash -c "
+        echo Database is ready, starting API ...;
+        dotnet watch run --project /opt/app-root/src/api/CES.API/CES.API.csproj --urls='http://+:8080';"
+
+  db:
+    image: postgres:16
+    environment:
+      - POSTGRES_USER=${POSTGRESQL_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRESQL_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRESQL_DATABASE:-cesdb}
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRESQL_USER:-postgres} -d
+            ${POSTGRESQL_DATABASE:-cesdb}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  api-dev-bin:
+  api-dev-obj:
+  api-temp:
+  postgres-data:

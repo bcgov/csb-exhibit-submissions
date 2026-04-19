@@ -1,0 +1,298 @@
+#!/bin/bash
+export MSYS_NO_PATHCONV=1
+set -e
+
+SCRIPT_HOME="$(cd "$(dirname "$0")" && pwd)"
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-csb-exhibit-submissions}"
+
+# =================================================================================================================
+# Usage:
+# -----------------------------------------------------------------------------------------------------------------
+usage() {
+  cat <<-EOF
+
+  Usage: $0 {start|debug|stop|build|rm|down}
+
+  Options:
+
+  build - Build the docker images for the project.
+          You need to do this first, since the builds require some s2i builds.
+          You can build individual components as shown below, components that have dependencies
+          will have these dependencies built too.  By default all components are built.
+
+          Examples:
+          - Build everything:
+            $0 build
+          - Rebuild everything without cache:
+            $0 build --no-cache
+          - Build the api only:
+            $0 build api
+          - Rebuild only the api image without cache:
+            $0 build api --no-cache
+          - Build the api-dev only:
+            $0 build api-dev
+          - Build the web release image only:
+            $0 build web
+          - Build the web-dev image only:
+            $0 build web-dev
+          Containers:
+            - api
+            - api-dev
+            - web
+            - web-dev
+
+  start - Creates the application containers from the built images
+          and starts the services based on the docker-compose.yaml file.
+          Example:
+            $0 start
+
+  debug - Used for local development that enables hot reloading for BE.
+          Creates the application containers from the built images
+          and starts the services based on the docker-compose.yaml file.
+          Example:
+            $0 debug
+
+  stop - Stops the services.  This is a non-destructive process.  The containers
+         are not deleted so they will be reused the next time you run start.
+
+  down | rm - Brings down the services and removes the volumes (storage) and containers. Destructive.
+EOF
+exit 1
+}
+# -----------------------------------------------------------------------------------------------------------------
+# Default Settings:
+# -----------------------------------------------------------------------------------------------------------------
+RUNTIME_CONTAINERS="db api web"
+DEBUG_CONTAINERS="db api-dev web-dev"
+DOCKER_BUILD_FLAGS=""
+# -----------------------------------------------------------------------------------------------------------------
+# Functions:
+# -----------------------------------------------------------------------------------------------------------------
+build-all() {
+  build-web
+  build-web-dev
+  build-api
+  build-api-dev
+}
+
+build-web() {
+  #
+  # web (release)
+  #
+  echo -e "\n\n===================================================================================================="
+  echo -e "Building the ${COMPOSE_PROJECT_NAME}-web (release) image using Docker ..."
+  echo -e "----------------------------------------------------------------------------------------------------"
+  docker build \
+    ${DOCKER_BUILD_FLAGS} \
+    -t "${COMPOSE_PROJECT_NAME}-web" \
+    --build-arg NODE_VERSION=22 \
+    --build-arg NGINX_RUNTIME_SRC='./docker/nginx-runtime' \
+    --build-arg VUE_ON_NGINX_SRC='./docker/vue-on-nginx' \
+    --build-arg WEB_SRC='./web' \
+    -f './web/Dockerfile.release' '..'
+  echo -e "===================================================================================================="
+}
+
+build-web-dev() {
+  #
+  # web-dev
+  #
+  echo -e "\n\n===================================================================================================="
+  echo -e "Building the ${COMPOSE_PROJECT_NAME}-web-dev image using Docker ..."
+  echo -e "----------------------------------------------------------------------------------------------------"
+  docker build \
+    ${DOCKER_BUILD_FLAGS} \
+    -t "${COMPOSE_PROJECT_NAME}-web-dev" \
+    --build-arg NODE_VERSION=22 \
+    --build-arg VITE_PORT=8080 \
+    --build-arg WEB_SRC='./web' \
+    -f './web/Dockerfile.dev' '..'
+  echo -e "===================================================================================================="
+}
+
+build-api() {
+  #
+  # api (release)
+  #
+  echo -e "\n\n===================================================================================================="
+  echo -e "Building api (release) image using docker ..."
+  echo -e "----------------------------------------------------------------------------------------------------"
+  docker build \
+    ${DOCKER_BUILD_FLAGS} \
+    -t "${COMPOSE_PROJECT_NAME}-api" \
+    -f './api/Dockerfile.release' '..'
+  echo -e "===================================================================================================="
+}
+
+build-api-dev() {
+  #
+  # api-dev
+  #
+  echo -e "\n\n===================================================================================================="
+  echo -e "Building api-dev image using docker ..."
+  echo -e "----------------------------------------------------------------------------------------------------"
+  docker build \
+    ${DOCKER_BUILD_FLAGS} \
+    -t "${COMPOSE_PROJECT_NAME}-api-dev" \
+    -f './api/Dockerfile.dev' '..'
+  echo -e "===================================================================================================="
+}
+
+configureEnvironment () {
+
+  if [ -f .env ]; then
+    echo -e "\nLoading environment variables from .env ...\n"
+    source .env
+  fi
+
+  for arg in $@; do
+    case "$arg" in
+      *=*)
+        export ${arg}
+        ;;
+    esac
+  done
+
+  # Default database startup parameters
+  export POSTGRESQL_DATABASE=${POSTGRESQL_DATABASE:-cesdb}
+  export POSTGRESQL_USER=${POSTGRESQL_USER:-postgres}
+  export POSTGRESQL_PASSWORD=${POSTGRESQL_PASSWORD:-postgres}
+
+  # Default connection string
+  export DatabaseConnectionString=${DatabaseConnectionString:-"Host=db;Port=5432;Database=${POSTGRESQL_DATABASE};Username=${POSTGRESQL_USER};Password=${POSTGRESQL_PASSWORD};"}
+
+  # Default API startup parameters
+  export ASPNETCORE_URLS=${ASPNETCORE_URLS:-http://+:8080}
+  export CORS_DOMAIN=${CORS_DOMAIN:-http://localhost:9080}
+  export API_URL=${API_URL:-http://api:8080/api/}
+  export WEB_BASE_HREF=${WEB_BASE_HREF:-/}
+  export APP_ENVIRONMENT=${APP_ENVIRONMENT:-dev}
+}
+
+getStartupParams() {
+  CONTAINERS=""
+  ARGS=""
+
+  for arg in $@; do
+    case "$arg" in
+      *=*)
+        # Skip it
+        ;;
+     -*)
+        ARGS+=" $arg";;
+      *)
+        CONTAINERS+=" $arg";;
+    esac
+  done
+
+  if [ -z "$CONTAINERS" ]; then
+      if [ -z "$DEBUG_MODE" ]; then
+        CONTAINERS="$RUNTIME_CONTAINERS"
+      else
+        CONTAINERS="$DEBUG_CONTAINERS"
+      fi
+  fi
+
+  echo ${ARGS} ${CONTAINERS}
+}
+
+toLower() {
+  echo $(echo ${@} | tr '[:upper:]' '[:lower:]')
+}
+
+functionExists() {
+  (
+    if [ ! -z ${1} ] && type ${1} &>/dev/null; then
+      return 0
+    else
+      return 1
+    fi
+  )
+}
+
+parseBuildArgs() {
+  buildImage="all"
+  DOCKER_BUILD_FLAGS=""
+
+  for arg in "$@"; do
+    case "$arg" in
+      --no-cache)
+        DOCKER_BUILD_FLAGS+=" --no-cache"
+        ;;
+      *=*)
+        # Skip env overrides
+        ;;
+      -*)
+        DOCKER_BUILD_FLAGS+=" ${arg}"
+        ;;
+      *)
+        if [ "${buildImage}" = "all" ]; then
+          buildImage=$(toLower ${arg})
+          buildImage=$(echo ${buildImage} | sed s~^vcr-~~)
+        fi
+        ;;
+    esac
+  done
+}
+
+deleteVolumes() {
+  _projectName=${COMPOSE_PROJECT_NAME:-docker}
+
+  echo "Stopping and removing any running containers ..."
+  docker-compose down -v
+
+  _pattern="^${_projectName}_\|^docker_"
+  _volumes=$(docker volume ls -q | grep ${_pattern} | cat)
+
+  if [ ! -z "${_volumes}" ]; then
+    echo "Removing project volumes ..."
+    echo ${_volumes} | xargs docker volume rm
+  else
+    echo "No project volumes exist."
+  fi
+
+  echo "Removing build cache ..."
+  rm -Rf ../api/CES.API/bin
+  rm -Rf ../api/CES.API/obj
+  rm -Rf ../web/node_modules
+}
+# =================================================================================================================
+
+pushd ${SCRIPT_HOME} >/dev/null
+COMMAND=$(toLower ${1})
+shift
+
+case "$COMMAND" in
+  start)
+    _startupParams=$(getStartupParams $@)
+    configureEnvironment $@
+    docker-compose up ${_startupParams}
+    ;;
+  debug)
+    export DEBUG_MODE=1
+    _startupParams=$(getStartupParams $@)
+    configureEnvironment $@
+    docker-compose up ${_startupParams}
+    ;;
+  stop)
+    docker-compose stop
+    ;;
+  rm|down)
+    configureEnvironment
+    deleteVolumes
+    ;;
+  build)
+    parseBuildArgs "$@"
+
+    if functionExists "build-${buildImage}"; then
+      eval "build-${buildImage}"
+    else
+      echo -e "Error:\nThe build function, build-${buildImage}, does not exist.  Please check your build parameters and try again.\nUse '-h' to get full help details."
+      exit 1
+    fi
+    ;;
+  *)
+    usage
+esac
+
+popd >/dev/null
