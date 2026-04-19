@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { ExhibitFormModel } from '@/models/ExhibitFormModel'
-import useSubmissionService from '@/services/SubmissionService'
-import { ref, reactive, onMounted, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import FileDropZone from '../shared/FileDropZone.vue'
-import { useCourtFileSelectionStore } from '@/stores/useCourtFileSelectionStore'
 import { formatDateyyyymmdd } from '@/helpers/formatters'
+import type { ExhibitFormModel } from '@/models/ExhibitFormModel'
 import type { ExhibitSubmissionModel } from '@/models/ExhibitSubmissionModel'
+import useSubmissionService from '@/services/SubmissionService'
+import { useCourtFileSelectionStore } from '@/stores/useCourtFileSelectionStore'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import FileDropZone from '../shared/FileDropZone.vue'
 
 const router = useRouter()
 
@@ -205,12 +205,12 @@ button {
         <button type="submit">Submit Exhibit</button>
       </div>
 <div class="progress" style="height: 20px;">
-          <div 
-            class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
-            role="progressbar" 
-            :style="{ width: uploadProgress + '%' }" 
-            :aria-valuenow="uploadProgress" 
-            aria-valuemin="0" 
+          <div
+            class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+            role="progressbar"
+            :style="{ width: uploadProgress + '%' }"
+            :aria-valuenow="uploadProgress"
+            aria-valuemin="0"
             aria-valuemax="100"
           ></div>
         </div>
