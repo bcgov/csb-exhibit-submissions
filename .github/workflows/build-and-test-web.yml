@@ -1,0 +1,59 @@
+name: Build and Test Web
+
+on:
+  pull_request:
+    branches: ["main"]
+  merge_group:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+    paths:
+      - web/**
+      - docker/web/**
+      - docker/nginx-runtime/**
+      - docker/vue-on-nginx/**
+      - .github/actions/build-web/**
+      - .github/workflows/build-and-test-web.yml
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test-web:
+    name: Build and Test Web
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Check for web changes
+        id: filter
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        with:
+          filters: |
+            web:
+              - web/**
+              - docker/web/**
+              - docker/nginx-runtime/**
+              - docker/vue-on-nginx/**
+              - .github/actions/build-web/**
+              - .github/workflows/build-and-test-web.yml
+
+      - name: Build and test web
+        if: steps.filter.outputs.web == 'true' || github.event_name == 'workflow_dispatch'
+        uses: ./.github/actions/build-web
+
+      - name: Summary
+        shell: bash
+        run: |
+          if [[ "${{ steps.filter.outputs.web }}" == "false" && "${{ github.event_name }}" != "workflow_dispatch" ]]; then
+            echo "No web changes detected."
+          else
+            echo "Web build and tests completed."
+          fi

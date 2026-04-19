@@ -1,11 +1,11 @@
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { formatDateTime, splitDateTimeForDisplay } from '@/helpers/formatters'
 import type { SubmissionReviewModel } from '@/models/SubmissionReviewModel'
 import useSubmissionService from '@/services/SubmissionService'
 import type { AxiosError } from 'axios'
-import { formatDateTime, splitDateTimeForDisplay } from '@/helpers/formatters'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 const {retrieveSubmissionListing} = useSubmissionService()
 const router = useRouter();
@@ -19,7 +19,7 @@ onMounted(async () => {
   }catch (err: unknown) {
 
     if((err as AxiosError).isAxiosError){
-      const error = err as AxiosError<any>;
+      const error = err as AxiosError<unknown>;
       if (error?.response?.status === 403) {
         errorMessage.value = "You do not have permission to view this data."
       } else {

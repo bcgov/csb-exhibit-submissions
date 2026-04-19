@@ -1,13 +1,10 @@
-import type { ExhibitFormModel } from '@/models/ExhibitFormModel'
-import api from './apiClient'
-import type { SubmissionReviewModel } from '@/models/SubmissionReviewModel'
-import type { SubmissionAcceptanceModel } from '@/models/SubmissionAcceptanceModel'
-import type { CourtFileList } from '@/models/CourtFileList'
-import type { ExhibitSubmissionModel } from '@/models/ExhibitSubmissionModel'
 import { localDateToUtc } from '@/helpers/formatters'
+import type { ExhibitSubmissionModel } from '@/models/ExhibitSubmissionModel'
+import type { SubmissionAcceptanceModel } from '@/models/SubmissionAcceptanceModel'
+import type { SubmissionReviewModel } from '@/models/SubmissionReviewModel'
+import api from './apiClient'
 
 export default function useSubmissionService() {
-
   const submitExhibits = async (
     model: ExhibitSubmissionModel,
     files: File[],
@@ -18,8 +15,8 @@ export default function useSubmissionService() {
 
     try {
       const formData = new FormData()
-      const date = localDateToUtc(model.appearanceDateTime) ?? ""
-      console.log(model.appearanceDateTime, date, 'appearance datetime');
+      const date = localDateToUtc(model.appearanceDateTime) ?? ''
+      console.log(model.appearanceDateTime, date, 'appearance datetime')
       // Append text fields
       formData.append('appearanceID', model.appearanceId)
       formData.append('appearanceDateTime', model.appearanceDateTime)
@@ -35,7 +32,7 @@ export default function useSubmissionService() {
       formData.append('accusedName', model.accusedName)
       formData.append('accusedDOB', model.accusedDOB)
       formData.append('officerNumber', model.officerNumber)
-      
+
       // Append files
       files.forEach((file) => {
         formData.append('files', file)
@@ -46,7 +43,7 @@ export default function useSubmissionService() {
       const apiReturn = await api.post(url, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-        }, 
+        },
         timeout: 0, //disabled timeouts to support larger files
         onUploadProgress: (event) => {
           const percent = Math.round((event.loaded * 100) / (event.total ?? 1))
@@ -68,8 +65,8 @@ export default function useSubmissionService() {
   const retrieveSubmission = async (fileId: number): Promise<SubmissionReviewModel | undefined> => {
     const url = `/submissions/retrieve/`
     const apiReturn = await api.get<SubmissionReviewModel>(url, {
-        params: { fileId: fileId },
-      })
+      params: { fileId: fileId },
+    })
 
     return apiReturn?.data
   }
@@ -81,8 +78,7 @@ export default function useSubmissionService() {
     return apiReturn?.data
   }
 
-  const acceptSubmissionFiles = async (model: SubmissionAcceptanceModel): Promise<Boolean> => {
-
+  const acceptSubmissionFiles = async (model: SubmissionAcceptanceModel): Promise<boolean> => {
     const url = `/submissions/accept/`
     let retVal = false
     const apiReturn = await api.post(url, model)
@@ -90,8 +86,7 @@ export default function useSubmissionService() {
     return retVal
   }
 
-  const rejectAndCloseSubmission = async (model: SubmissionAcceptanceModel): Promise<Boolean> => {
-
+  const rejectAndCloseSubmission = async (model: SubmissionAcceptanceModel): Promise<boolean> => {
     const url = `/submissions/reject/`
     let retVal = false
     const apiReturn = await api.post(url, model)
@@ -104,6 +99,6 @@ export default function useSubmissionService() {
     retrieveSubmission,
     retrieveSubmissionListing,
     acceptSubmissionFiles,
-    rejectAndCloseSubmission
+    rejectAndCloseSubmission,
   }
 }

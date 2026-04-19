@@ -1,0 +1,44 @@
+name: Build API
+description: Build and test API projects.
+
+inputs:
+  dotnet-version:
+    description: .NET SDK version.
+    required: false
+    default: 10.0.x
+  solution-path:
+    description: Path to the API solution.
+    required: false
+    default: api/CES.API/CES.API.sln
+
+runs:
+  using: composite
+  steps:
+    - name: Setup .NET
+      uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+      with:
+        dotnet-version: ${{ inputs.dotnet-version }}
+
+    - name: Restore
+      shell: bash
+      run: dotnet restore "${{ inputs.solution-path }}"
+
+    - name: Build
+      shell: bash
+      run: dotnet build "${{ inputs.solution-path }}" --configuration Release --no-restore
+
+    - name: Run tests when present
+      shell: bash
+      run: |
+        set -euo pipefail
+        mapfile -t test_projects < <(find api -type f \( -name '*Tests*.csproj' -o -name '*Test*.csproj' \))
+
+        if [[ ${#test_projects[@]} -eq 0 ]]; then
+          echo "No API test projects found. Skipping dotnet test."
+          exit 0
+        fi
+
+        for test_project in "${test_projects[@]}"; do
+          echo "Running tests in ${test_project}"
+          dotnet test "${test_project}" --configuration Release --no-build --verbosity normal
+        done

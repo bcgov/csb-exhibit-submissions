@@ -41,7 +41,7 @@
 
     </form>
   </div>
-  <div v-if="hasSearched" class="px-4 pb-4"> 
+  <div v-if="hasSearched" class="px-4 pb-4">
     <div class="card shadow-sm">
       <div class="card-body p-0">
         <div v-if="searchResults.length > 0" class="table-responsive">
@@ -70,8 +70,8 @@
                     </span>
 
                     <div>
-                      <div 
-                        v-for="(appearance, index) in file.appearanceDetails" 
+                      <div
+                        v-for="(appearance, index) in file.appearanceDetails"
                         :key="index"
                         class="lh-sm mb-1 offence-list"
                       >
@@ -94,16 +94,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import useLocationService from '@/services/LocationService';
-import useCourtFileService from '@/services/CourtFileService';
-import type { CourtRoomsInfo, LocationInfo } from '@/models/LocationInfo';
-import type { CourtFileList } from '@/models/CourtFileList';
-import AutocompleteSelect from '../shared/AutocompleteSelect.vue';
-import type { AxiosError } from 'axios';
 import { formatDateTo24hrTime } from '@/helpers/formatters';
+import type { CourtFileList } from '@/models/CourtFileList';
+import type { CourtRoomsInfo, LocationInfo } from '@/models/LocationInfo';
+import useCourtFileService from '@/services/CourtFileService';
+import useLocationService from '@/services/LocationService';
 import { useCourtFileSelectionStore } from '@/stores/useCourtFileSelectionStore';
+import type { AxiosError } from 'axios';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import AutocompleteSelect from '../shared/AutocompleteSelect.vue';
 
 const { getLocations } = useLocationService();
 const { getCourtList } = useCourtFileService();
@@ -145,7 +145,7 @@ const fetchLocations = async () => {
     let code: string | number | undefined;
 
     if ((error as AxiosError).isAxiosError) {
-      const axiosError = error as AxiosError<any>;
+      const axiosError = error as AxiosError<{ message?: string }>;
 
       message =
         axiosError.response?.data?.message ||

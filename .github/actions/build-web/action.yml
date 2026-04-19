@@ -1,0 +1,65 @@
+name: Build Web
+description: Build and test web project.
+
+inputs:
+  node-version:
+    description: Node.js version.
+    required: false
+    default: "22"
+  working-directory:
+    description: Web project working directory.
+    required: false
+    default: web
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+        cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: npm ci
+
+    - name: Lint when available
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        if node -e "const s=require('./package.json').scripts||{};process.exit(s.lint?0:1)"; then
+          npm run lint
+        else
+          echo "No lint script found. Skipping lint."
+        fi
+
+    - name: Type-check when available
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        if node -e "const s=require('./package.json').scripts||{};process.exit(s['type-check']?0:1)"; then
+          npm run type-check
+        else
+          echo "No type-check script found. Skipping type-check."
+        fi
+
+    - name: Build
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: npm run build
+
+    - name: Test when available
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        if node -e "const s=require('./package.json').scripts||{};process.exit(s.test?0:1)"; then
+          npm run test
+        else
+          echo "No test script found. Skipping web tests."
+        fi

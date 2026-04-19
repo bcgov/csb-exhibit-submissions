@@ -1,0 +1,68 @@
+name: Security Image Scan
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+  schedule:
+    - cron: "0 18 * * 0"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  trivy-image:
+    name: Trivy Image Scan (${{ matrix.component }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [api, web]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+
+      - name: Build API image
+        if: matrix.component == 'api'
+        run: |
+          docker build \
+            -f docker/api/Dockerfile.release \
+            -t csb-exhibit-submissions-api:scan .
+
+      - name: Build web image
+        if: matrix.component == 'web'
+        run: |
+          docker build \
+            -f docker/web/Dockerfile.release \
+            -t csb-exhibit-submissions-web:scan \
+            --build-arg NODE_VERSION=22 \
+            --build-arg WEB_BASE_HREF=/ \
+            --build-arg NGINX_RUNTIME_SRC=./docker/nginx-runtime \
+            --build-arg VUE_ON_NGINX_SRC=./docker/vue-on-nginx \
+            --build-arg WEB_SRC=./web .
+
+      - name: Run Trivy image scan
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          image-ref: csb-exhibit-submissions-${{ matrix.component }}:scan
+          format: sarif
+          output: trivy-image-${{ matrix.component }}.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+
+      - name: Upload Trivy image SARIF
+        uses: github/codeql-action/upload-sarif@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4.35.2
+        with:
+          sarif_file: trivy-image-${{ matrix.component }}.sarif
+          category: trivy-image-${{ matrix.component }}
