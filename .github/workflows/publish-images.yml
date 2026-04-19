@@ -36,10 +36,10 @@ jobs:
       matrix:
         include:
           - component: api
-            image_name: csb-exhibit-submissions-api
+            image_name: csb-exhibit-submissions/api
             dockerfile: docker/api/Dockerfile.release
           - component: web
-            image_name: csb-exhibit-submissions-web
+            image_name: csb-exhibit-submissions/web
             dockerfile: docker/web/Dockerfile.release
 
     steps:
