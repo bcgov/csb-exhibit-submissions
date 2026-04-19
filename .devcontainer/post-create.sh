@@ -8,9 +8,6 @@ export SCRIPT_DIR="$(cd "$(dirname "$0")" >/dev/null 2>&1 && pwd)"
 echo "[post-create] Installing OpenShift CLI"
 source "${SCRIPT_DIR}/installOcCli"
 
-# echo "[post-create] Installing Source-to-Image (s2i)"
-# source "${SCRIPT_DIR}/installS2i"
-
 echo "[post-create] Installing testConnection"
 source "${SCRIPT_DIR}/installTestConnection"
 
