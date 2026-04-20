@@ -3,7 +3,7 @@ services:
   web:
     image: "${COMPOSE_PROJECT_NAME}-web"
     environment:
-      - VITE_API_URL=${VITE_API_URL:-http://localhost:9080/api}
+      - API_URL=${API_URL:-http://api:8080/api/}
       - WEB_BASE_HREF=${WEB_BASE_HREF:-/}
     ports:
       - 9080:8080
@@ -15,7 +15,7 @@ services:
   web-dev:
     image: "${COMPOSE_PROJECT_NAME}-web-dev"
     environment:
-      - VITE_API_URL=${VITE_API_URL:-http://localhost:9080/api}
+      - API_URL=${API_URL:-http://api:8080/api/}
       - WEB_BASE_HREF=${WEB_BASE_HREF:-/}
       - APP_ENVIRONMENT=${APP_ENVIRONMENT:-dev}
       - NODE_ENV=development
