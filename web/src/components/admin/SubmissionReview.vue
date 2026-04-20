@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { SubmissionReviewModel, SubmissionFile } from '@/models/SubmissionReviewModel'
-import useSubmissionService from '@/services/SubmissionService'
-import FileViewer from '../shared/FileViewer.vue'
-import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { convertUtcToLocal, formatDateTime, formatFileSize, shortenString, splitDateTimeForDisplay } from '@/helpers/formatters'
 import type { SubmissionAcceptanceModel } from '@/models/SubmissionAcceptanceModel'
+import type { SubmissionFile, SubmissionReviewModel } from '@/models/SubmissionReviewModel'
+import useSubmissionService from '@/services/SubmissionService'
+import { onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import FileViewer from '../shared/FileViewer.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,6 +19,8 @@ const { retrieveSubmission, acceptSubmissionFiles, rejectAndCloseSubmission } = 
 const submission = ref<SubmissionReviewModel | undefined>(undefined)
 const selectedFiles = ref<string[]>([])
 
+const getFileUrl = (fileId: string, action: 'view' | 'download') => `/api/files/${fileId}/${action}`
+
 onMounted(async () => {
   const data = await retrieveSubmission(submissionId)
   if (!data) return
@@ -27,8 +29,8 @@ onMounted(async () => {
     ...data,
     files: data.files.map((f: SubmissionFile) => ({
       ...f,
-      viewUrl: `${import.meta.env.VITE_API_URL}/files/${f.id}/view`,
-      downloadUrl: `${import.meta.env.VITE_API_URL}/files/${f.id}/download`
+      viewUrl: getFileUrl(f.id, 'view'),
+      downloadUrl: getFileUrl(f.id, 'download')
     }))
   }
 
@@ -84,7 +86,7 @@ const acceptSubmission = async () => {
 
   // if (!confirm('Accept selected files?')) return
 
-  const payload:SubmissionAcceptanceModel = {
+  const payload: SubmissionAcceptanceModel = {
     fileId: submissionId,
     acceptedFiles: selectedFiles.value
   }
@@ -98,7 +100,7 @@ const acceptSubmission = async () => {
 
 const removeSubmission = async () => {
   if (!confirm('Reject and delete this submission? Any unaccepted submissions will be removed!')) return
-  const payload:SubmissionAcceptanceModel = {
+  const payload: SubmissionAcceptanceModel = {
     fileId: submissionId,
     acceptedFiles: selectedFiles.value
   }
@@ -127,7 +129,8 @@ const fileIcon = (type: string) => {
         <div><strong>Room:</strong> {{ submission.room }}</div>
         <div><strong>Ticket #:</strong> {{ submission.fileNumber }}</div>
         <div><strong>Disputant:</strong> {{ submission.accusedName }}</div>
-        <div><strong>Submission Date:</strong> {{ submission.submissionDate ? formatDateTime(convertUtcToLocal(submission.submissionDate), true) : "" }}</div>
+        <div><strong>Submission Date:</strong> {{ submission.submissionDate ?
+          formatDateTime(convertUtcToLocal(submission.submissionDate), true) : "" }}</div>
       </div>
 
       <h3>Submitted Evidence</h3>
@@ -136,11 +139,7 @@ const fileIcon = (type: string) => {
         <div class="file-row" v-for="file in submission.files" :key="file.id">
 
           <div class="file-accept">
-            <input
-              type="checkbox"
-              :value="file.id"
-              v-model="selectedFiles"
-            >
+            <input type="checkbox" :value="file.id" v-model="selectedFiles">
           </div>
           <div class="file-left">
             <span class="icon">{{ fileIcon(file.contentType) }}</span>
@@ -173,11 +172,8 @@ const fileIcon = (type: string) => {
 
         <button class="close" @click="closePreview">✖</button>
 
-        <FileViewer
-          :fileUrl="previewFile.viewUrl"
-          :download-url="previewFile.downloadUrl"
-          :mimeType="previewFile.contentType"
-        />
+        <FileViewer :fileUrl="previewFile.viewUrl" :download-url="previewFile.downloadUrl"
+          :mimeType="previewFile.contentType" />
 
       </div>
     </div>
