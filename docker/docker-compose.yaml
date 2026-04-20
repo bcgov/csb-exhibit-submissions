@@ -3,7 +3,7 @@ services:
   web:
     image: "${COMPOSE_PROJECT_NAME}-web"
     environment:
-      - API_URL=${API_URL:-http://api:8080/api/}
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:9080/api}
       - WEB_BASE_HREF=${WEB_BASE_HREF:-/}
     ports:
       - 9080:8080
@@ -15,7 +15,7 @@ services:
   web-dev:
     image: "${COMPOSE_PROJECT_NAME}-web-dev"
     environment:
-      - API_URL=${API_URL:-http://api:8080/api/}
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:9080/api}
       - WEB_BASE_HREF=${WEB_BASE_HREF:-/}
       - APP_ENVIRONMENT=${APP_ENVIRONMENT:-dev}
       - NODE_ENV=development
@@ -41,6 +41,25 @@ services:
       - CORS_DOMAIN=${CORS_DOMAIN:-http://localhost:9080}
       - ConnectionStrings__CESDataStore=${DatabaseConnectionString}
       - EnableSwagger=${ENABLE_SWAGGER:-false}
+      # Storage Configuration
+      - FileStorage__LocalPath=${FileStorage__LocalPath:-/data/uploads}
+      - FileStorage__AcceptedPath=${FileStorage__AcceptedPath:-/data/accepted}
+      - FileStorage__Provider=${FileStorage__Provider:-Local}
+      - FileStorage__MaxFileSize=${FileStorage__MaxFileSize:-104857600}
+      # File Service Client Configuration
+      - FileServicesClient__Username=${FileServicesClient__Username:-JcInterfaceClient}
+      - FileServicesClient__Password=${FileServicesClient__Password}
+      - FileServicesClient__Url=${FileServicesClient__Url}
+      # Location Services Client Configuration
+      - LocationServicesClient__Username=${LocationServicesClient__Username:-JcInterfaceClient}
+      - LocationServicesClient__Password=${LocationServicesClient__Password}
+      - LocationServicesClient__Url=${LocationServicesClient__Url}
+      # Request Configuration
+      - Request__ApplicationCd=${Request__ApplicationCd:-SCV}
+      - Request__AgencyIdentifierId=${Request__AgencyIdentifierId}
+      - Request__PartId=${Request__PartId}
+    volumes:
+      - api-data:/data
     depends_on:
       db:
         condition: service_healthy
@@ -54,6 +73,24 @@ services:
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
       - CORS_DOMAIN=${CORS_DOMAIN:-http://localhost:9080}
       - ConnectionStrings__CESDataStore=${DatabaseConnectionString}
+      - EnableSwagger=${ENABLE_SWAGGER:-false}
+      # Storage Configuration
+      - FileStorage__LocalPath=${FileStorage__LocalPath:-/data/uploads}
+      - FileStorage__AcceptedPath=${FileStorage__AcceptedPath:-/data/accepted}
+      - FileStorage__Provider=${FileStorage__Provider:-Local}
+      - FileStorage__MaxFileSize=${FileStorage__MaxFileSize:-104857600}
+      # File Service Client Configuration
+      - FileServicesClient__Username=${FileServicesClient__Username:-JcInterfaceClient}
+      - FileServicesClient__Password=${FileServicesClient__Password}
+      - FileServicesClient__Url=${FileServicesClient__Url}
+      # Location Services Client Configuration
+      - LocationServicesClient__Username=${LocationServicesClient__Username:-JcInterfaceClient}
+      - LocationServicesClient__Password=${LocationServicesClient__Password}
+      - LocationServicesClient__Url=${LocationServicesClient__Url}
+      # Request Configuration
+      - Request__ApplicationCd=${Request__ApplicationCd:-SCV}
+      - Request__AgencyIdentifierId=${Request__AgencyIdentifierId}
+      - Request__PartId=${Request__PartId}
     networks:
       app-network:
         aliases:
@@ -63,6 +100,7 @@ services:
       - api-dev-bin:/opt/app-root/src/api/CES.API/bin
       - api-dev-obj:/opt/app-root/src/api/CES.API/obj
       - api-temp:/opt/app-root/src/api/CES.API/uploads
+      - api-data:/data
     depends_on:
       db:
         condition: service_healthy
@@ -103,4 +141,5 @@ volumes:
   api-dev-bin:
   api-dev-obj:
   api-temp:
+  api-data:
   postgres-data:
