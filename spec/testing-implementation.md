@@ -31,12 +31,13 @@ api/
 │   └── Services/
 │       ├── SubmissionServiceTests.cs
 │       ├── FileServiceTests.cs
-│       ├── PasswordServiceTests.cs
-│       └── LocalTokenServiceTests.cs
+│       └── PasswordServiceTests.cs
 └── CES.API.Tests/              # Integration tests — full HTTP pipeline
     ├── CES.API.Tests.csproj
     ├── Fixtures/
     │   └── TestWebApplicationFactory.cs
+    ├── Authentication/
+    │   └── LocalTokenServiceTests.cs
     └── Controllers/
         ├── LoginControllerTests.cs
         ├── SubmissionsControllerTests.cs
@@ -123,7 +124,7 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
 }
 ```
 
-A simple `InMemoryFileStorage` stub holds files in a `Dictionary<Guid, byte[]>` and satisfies `IFileStorage` without touching disk.
+A simple `InMemoryFileStorage` stub satisfies all four `IFileStorage` methods without touching disk: `SaveAsync` stores bytes in a `Dictionary<Guid, byte[]>`, `GetAsync` returns a `MemoryStream` for the stored bytes, `DeleteAsync` removes the entry, and `AcceptAsync` is a no-op.
 
 ### Unit Test Coverage — CES.Business
 
@@ -147,13 +148,6 @@ A simple `InMemoryFileStorage` stub holds files in a `Dictionary<Guid, byte[]>` 
 | `VerifyPassword_ReturnsTrue_ForCorrectPassword` | Hash from `HashPassword` validates against original input. |
 | `VerifyPassword_ReturnsFalse_ForWrongPassword` | Hash does not validate against different input. |
 
-#### LocalTokenServiceTests.cs
-
-| Test | Behavior |
-|---|---|
-| `GenerateToken_ReturnsValidJwt` | Token decodes without error and contains expected `role` and `sub` claims. |
-| `GenerateToken_ExpiresAfterConfiguredDuration` | `exp` claim is in the future at generation time. |
-
 #### FileServiceTests.cs
 
 | Test | Behavior |
@@ -164,6 +158,15 @@ A simple `InMemoryFileStorage` stub holds files in a `Dictionary<Guid, byte[]>` 
 ### Integration Test Coverage — CES.API
 
 Integration tests use `TestWebApplicationFactory` and an `HttpClient` against the real middleware pipeline. JWT tokens for the test client are generated via `LocalTokenService` with a test signing key.
+
+#### LocalTokenServiceTests.cs
+
+`LocalTokenService` lives in `CES.API/Authentication/` and is referenced from `CES.API.Tests`.
+
+| Test | Behavior |
+|---|---|
+| `GenerateToken_ReturnsValidJwt` | Token decodes without error and contains expected `role` and `sub` claims. |
+| `GenerateToken_ExpiresAfterConfiguredDuration` | `exp` claim is in the future at generation time. |
 
 #### LoginControllerTests.cs
 
@@ -197,10 +200,14 @@ Integration tests use `TestWebApplicationFactory` and an `HttpClient` against th
 
 Test the endpoint with a mocked `ILocationService` and `ICourtListService` to avoid hitting the real JC API.
 
+Note: `GetCourtList` has an unexpected route — it is on `api/files/getCourtList`, not `api/location/`. Both actions are handled by `LocationsController`; the route paths are:
+- `GET api/location/getLocations`
+- `GET api/files/getCourtList`
+
 | Test | Expected |
 |---|---|
-| `GetLocations_Returns200WithData` | Mocked locations → 200 + JSON body |
-| `GetCourtList_Returns200WithData` | Mocked court list → 200 + JSON body |
+| `GetLocations_Returns200WithData` | `GET api/location/getLocations` with mocked locations → 200 + JSON body |
+| `GetCourtList_Returns200WithData` | `GET api/files/getCourtList` with mocked court list → 200 + JSON body |
 
 ### Running Backend Tests
 
@@ -225,7 +232,7 @@ dotnet test api/CES.API/CES.API.sln --collect:"XPlat Code Coverage"
 |---|---|---|
 | Test runner | `vitest` 4.1.7 | Native Vite integration, same config as `vite.config.ts`. Requires Vite >=6.0.0 (project uses 8.x ✅) and Node >=20.0.0 ✅. |
 | Component mounting | `@vue/test-utils` 2.x | Official Vue 3 component testing library. Must be 2.x — 1.x is Vue 2 only. Compatible with `vue ^3.5.33` and `vue-router ^5.0.6`. |
-| DOM environment | `jsdom` | Browser-like DOM in Node. Latest requires Node `^20.19.0 \|\| ^22.13.0 \|\| >=24.0.0`. The project engines field currently allows `>=22.12.0`; bump the 22.x floor to `>=22.13.0` in `web/package.json` to close the one-patch-version gap (22.12.0 is the only excluded version). |
+| DOM environment | `jsdom` | Browser-like DOM in Node. Latest requires Node `^20.19.0 \|\| ^22.13.0 \|\| >=24.0.0`. The project engines field is already set to `>=22.13.0` ✅. |
 | HTTP mock | `msw` 2.14.6 | Intercepts `axios` at the network level. Must be **2.x** — the handler syntax in this spec (`http.post`, `HttpResponse`) is the MSW 2 API; 1.x is incompatible. |
 | Coverage | `@vitest/coverage-v8` 4.1.7 | V8 native coverage, zero config with Vitest. **Version must match vitest's major** (both 4.x) — mismatched majors cause runtime failures. |
 
@@ -334,7 +341,7 @@ web/src/
 | `setToken stores token and decodes user` | After `setToken(jwt)`, `user` contains decoded claims |
 | `isAuthenticated returns true with valid token` | Non-expired token → `isAuthenticated` is `true` |
 | `isAuthenticated returns false with expired token` | Token with past `exp` → `isAuthenticated` is `false` |
-| `clearToken resets state` | After `clearToken()`, `token` is null, `user` is null |
+| `clearAuth resets state` | After `clearAuth()`, `token` is null, `user` is null |
 | `hasRole returns true for matching role` | Token with role `Admin` → `hasRole('Admin')` is `true` |
 
 #### courtFileSelectionStore.spec.ts
@@ -426,8 +433,9 @@ These are minimum thresholds to enforce once the initial test suite is establish
 
 ## CI Integration
 
-Do not add yet, this will be implimented later.
-Add test steps to `.github/workflows/`:
+Do not add yet — this will be implemented in a follow-up spec.
+
+When ready, add these steps to `.github/workflows/`:
 
 ```yaml
 # Backend
@@ -451,13 +459,14 @@ Add test steps to `.github/workflows/`:
 
 1. **Backend unit tests first** — no dependencies, fastest feedback loop
    - Create `CES.Business.Tests` project
-   - Implement `PasswordServiceTests` and `LocalTokenServiceTests` (pure logic, no DB)
+   - Implement `PasswordServiceTests` (pure logic, no DB)
    - Add `SubmissionServiceTests` with EF InMemory
    - Add `FileServiceTests`
 
 2. **Backend integration tests second**
    - Create `CES.API.Tests` project
    - Implement `TestWebApplicationFactory` with `InMemoryFileStorage` stub
+   - Add `LocalTokenServiceTests` (`LocalTokenService` is in `CES.API`, so it belongs here)
    - Add controller tests starting with `LoginControllerTests`
    - Add `SubmissionsControllerTests` (most critical path)
 
