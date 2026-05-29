@@ -14,11 +14,11 @@ This document defines the initial testing strategy for CES (CSB Exhibit Submissi
 
 | Concern | Package | Rationale |
 |---|---|---|
-| Test runner & assertions | `xunit` 2.x | First-class .NET support, used by ASP.NET Core itself |
-| Mock generation | `Moq` 4.x | Standard .NET mock library, works with all interfaces |
-| HTTP integration tests | `Microsoft.AspNetCore.Mvc.Testing` | `WebApplicationFactory<T>` spins up the real pipeline in-process |
-| In-memory database | `Microsoft.EntityFrameworkCore.InMemory` | Replaces PostgreSQL in integration tests, no Docker needed |
-| Fluent assertions | `FluentAssertions` | More readable `result.Should().Be(x)` syntax |
+| Test runner & assertions | `xunit.v3` 3.2.2 | First-class .NET support, used by ASP.NET Core itself. Do not use v2, its in maintenance mode. |
+| Mock generation | `Moq` 4.x | Standard .NET mock library, works with all interfaces. Version 4.20.72 is latest. `netstandard2.0` target — net10.0 compatible. |
+| HTTP integration tests | `Microsoft.AspNetCore.Mvc.Testing` 10.x | `WebApplicationFactory<T>` spins up the real pipeline in-process. Must match project's net10.0 / ASP.NET Core 10 target. |
+| In-memory database | `Microsoft.EntityFrameworkCore.InMemory` 10.x | Replaces PostgreSQL in integration tests, no Docker needed. Version must match project's EF Core 10.0.3. |
+| Fluent assertions | `FluentAssertions` 8.x | More readable `result.Should().Be(x)` syntax. Latest version is 8.10.0. **Note:** FA 8.0+ uses a dual license — Apache 2.0 for open-source projects (this repo qualifies), commercial license otherwise. |
 
 ### Project Structure
 
@@ -61,10 +61,10 @@ dotnet sln api/CES.API/CES.API.sln add api/CES.API.Tests/CES.API.Tests.csproj
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
-    <PackageReference Include="xunit" Version="2.*" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.*" />
+    <PackageReference Include="xunit.v3" Version="3.*" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.*" />
     <PackageReference Include="Moq" Version="4.*" />
-    <PackageReference Include="FluentAssertions" Version="6.*" />
+    <PackageReference Include="FluentAssertions" Version="8.*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.*" />
   </ItemGroup>
   <ItemGroup>
@@ -84,10 +84,10 @@ dotnet sln api/CES.API/CES.API.sln add api/CES.API.Tests/CES.API.Tests.csproj
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
-    <PackageReference Include="xunit" Version="2.*" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.*" />
+    <PackageReference Include="xunit.v3" Version="3.*" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.*" />
     <PackageReference Include="Moq" Version="4.*" />
-    <PackageReference Include="FluentAssertions" Version="6.*" />
+    <PackageReference Include="FluentAssertions" Version="8.*" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.*" />
   </ItemGroup>
@@ -223,11 +223,11 @@ dotnet test api/CES.API/CES.API.sln --collect:"XPlat Code Coverage"
 
 | Concern | Package | Rationale |
 |---|---|---|
-| Test runner | `vitest` | Native Vite integration, same config as `vite.config.ts` |
-| Component mounting | `@vue/test-utils` | Official Vue 3 component testing library |
-| DOM environment | `jsdom` | Browser-like DOM in Node, required for component tests |
-| HTTP mock | `msw` (Mock Service Worker) | Intercepts `axios` at the network level; realistic without real server |
-| Coverage | `@vitest/coverage-v8` | V8 native coverage, zero config with Vitest |
+| Test runner | `vitest` 4.1.7 | Native Vite integration, same config as `vite.config.ts`. Requires Vite >=6.0.0 (project uses 8.x ✅) and Node >=20.0.0 ✅. |
+| Component mounting | `@vue/test-utils` 2.x | Official Vue 3 component testing library. Must be 2.x — 1.x is Vue 2 only. Compatible with `vue ^3.5.33` and `vue-router ^5.0.6`. |
+| DOM environment | `jsdom` | Browser-like DOM in Node. Latest requires Node `^20.19.0 \|\| ^22.13.0 \|\| >=24.0.0`. The project engines field currently allows `>=22.12.0`; bump the 22.x floor to `>=22.13.0` in `web/package.json` to close the one-patch-version gap (22.12.0 is the only excluded version). |
+| HTTP mock | `msw` 2.14.6 | Intercepts `axios` at the network level. Must be **2.x** — the handler syntax in this spec (`http.post`, `HttpResponse`) is the MSW 2 API; 1.x is incompatible. |
+| Coverage | `@vitest/coverage-v8` 4.1.7 | V8 native coverage, zero config with Vitest. **Version must match vitest's major** (both 4.x) — mismatched majors cause runtime failures. |
 
 ### Installation
 
