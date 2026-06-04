@@ -12,7 +12,10 @@
     "lint": "run-s lint:*",
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache",
-    "format": "prettier --write --experimental-cli src/"
+    "format": "prettier --write --experimental-cli src/",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@bcgov/bc-sans": "^2.1.0",
@@ -32,13 +35,17 @@
     "@types/node": "^25.6.0",
     "@vitejs/plugin-vue": "^6.0.6",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
+    "@vitest/coverage-v8": "^4.1.7",
     "@vue/eslint-config-typescript": "^14.7.0",
+    "@vue/test-utils": "^2.4.10",
     "@vue/tsconfig": "^0.9.1",
     "eslint": "^10.2.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-oxlint": "~1.61.0",
     "eslint-plugin-vue": "~10.9.0",
     "jiti": "^2.6.1",
+    "jsdom": "^29.1.1",
+    "msw": "^2.14.6",
     "npm-run-all2": "^8.0.4",
     "oxlint": "~1.61.0",
     "prettier": "3.8.3",
@@ -46,9 +53,10 @@
     "typescript": "~6.0.3",
     "vite": "^8.0.10",
     "vite-plugin-vue-devtools": "^8.1.1",
+    "vitest": "^4.1.7",
     "vue-tsc": "^3.2.7"
   },
   "engines": {
-    "node": "^20.19.0 || >=22.12.0"
+    "node": "^20.19.0 || >=22.13.0"
   }
 }

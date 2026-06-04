@@ -45,10 +45,26 @@ Requires Node ^20.19.0 or >=22.12.0.
 dotnet run --project CES.API          # Run API (port 5285)
 dotnet watch --project CES.API        # Run with hot-reload
 dotnet build                          # Build solution
-dotnet test                           # Run all tests
+dotnet test api/CES.API/CES.API.sln  # Run all backend tests (29 tests)
 ```
 
 Migrations run automatically on startup. PostgreSQL must be running.
+
+### Testing
+
+```bash
+# Backend (29 tests: 12 unit + 17 integration)
+dotnet test api/CES.API/CES.API.sln
+
+# Frontend (29 tests: stores, services, components)
+cd web && npm run test
+
+# Frontend with coverage
+cd web && npm run test:coverage
+
+# Frontend watch mode
+cd web && npm run test:watch
+```
 
 ## Architecture
 

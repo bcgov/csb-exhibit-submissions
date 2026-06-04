@@ -142,10 +142,15 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<CESDataStore>();
-    db.Database.Migrate();
+    if (db.Database.IsRelational())
+        db.Database.Migrate();
+    else
+        db.Database.EnsureCreated();
     // DataSeedService.SeedDatabase(db);
 }
 // var recurringJobManager = app.Services.GetRequiredService<IRecurringJobManager>();
 // Jobs.RunAllJobs(recurringJobManager);
 
 app.Run();
+
+public partial class Program { }

@@ -10,7 +10,7 @@ namespace CES.Business.Services
     public class PasswordService:IPasswordService
     {
         const int keySize = 12;
-        public string HashPasword(string password)
+        public string HashPassword(string password)
         {
             string salt = BCrypt.Net.BCrypt.GenerateSalt(keySize);
             var hash = BCrypt.Net.BCrypt.HashPassword(password, salt);
