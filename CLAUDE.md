@@ -123,6 +123,7 @@ Feature specifications live in [`/spec`](spec/). Read the relevant spec before i
 |---|---|
 | [multi-ticket-exhibit-upload.md](spec/multi-ticket-exhibit-upload.md) | Officer selects multiple tickets on Court Search; one exhibit upload is linked to all of them. Requires new `SubmissionTickets` table and changes to the submit API contract. |
 | [testing-implementation.md](spec/testing-implementation.md) | Initial testing strategy for backend (xUnit + Moq + WebApplicationFactory) and frontend (Vitest + MSW). Defines project structure, NuGet/npm packages, test cases, and CI integration. |
+| [exhibit-classification.md](spec/exhibit-classification.md) | Officers classify each uploaded exhibit as Marked (A–Z) and/or Entered (1–50) at direction of the JJ. Tracks classification timestamps, enforces a state machine, and supports ticket-number retrieval of exhibit history across court sessions. |
 
 ---
 
@@ -137,6 +138,6 @@ Feature specifications live in [`/spec`](spec/). Read the relevant spec before i
 
 ## Code Style
 - Never hardcode configuration values, prices, rates, or magic numbers inline.
-- All such values must be defined in a constants file (e.g. `constants.py`, `config.py`) or loaded from environment variables.
+- All such values must be defined in a constants file or loaded from environment variables.
 - If you introduce a numeric literal that isn't obvious (e.g. not `0`, `1`, `100`), extract it to a named constant with a comment explaining the source.
 - Ensure type safety for all functions and variables.
