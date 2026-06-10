@@ -23,20 +23,20 @@ public class FilesControllerTests : IClassFixture<TestWebApplicationFactory>
 
         var form = new MultipartFormDataContent
         {
-            { new StringContent("APP001"), "appearanceID" },
-            { new StringContent("2026-01-01T09:00:00"), "appearanceDateTime" },
             { new StringContent("2026-01-01"), "shortDate" },
-            { new StringContent("001"), "appearanceSequenceNumber" },
-            { new StringContent("ADP"), "appearanceReasonCode" },
-            { new StringContent("Criminal"), "courtListType" },
-            { new StringContent("FILE001"), "fileNumberText" },
             { new StringContent("LOC001"), "locationId" },
             { new StringContent("Test Court"), "locationNameText" },
             { new StringContent("ROOM1"), "roomCode" },
             { new StringContent("Courtroom 1"), "roomText" },
-            { new StringContent("Smith, John"), "accusedName" },
-            { new StringContent("1980-01-01"), "accusedDOB" },
-            { new StringContent("OFF001"), "officerNumber" }
+            { new StringContent("OFF001"), "officerNumber" },
+            { new StringContent("APP001"), "tickets[0].appearanceId" },
+            { new StringContent("2026-01-01T09:00:00"), "tickets[0].appearanceDateTime" },
+            { new StringContent("001"), "tickets[0].appearanceSequenceNumber" },
+            { new StringContent("ADP"), "tickets[0].appearanceReasonCode" },
+            { new StringContent("Criminal"), "tickets[0].courtListType" },
+            { new StringContent("FILE001"), "tickets[0].fileNumberText" },
+            { new StringContent("Smith, John"), "tickets[0].accusedName" },
+            { new StringContent("1980-01-01"), "tickets[0].accusedDOB" },
         };
         var fileContent = new ByteArrayContent(Encoding.UTF8.GetBytes("fake video content"));
         fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("video/mp4");

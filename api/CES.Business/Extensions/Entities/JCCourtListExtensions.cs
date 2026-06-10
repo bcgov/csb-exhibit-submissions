@@ -15,7 +15,7 @@ namespace CES.Business.Extensions.Entities
         {
             var entity = new Models.Location.CourtList
             {
-                AppearanceID = model.CriminalAppearanceID,
+                AppearanceId = model.CriminalAppearanceID,
                 AppearanceDateTime = model.AppearanceTime,
                 AppearanceSequenceNumber = model.AppearanceSequenceNumber,
                 AppearanceReasonCode = model.AppearanceCount.Count() > 0 ? model.AppearanceCount.ToList()[0].AppearanceReasonCode : "",

@@ -7,7 +7,7 @@ namespace CES.Business.Models.Location
 {
     public class CourtList
     {
-        public string AppearanceID { get; set; } = string.Empty;
+        public string AppearanceId { get; set; } = string.Empty;
         public string? AppearanceDateTime { get; set; }
         public string? AppearanceSequenceNumber { get; set; } = string.Empty;
         public string? AppearanceReasonCode { get; set; } = string.Empty;

@@ -8,7 +8,7 @@ namespace CES.API.Controllers
 {
     public class SubmissionController : Controller
     {
-        private ISubmissionService _submissionService {get;set;}
+        private readonly ISubmissionService _submissionService;
 
         public SubmissionController(ISubmissionService submissionService)
         {
@@ -21,41 +21,38 @@ namespace CES.API.Controllers
         public async Task<IActionResult> SubmitEvidence([FromForm] SubmissionModel model)
         {
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
+
+            if (model.Tickets == null || model.Tickets.Count == 0)
+                return BadRequest("At least one ticket is required.");
 
             model.fileUploads = model.Files.Select(f => new FileUpload
-                                                            {
-                                                                Location = model.LocationId,
-                                                                Date = model.ShortDate,
-                                                                Room = model.RoomCode,
-                                                                FileNumber = model.FileNumberText,
-                                                                FileName = f.FileName,
-                                                                ContentType = f.ContentType,
-                                                                Length = f.Length,
-                                                                Content = f.OpenReadStream()
-                                                            }).ToList();
+            {
+                Location = model.LocationId,
+                Date = model.ShortDate,
+                Room = model.RoomCode,
+                FileName = f.FileName,
+                ContentType = f.ContentType,
+                Length = f.Length,
+                Content = f.OpenReadStream()
+            }).ToList();
 
-            if(model.fileUploads.Count == 0)
-                return BadRequest("No files uploaded");
+            if (model.fileUploads.Count == 0)
+                return BadRequest("No files uploaded.");
 
             var result = await _submissionService.SubmitEvidence(model);
-
-
             return result ? Ok("Submission accepted") : BadRequest("Something failed");
         }
 
         [HttpGet]
         [Route("api/submissions/retrieve")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> RetrieveSubmission([FromQuery]int fileId)
+        public async Task<IActionResult> RetrieveSubmission([FromQuery] int fileId)
         {
             var model = await _submissionService.RetrieveSubmission(fileId);
             if (model == null)
-            {
                 return NotFound();
-            }
+
             return Ok(model);
         }
 
@@ -64,47 +61,46 @@ namespace CES.API.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RetrieveSubmissionListing()
         {
-            
             var model = await _submissionService.RetrieveSubmissionListing();
-            if (model == null)
-            {
-                return NotFound();
-            }
             return Ok(model);
         }
-        
+
+        [HttpGet]
+        [Route("api/submissions/by-file-number")]
+        [Authorize(Roles = "User,Admin")]
+        public async Task<IActionResult> GetSubmissionsByFileNumber([FromQuery] string fileNumberText)
+        {
+            if (string.IsNullOrWhiteSpace(fileNumberText))
+                return BadRequest("fileNumberText is required.");
+
+            var result = await _submissionService.GetSubmissionsByFileNumberAsync(fileNumberText);
+            return Ok(result);
+        }
+
         [HttpPost]
         [Route("api/submissions/accept")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> AcceptSubmissions([FromBody] EvidenceAcceptanceModel model)
         {
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
-            if(model.acceptedFiles.Count == 0 || model.FileId == 0)
+            if (model.acceptedFiles.Count == 0 || model.FileId == 0)
                 return BadRequest("No files accepted");
 
             var result = await _submissionService.AcceptSubmissions(model);
-
-
             return result ? Ok("Submission accepted") : BadRequest("Something failed");
         }
-        
+
         [HttpPost]
         [Route("api/submissions/reject")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RejectSubmissions([FromBody] EvidenceAcceptanceModel model)
         {
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
             var result = await _submissionService.RejectSubmissions(model);
-
-
             return result ? Ok("Submission accepted") : BadRequest("Something failed");
         }
     }

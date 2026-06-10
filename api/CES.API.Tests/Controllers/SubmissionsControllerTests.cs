@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
-using System.Text.Json;
 using CES.API.Tests.Fixtures;
 using FluentAssertions;
 
@@ -17,25 +16,29 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
         _client = factory.CreateClient();
     }
 
-    private static MultipartFormDataContent BuildSubmitForm()
+    private static MultipartFormDataContent BuildSubmitForm(int ticketCount = 1)
     {
         var form = new MultipartFormDataContent
         {
-            { new StringContent("APP001"), "appearanceID" },
-            { new StringContent("2026-01-01T09:00:00"), "appearanceDateTime" },
             { new StringContent("2026-01-01"), "shortDate" },
-            { new StringContent("001"), "appearanceSequenceNumber" },
-            { new StringContent("ADP"), "appearanceReasonCode" },
-            { new StringContent("Criminal"), "courtListType" },
-            { new StringContent("FILE001"), "fileNumberText" },
             { new StringContent("LOC001"), "locationId" },
             { new StringContent("Test Court"), "locationNameText" },
             { new StringContent("ROOM1"), "roomCode" },
             { new StringContent("Courtroom 1"), "roomText" },
-            { new StringContent("Smith, John"), "accusedName" },
-            { new StringContent("1980-01-01"), "accusedDOB" },
-            { new StringContent("OFF001"), "officerNumber" }
+            { new StringContent("OFF001"), "officerNumber" },
         };
+
+        for (var i = 0; i < ticketCount; i++)
+        {
+            form.Add(new StringContent($"APP{i:D3}"), $"tickets[{i}].appearanceId");
+            form.Add(new StringContent("2026-01-01T09:00:00"), $"tickets[{i}].appearanceDateTime");
+            form.Add(new StringContent($"{i + 1}"), $"tickets[{i}].appearanceSequenceNumber");
+            form.Add(new StringContent("TRI"), $"tickets[{i}].appearanceReasonCode");
+            form.Add(new StringContent("Criminal"), $"tickets[{i}].courtListType");
+            form.Add(new StringContent($"FILE{i:D3}"), $"tickets[{i}].fileNumberText");
+            form.Add(new StringContent("Smith, John"), $"tickets[{i}].accusedName");
+            form.Add(new StringContent("1980-01-01"), $"tickets[{i}].accusedDOB");
+        }
 
         var fileContent = new ByteArrayContent(Encoding.UTF8.GetBytes("fake video content"));
         fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("video/mp4");
@@ -63,6 +66,38 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
     }
 
     [Fact]
+    public async Task Submit_MultipleTickets_Returns200()
+    {
+        WithAuth(JwtTokenHelper.UserToken());
+        var form = BuildSubmitForm(ticketCount: 3);
+
+        var response = await _client.PostAsync("/api/submissions/submit", form);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Submit_WithoutTickets_Returns400()
+    {
+        WithAuth(JwtTokenHelper.UserToken());
+        // Form with no ticket fields
+        var form = new MultipartFormDataContent
+        {
+            { new StringContent("2026-01-01"), "shortDate" },
+            { new StringContent("LOC001"), "locationId" },
+            { new StringContent("ROOM1"), "roomCode" },
+            { new StringContent("OFF001"), "officerNumber" },
+        };
+        var fileContent = new ByteArrayContent(Encoding.UTF8.GetBytes("fake"));
+        fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("video/mp4");
+        form.Add(fileContent, "files", "evidence.mp4");
+
+        var response = await _client.PostAsync("/api/submissions/submit", form);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task Submit_WithoutAuth_Returns401()
     {
         _client.DefaultRequestHeaders.Authorization = null;
@@ -85,19 +120,21 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
     }
 
     [Fact]
-    public async Task Retrieve_WithAdminRole_Returns200()
+    public async Task Retrieve_WithAdminRole_Returns200WithTickets()
     {
         WithAuth(JwtTokenHelper.UserToken());
-        await _client.PostAsync("/api/submissions/submit", BuildSubmitForm());
+        await _client.PostAsync("/api/submissions/submit", BuildSubmitForm(ticketCount: 2));
 
         WithAuth(JwtTokenHelper.AdminToken());
         var listResponse = await _client.GetAsync("/api/submissions/listing");
         var list = await listResponse.Content.ReadFromJsonAsync<List<SubmissionListItem>>();
-        var submissionId = list!.First().Id;
+        var submissionId = list!.Last().Id; // Last = most recently submitted in this test
 
         var response = await _client.GetAsync($"/api/submissions/retrieve?fileId={submissionId}");
+        var body = await response.Content.ReadFromJsonAsync<SubmissionDetail>();
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+        body!.Tickets.Should().HaveCount(2);
     }
 
     [Fact]
@@ -133,7 +170,6 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
         var list = await listResponse.Content.ReadFromJsonAsync<List<SubmissionListItem>>();
         var submissionId = list!.First().Id;
 
-        // Use retrieve (which includes files) to get file IDs
         var subResponse = await _client.GetAsync($"/api/submissions/retrieve?fileId={submissionId}");
         var submission = await subResponse.Content.ReadFromJsonAsync<SubmissionDetail>();
         var fileId = submission!.Files.First().Id;
@@ -161,7 +197,43 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    [Fact]
+    public async Task GetByFileNumber_WithUserRole_Returns200WithResults()
+    {
+        WithAuth(JwtTokenHelper.UserToken());
+        await _client.PostAsync("/api/submissions/submit", BuildSubmitForm());
+
+        var response = await _client.GetAsync("/api/submissions/by-file-number?fileNumberText=FILE000");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().StartWith("[");
+    }
+
+    [Fact]
+    public async Task GetByFileNumber_UnknownFileNumber_Returns200EmptyArray()
+    {
+        WithAuth(JwtTokenHelper.UserToken());
+
+        var response = await _client.GetAsync("/api/submissions/by-file-number?fileNumberText=UNKNOWN");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Be("[]");
+    }
+
+    [Fact]
+    public async Task GetByFileNumber_WithoutAuth_Returns401()
+    {
+        _client.DefaultRequestHeaders.Authorization = null;
+
+        var response = await _client.GetAsync("/api/submissions/by-file-number?fileNumberText=FILE000");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
     private record SubmissionListItem(int Id, List<SubmissionFileItem> Files);
     private record SubmissionFileItem(Guid Id);
-    private record SubmissionDetail(int Id, List<SubmissionFileItem> Files);
+    private record SubmissionDetail(int Id, List<SubmissionTicketItem> Tickets, List<SubmissionFileItem> Files);
+    private record SubmissionTicketItem(string AppearanceId, string FileNumberText);
 }
