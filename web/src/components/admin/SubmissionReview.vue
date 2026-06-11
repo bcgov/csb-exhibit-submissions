@@ -5,6 +5,7 @@ import type { SubmissionFile, SubmissionReviewModel } from '@/models/SubmissionR
 import useSubmissionService from '@/services/SubmissionService';
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import AppModal from '../shared/AppModal.vue';
 import FileViewer from '../shared/FileViewer.vue';
 
 const route = useRoute();
@@ -18,6 +19,8 @@ const { retrieveSubmission, acceptSubmissionFiles, rejectAndCloseSubmission } = 
 
 const submission = ref<SubmissionReviewModel | undefined>(undefined);
 const selectedFiles = ref<string[]>([]);
+const acceptError = ref<string | null>(null);
+const showRejectModal = ref(false);
 
 const getFileUrl = (fileId: string, action: 'view' | 'download') => `/api/files/${fileId}/${action}`;
 
@@ -76,9 +79,10 @@ const downloadFile = async (file: SubmissionFile) => {
 
 const acceptSubmission = async () => {
   if (selectedFiles.value.length === 0) {
-    alert('Please select at least one file.');
+    acceptError.value = 'Please select at least one file.';
     return;
   }
+  acceptError.value = null;
 
   const payload: SubmissionAcceptanceModel = {
     fileId: submissionId,
@@ -91,7 +95,6 @@ const acceptSubmission = async () => {
 };
 
 const removeSubmission = async () => {
-  if (!confirm('Reject and delete this submission? Any unaccepted submissions will be removed!')) return;
   const payload: SubmissionAcceptanceModel = {
     fileId: submissionId,
     acceptedFiles: selectedFiles.value,
@@ -137,7 +140,7 @@ const fileIcon = (type: string) => {
           <tr v-for="ticket in submission.tickets" :key="ticket.appearanceId">
             <td class="text-monospace">{{ ticket.fileNumberText }}</td>
             <td>{{ ticket.accusedName }}</td>
-            <td>{{ ticket.appearanceDateTime?.split('T')[1]?.slice(0, 5) ?? '' }}</td>
+            <td>{{ ticket.appearanceDateTime?.split(/[T ]/)[1]?.slice(0, 5) ?? '' }}</td>
             <td>{{ ticket.appearanceReasonCode }}</td>
           </tr>
         </tbody>
@@ -164,9 +167,21 @@ const fileIcon = (type: string) => {
 
       <div class="actions-main">
         <button class="accept" @click="acceptSubmission">Accept Selected</button>
-        <button class="remove" @click="removeSubmission">Reject / Delete All</button>
+        <button class="remove" @click="showRejectModal = true">Reject / Delete All</button>
       </div>
+      <p v-if="acceptError" class="accept-error">{{ acceptError }}</p>
     </div>
+
+    <AppModal
+      v-if="showRejectModal"
+      title="Reject Submissions"
+      confirm-label="Reject / Delete All"
+      :confirm-danger="true"
+      @confirm="showRejectModal = false; removeSubmission()"
+      @cancel="showRejectModal = false"
+    >
+      Reject and delete these submissions? Any unaccepted files will be permanently removed.
+    </AppModal>
 
     <div v-if="previewFile" class="preview-modal">
       <div class="modal-content">
@@ -330,5 +345,11 @@ const fileIcon = (type: string) => {
 .file-actions button {
   padding: 4px 10px;
   font-size: 0.85rem;
+}
+
+.accept-error {
+  margin-top: 8px;
+  color: #e53935;
+  font-size: 0.9rem;
 }
 </style>

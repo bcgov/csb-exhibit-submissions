@@ -9,7 +9,7 @@
         <input id="appearanceDate" type="date" v-model="appearanceDate" required />
       </div>
 
-      <div class="form-group autocomplete-wrapper">
+      <div class="form-group">
         <AutocompleteSelect v-model="selectedLocation" id="locationSearch" label="Location" :items="locations"
           :loading="isLoadingLocations" :disabled="isLoadingLocations" :error="isLocationError"
           :errorText="locationErrorText" placeholder="Start typing to search locations..." required
@@ -43,6 +43,12 @@
   </div>
 
   <div v-if="hasSearched" class="px-4 pb-4">
+    
+  <div class="">
+    <button class="submit-btn" @click="proceedToUpload" :disabled="checkedFiles.length <= 0">
+      Upload Exhibit ({{ checkedFiles.length }} selected)
+    </button>
+  </div>
     <div class="card shadow-sm">
       <div class="card-body p-0">
         <div v-if="searchResults.length > 0" class="table-responsive">
@@ -294,10 +300,12 @@ select {
 
 .autocomplete-wrapper {
   position: relative;
+  margin-bottom: 0;
 }
 
 .submit-btn {
   padding: 0.75rem 1.5rem;
+  margin: 1rem 0;
   background-color: #007bff;
   color: white;
   border: none;
