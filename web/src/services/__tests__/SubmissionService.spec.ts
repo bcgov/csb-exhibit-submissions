@@ -135,4 +135,33 @@ describe('SubmissionService', () => {
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({ submissionId: 1 });
   });
+
+  it('removeFile sends DELETE /api/submissions/files/:fileId and returns true on success', async () => {
+    const fileId = '550e8400-e29b-41d4-a716-446655440000';
+    let capturedUrl = '';
+    server.use(
+      http.delete(`/api/submissions/files/${fileId}`, ({ request }) => {
+        capturedUrl = request.url;
+        return new HttpResponse(null, { status: 200 });
+      }),
+    );
+
+    const { removeFile } = useSubmissionService();
+    const result = await removeFile(fileId);
+
+    expect(result).toBe(true);
+    expect(capturedUrl).toContain(fileId);
+  });
+
+  it('removeFile returns false on API error', async () => {
+    const fileId = '550e8400-e29b-41d4-a716-446655440001';
+    server.use(
+      http.delete(`/api/submissions/files/${fileId}`, () => new HttpResponse(null, { status: 404 })),
+    );
+
+    const { removeFile } = useSubmissionService();
+    const result = await removeFile(fileId);
+
+    expect(result).toBe(false);
+  });
 });

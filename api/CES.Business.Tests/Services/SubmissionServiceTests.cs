@@ -301,4 +301,49 @@ public class SubmissionServiceTests : IDisposable
 
         result.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task RemoveFile_MarksFileDeleted_AndCallsStorageDelete()
+    {
+        var fileId = Guid.NewGuid();
+        var file = BuildStoredFile(fileId);
+        _db.StoredFiles.Add(file);
+        await _db.SaveChangesAsync();
+
+        _fileStorageMock.Setup(s => s.DeleteAsync(It.IsAny<StoredFiles>())).Returns(Task.CompletedTask);
+
+        var result = await _service.RemoveFileAsync(fileId);
+
+        result.Should().BeTrue();
+        _db.StoredFiles.Find(fileId)!.IsDeleted.Should().BeTrue();
+        _fileStorageMock.Verify(s => s.DeleteAsync(It.Is<StoredFiles>(f => f.Id == fileId)), Times.Once);
+    }
+
+    [Fact]
+    public async Task RemoveFile_ReturnsFalse_WhenFileNotFound()
+    {
+        _fileStorageMock.Setup(s => s.DeleteAsync(It.IsAny<StoredFiles>())).Returns(Task.CompletedTask);
+
+        var result = await _service.RemoveFileAsync(Guid.NewGuid());
+
+        result.Should().BeFalse();
+        _fileStorageMock.Verify(s => s.DeleteAsync(It.IsAny<StoredFiles>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RemoveFile_ReturnsFalse_WhenFileAlreadyDeleted()
+    {
+        var fileId = Guid.NewGuid();
+        var file = BuildStoredFile(fileId);
+        file.IsDeleted = true;
+        _db.StoredFiles.Add(file);
+        await _db.SaveChangesAsync();
+
+        _fileStorageMock.Setup(s => s.DeleteAsync(It.IsAny<StoredFiles>())).Returns(Task.CompletedTask);
+
+        var result = await _service.RemoveFileAsync(fileId);
+
+        result.Should().BeFalse();
+        _fileStorageMock.Verify(s => s.DeleteAsync(It.IsAny<StoredFiles>()), Times.Never);
+    }
 }

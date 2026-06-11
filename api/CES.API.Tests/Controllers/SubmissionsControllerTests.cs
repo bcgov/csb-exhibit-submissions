@@ -168,7 +168,7 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
         WithAuth(JwtTokenHelper.AdminToken());
         var listResponse = await _client.GetAsync("/api/submissions/listing");
         var list = await listResponse.Content.ReadFromJsonAsync<List<SubmissionListItem>>();
-        var submissionId = list!.First().Id;
+        var submissionId = list!.Last().Id; // Last = most recently submitted in this test
 
         var subResponse = await _client.GetAsync($"/api/submissions/retrieve?fileId={submissionId}");
         var submission = await subResponse.Content.ReadFromJsonAsync<SubmissionDetail>();
@@ -232,8 +232,55 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    [Fact]
+    public async Task RemoveFile_WithUserRole_Returns200_WhenFileExists()
+    {
+        WithAuth(JwtTokenHelper.UserToken());
+        await _client.PostAsync("/api/submissions/submit", BuildSubmitForm());
+
+        var listResponse = await _client.GetAsync("/api/submissions/by-file-number?fileNumberText=FILE000");
+        var priorList = await listResponse.Content.ReadFromJsonAsync<List<PriorSubmission>>();
+        var fileId = priorList!.First().Files.First().Id;
+
+        var response = await _client.DeleteAsync($"/api/submissions/files/{fileId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task RemoveFile_WithUserRole_Returns404_WhenFileNotFound()
+    {
+        WithAuth(JwtTokenHelper.UserToken());
+
+        var response = await _client.DeleteAsync($"/api/submissions/files/{Guid.NewGuid()}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task RemoveFile_WithAdminRole_Returns403()
+    {
+        WithAuth(JwtTokenHelper.AdminToken());
+
+        var response = await _client.DeleteAsync($"/api/submissions/files/{Guid.NewGuid()}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task RemoveFile_WithoutAuth_Returns401()
+    {
+        _client.DefaultRequestHeaders.Authorization = null;
+
+        var response = await _client.DeleteAsync($"/api/submissions/files/{Guid.NewGuid()}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
     private record SubmissionListItem(int Id, List<SubmissionFileItem> Files);
     private record SubmissionFileItem(Guid Id);
     private record SubmissionDetail(int Id, List<SubmissionTicketItem> Tickets, List<SubmissionFileItem> Files);
     private record SubmissionTicketItem(string AppearanceId, string FileNumberText);
+    private record PriorSubmission(int SubmissionId, List<PriorSubmissionFileItem> Files);
+    private record PriorSubmissionFileItem(Guid Id, string OriginalFileName);
 }

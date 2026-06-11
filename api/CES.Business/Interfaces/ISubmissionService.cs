@@ -10,5 +10,6 @@ namespace CES.Business.Interfaces
         Task<bool> AcceptSubmissions(EvidenceAcceptanceModel model);
         Task<bool> RejectSubmissions(EvidenceAcceptanceModel model);
         Task<List<PriorSubmissionModel>> GetSubmissionsByFileNumberAsync(string fileNumberText);
+        Task<bool> RemoveFileAsync(Guid fileId);
     }
 }

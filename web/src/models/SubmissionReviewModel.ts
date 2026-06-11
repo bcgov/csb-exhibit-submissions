@@ -9,6 +9,7 @@ export interface SubmissionFile {
   contentType: string;
   fileSize: number;
   storageProvider: string;
+  status?: string;
 }
 
 export interface SubmissionReviewModel {

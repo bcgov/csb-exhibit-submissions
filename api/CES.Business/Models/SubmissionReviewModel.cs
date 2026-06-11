@@ -23,5 +23,6 @@ namespace CES.Business.Models
         public string Url { get; set; } = string.Empty;
         public long FileSize { get; set; }
         public string StorageProvider { get; set; } = string.Empty;
+        public string Status { get; set; } = "Pending";
     }
 }

@@ -92,6 +92,15 @@ export default function useSubmissionService() {
     return apiReturn?.data ?? []
   }
 
+  const removeFile = async (fileId: string): Promise<boolean> => {
+    try {
+      await api.delete(`/submissions/files/${fileId}`)
+      return true
+    } catch {
+      return false
+    }
+  }
+
   return {
     submitExhibits,
     retrieveSubmission,
@@ -99,5 +108,6 @@ export default function useSubmissionService() {
     acceptSubmissionFiles,
     rejectAndCloseSubmission,
     getSubmissionsByFileNumber,
+    removeFile,
   }
 }

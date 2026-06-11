@@ -103,5 +103,14 @@ namespace CES.API.Controllers
             var result = await _submissionService.RejectSubmissions(model);
             return result ? Ok("Submission accepted") : BadRequest("Something failed");
         }
+
+        [HttpDelete]
+        [Route("api/submissions/files/{fileId:guid}")]
+        [Authorize(Roles = "User")]
+        public async Task<IActionResult> RemoveFile(Guid fileId)
+        {
+            var result = await _submissionService.RemoveFileAsync(fileId);
+            return result ? Ok() : NotFound();
+        }
     }
 }

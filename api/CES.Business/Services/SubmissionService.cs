@@ -113,6 +113,19 @@ namespace CES.Business.Services
             return true;
         }
 
+        public async Task<bool> RemoveFileAsync(Guid fileId)
+        {
+            var file = await _datastore.StoredFiles.FirstOrDefaultAsync(f => f.Id == fileId && !f.IsDeleted);
+            if (file == null)
+                return false;
+
+            await _fileStorage.DeleteAsync(file);
+            file.IsDeleted = true;
+            file.SetUpdateBy("Officer");
+            await _datastore.SaveChangesAsync();
+            return true;
+        }
+
         public async Task<List<PriorSubmissionModel>> GetSubmissionsByFileNumberAsync(string fileNumberText)
         {
             var submissions = await _datastore.Submissions
@@ -140,7 +153,8 @@ namespace CES.Business.Services
                         ContentType = f.ContentType,
                         FileSize = f.FileSize,
                         StorageProvider = f.StorageProvider,
-                        Url = ""
+                        Url = "",
+                        Status = "Pending"
                     }).ToList()
                 };
             }).ToList();
