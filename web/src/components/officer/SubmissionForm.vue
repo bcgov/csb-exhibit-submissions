@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import { formatDateyyyymmdd, formatDateTime } from '@/helpers/formatters'
+import { formatDateTime, formatDateyyyymmdd } from '@/helpers/formatters'
 import type { ExhibitSubmissionModel, SubmissionTicketModel } from '@/models/ExhibitSubmissionModel'
 import type { PriorSubmissionModel } from '@/models/PriorSubmissionModel'
 import useSubmissionService from '@/services/SubmissionService'
+import type { SubmissionFile } from '@/models/SubmissionReviewModel'
 import { useCourtFileSelectionStore } from '@/stores/useCourtFileSelectionStore'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import FileDropZone from '../shared/FileDropZone.vue'
 
 const router = useRouter()
-const { submitExhibits, getSubmissionsByFileNumber, removeFile } = useSubmissionService()
+const { submitExhibits, getSubmissionsByFileNumber } = useSubmissionService()
 const selectionStore = useCourtFileSelectionStore()
 
 const uploading = ref(false)
@@ -19,8 +20,6 @@ const officerNumber = ref('')
 
 const priorExhibits = ref<Map<string, PriorSubmissionModel[]>>(new Map())
 const priorExhibitsError = ref(false)
-const removingFileId = ref<string | null>(null)
-const removeFileError = ref<string | null>(null)
 
 // Tickets managed locally so the officer can remove some before submitting.
 const tickets = ref<SubmissionTicketModel[]>([])
@@ -50,27 +49,37 @@ const removeTicket = (appearanceId: string) => {
   tickets.value = tickets.value.filter(t => t.appearanceId !== appearanceId)
 }
 
-const removePriorFile = async (fileNumberText: string, submissionId: number, fileId: string) => {
-  removingFileId.value = fileId
-  removeFileError.value = null
-  const success = await removeFile(fileId)
-  removingFileId.value = null
-  if (success) {
-    const updated = new Map(priorExhibits.value)
-    const submissions = updated.get(fileNumberText) ?? []
-    updated.set(
-      fileNumberText,
-      submissions.map(sub =>
-        sub.submissionId === submissionId
-          ? { ...sub, files: sub.files.filter(f => f.id !== fileId) }
-          : sub
-      )
-    )
-    priorExhibits.value = updated
-  } else {
-    removeFileError.value = 'Failed to remove file. Please try again.'
+// Flat list of prior files across all queried file numbers, deduplicated by file ID.
+// Each entry carries its submission date and the file numbers whose prior submissions contain it.
+// Automatically excludes files that only belong to tickets that have been removed.
+const flatPriorFiles = computed(() => {
+  const activeFileNumbers = new Set(uniqueFileNumbers.value)
+  const submissionFileNumbers = new Map<number, Set<string>>()
+  const fileMap = new Map<string, { file: SubmissionFile; submissionDate?: string; submissionId: number }>()
+
+  for (const [fn, submissions] of priorExhibits.value) {
+    if (!activeFileNumbers.has(fn)) continue
+    for (const sub of submissions) {
+      if (!submissionFileNumbers.has(sub.submissionId)) {
+        submissionFileNumbers.set(sub.submissionId, new Set())
+      }
+      submissionFileNumbers.get(sub.submissionId)!.add(fn)
+
+      for (const f of sub.files) {
+        if (f.status === 'Removed') continue
+        if (!fileMap.has(f.id)) {
+          fileMap.set(f.id, { file: f, submissionDate: sub.submissionDate, submissionId: sub.submissionId })
+        }
+      }
+    }
   }
-}
+
+  return [...fileMap.values()].map(({ file, submissionDate, submissionId }) => ({
+    file,
+    submissionDate,
+    fileNumbers: [...(submissionFileNumbers.get(submissionId) ?? [])],
+  }))
+})
 
 const goBack = () => {
   selectionStore.clear()
@@ -239,74 +248,46 @@ const submitForm = async () => {
   font-size: 0.95rem;
 }
 
-.prior-group {
-  margin-bottom: 1rem;
-}
-
-.prior-group-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #555;
-  margin-bottom: 0.4rem;
-}
-
-.prior-submission-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  padding: 0.5rem 0.75rem;
-  background: #f8f8f8;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  margin-bottom: 0.4rem;
-  font-size: 0.85rem;
-}
-
 .prior-file-list {
   list-style: none;
   margin: 0;
   padding: 0;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background: #f8f8f8;
 }
 
 .prior-file-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  color: #333;
-  padding: 0.15rem 0;
+  gap: 1rem;
+  padding: 0.45rem 0.75rem;
+  border-bottom: 1px solid #eee;
+  font-size: 0.85rem;
+}
+
+.prior-file-item:last-child {
+  border-bottom: none;
 }
 
 .prior-file-name {
   flex: 1;
+  color: #333;
 }
 
-.prior-file-status {
-  font-size: 0.75rem;
+.prior-file-date {
+  color: #666;
+  white-space: nowrap;
+  font-size: 0.8rem;
+}
+
+.prior-file-tickets {
+  font-size: 0.8rem;
   padding: 0.1rem 0.45rem;
   border-radius: 3px;
   background: #e8f0fe;
   color: #1a56db;
   white-space: nowrap;
-}
-
-.remove-prior-btn {
-  background: none;
-  border: 1px solid #c0392b;
-  color: #c0392b;
-  border-radius: 4px;
-  padding: 0.1rem 0.5rem;
-  cursor: pointer;
-  font-size: 0.75rem;
-  white-space: nowrap;
-}
-
-.remove-prior-btn:hover:not(:disabled) {
-  background: #fdecea;
-}
-
-.remove-prior-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
 }
 
 .prior-empty {
@@ -396,12 +377,7 @@ const submitForm = async () => {
               &nbsp;@ {{ ticket.appearanceDateTime.split('T')[1]?.slice(0, 5) }}
             </span>
           </div>
-          <button
-            v-if="tickets.length > 1"
-            type="button"
-            class="remove-btn"
-            @click="removeTicket(ticket.appearanceId)"
-          >
+          <button v-if="tickets.length > 1" type="button" class="remove-btn" @click="removeTicket(ticket.appearanceId)">
             Remove
           </button>
         </div>
@@ -415,35 +391,17 @@ const submitForm = async () => {
           Could not load prior exhibit history. You can still proceed with the upload.
         </p>
 
-        <template v-else>
-          <div v-for="fn in uniqueFileNumbers" :key="fn" class="prior-group">
-            <div class="prior-group-label">File # {{ fn }}</div>
-            <template v-if="(priorExhibits.get(fn) ?? []).length > 0">
-              <div
-                v-for="sub in priorExhibits.get(fn)"
-                :key="sub.submissionId"
-                class="prior-submission-row"
-              >
-                <span>Submitted: {{ formatDateTime(sub.submissionDate ?? '', true) }}</span>
-                <span v-if="sub.location">{{ sub.location }}, {{ sub.room }}</span>
-                <ul class="prior-file-list">
-                  <li v-for="f in sub.files" :key="f.id" class="prior-file-item">
-                    <span class="prior-file-name">{{ f.originalFileName }} ({{ f.contentType }})</span>
-                    <span class="prior-file-status">{{ f.status ?? 'Pending' }}</span>
-                    <button
-                      type="button"
-                      class="remove-prior-btn"
-                      :disabled="removingFileId === f.id"
-                      @click="removePriorFile(fn, sub.submissionId, f.id)"
-                    >{{ removingFileId === f.id ? 'Removing…' : 'Remove' }}</button>
-                  </li>
-                </ul>
-                <p v-if="removeFileError" class="prior-error">{{ removeFileError }}</p>
-              </div>
-            </template>
-            <p v-else class="prior-empty">No previous exhibits for this file number.</p>
-          </div>
+        <template v-else-if="flatPriorFiles.length > 0">
+          <ul class="prior-file-list">
+            <li v-for="entry in flatPriorFiles" :key="entry.file.id" class="prior-file-item">
+              <span class="prior-file-name">{{ entry.file.originalFileName }}</span>
+              <span class="prior-file-date">{{ formatDateTime(entry.submissionDate ?? '', true) }}</span>
+              <span class="prior-file-tickets">File #{{ entry.fileNumbers.join(', ') }}</span>
+            </li>
+          </ul>
         </template>
+
+        <p v-else class="prior-empty">No previous exhibits for the selected tickets.</p>
       </div>
 
       <!-- Officer number -->
@@ -457,14 +415,10 @@ const submitForm = async () => {
 
       <div class="upload-progress">
         <div class="progress" style="height: 20px;">
-          <div
-            class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
-            role="progressbar"
-            :style="{ width: uploadProgress + '%' }"
-            :aria-valuenow="uploadProgress"
-            aria-valuemin="0"
-            aria-valuemax="100"
-          ></div>
+          <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar"
+            :style="{ width: uploadProgress + '%' }" :aria-valuenow="uploadProgress" aria-valuemin="0"
+            aria-valuemax="100">
+          </div>
         </div>
       </div>
 

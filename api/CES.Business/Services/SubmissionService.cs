@@ -131,7 +131,8 @@ namespace CES.Business.Services
             var submissions = await _datastore.Submissions
                 .Where(s => !s.IsDeleted && s.Tickets.Any(t => t.FileNumberText == fileNumberText))
                 .Include(s => s.Tickets)
-                .Include(s => s.Files.Where(f => !f.IsDeleted))
+                // .Include(s => s.Files.Where(f => !f.IsDeleted))
+                .Include(s => s.Files) 
                 .OrderByDescending(s => s.UploadDate)
                 .ToListAsync();
 
@@ -154,7 +155,7 @@ namespace CES.Business.Services
                         FileSize = f.FileSize,
                         StorageProvider = f.StorageProvider,
                         Url = "",
-                        Status = "Pending"
+                        Status = f.IsDeleted ? "Removed" : "Pending"
                     }).ToList()
                 };
             }).ToList();
