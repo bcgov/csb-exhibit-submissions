@@ -1,6 +1,6 @@
 # Multi-Ticket Exhibit Upload
 
-**Status:** Draft  
+**Status:** Complete  
 **Date:** 2026-05-28  
 **Revised:** 2026-06-10 — added Cross-Date Prior Exhibit Retrieval (keyed on `FileNumberText`)  
 **JIRA:** CES-26

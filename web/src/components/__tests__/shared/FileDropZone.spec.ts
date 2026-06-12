@@ -29,6 +29,25 @@ describe('FileDropZone', () => {
     expect((emitted![0][0] as File[])[0].name).toBe('test.mp4')
   })
 
+  it('reset() clears files and emits empty filesChanged', async () => {
+    const wrapper = mount(FileDropZone)
+    const file = new File(['content'], 'test.mp4', { type: 'video/mp4' })
+
+    const dropzone = wrapper.find('.dropzone')
+    const dropEvent = new Event('drop', { bubbles: true })
+    Object.defineProperty(dropEvent, 'dataTransfer', { value: { files: [file] } })
+    Object.defineProperty(dropEvent, 'preventDefault', { value: vi.fn() })
+    await dropzone.element.dispatchEvent(dropEvent)
+    await wrapper.vm.$nextTick()
+
+    ;(wrapper.vm as unknown as { reset: () => void }).reset()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('.file-list').exists()).toBe(false)
+    const emitted = wrapper.emitted('filesChanged')!
+    expect(emitted[emitted.length - 1][0]).toEqual([])
+  })
+
   it('shows alert for exceeding max files', async () => {
     const wrapper = mount(FileDropZone)
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})

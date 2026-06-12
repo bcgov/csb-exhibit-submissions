@@ -43,6 +43,14 @@ const triggerBrowse = () => {
   fileInput.value?.click()
 }
 
+const reset = () => {
+  files.value = []
+  if (fileInput.value) fileInput.value.value = ''
+  emit('filesChanged', [])
+}
+
+defineExpose({ reset })
+
 const getFileIcon = (file: File) => {
   if (file.type.startsWith('image')) return '🖼️'
   if (file.type.startsWith('video')) return '🎬'

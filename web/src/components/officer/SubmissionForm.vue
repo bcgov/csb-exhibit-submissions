@@ -15,8 +15,10 @@ const selectionStore = useCourtFileSelectionStore()
 
 const uploading = ref(false)
 const errorMessage = ref('')
+const successMessage = ref('')
 const uploadProgress = ref<number>(0)
 const officerNumber = ref('')
+const dropZoneRef = ref<InstanceType<typeof FileDropZone> | null>(null)
 
 const priorExhibits = ref<Map<string, PriorSubmissionModel[]>>(new Map())
 const priorExhibitsError = ref(false)
@@ -149,9 +151,12 @@ const submitForm = async () => {
     errorMessage.value = 'Failed to upload exhibit. Please try again.'
   } finally {
     uploading.value = false
-    uploadProgress.value = success ? 100 : uploadProgress.value
     if (success) {
-      router.push({ name: 'OfficerCourtList' })
+      uploadProgress.value = 0
+      files.value = []
+      dropZoneRef.value?.reset()
+      successMessage.value = 'Exhibit uploaded successfully.'
+      await loadPriorExhibits()
     } else if (!errorMessage.value) {
       errorMessage.value = 'Upload failed. Please ensure at least one file is selected.'
     }
@@ -332,6 +337,12 @@ const submitForm = async () => {
   background: #5a6268;
 }
 
+.success-text {
+  font-size: 0.8rem;
+  color: green;
+  margin-top: 0.25rem;
+}
+
 .error-text {
   font-size: 0.8rem;
   color: red;
@@ -411,7 +422,7 @@ const submitForm = async () => {
       </div>
 
       <!-- Dropzone -->
-      <FileDropZone @filesChanged="handleFilesChanged" />
+      <FileDropZone ref="dropZoneRef" @filesChanged="handleFilesChanged" />
 
       <div class="upload-progress">
         <div class="progress" style="height: 20px;">
@@ -422,6 +433,7 @@ const submitForm = async () => {
         </div>
       </div>
 
+      <span v-if="successMessage" class="success-text">{{ successMessage }}</span>
       <span v-if="errorMessage" class="error-text">{{ errorMessage }}</span>
 
       <div class="actions">
