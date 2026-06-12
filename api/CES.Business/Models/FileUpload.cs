@@ -9,7 +9,6 @@ namespace CES.Business.Models
         public required string Location { get; set; }
         public required string Date { get; set; }
         public required string Room { get; set; }
-        public required string FileNumber { get; set; }
         public Stream Content { get; set; } = Stream.Null;
     }
 }

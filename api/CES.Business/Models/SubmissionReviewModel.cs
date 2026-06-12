@@ -10,10 +10,7 @@ namespace CES.Business.Models
         public string CourtDateTime { get; set; } = string.Empty;
         public string Location { get; set; } = string.Empty;
         public string Room { get; set; } = string.Empty;
-        public string FileNumber { get; set; } = string.Empty;
-        public string AccusedName { get; set; } = string.Empty;
-
-        // Using List<T> for the array of files
+        public List<SubmissionTicketModel> Tickets { get; set; } = new();
         public List<SubmissionFile> Files { get; set; } = new List<SubmissionFile>();
     }
 
@@ -26,5 +23,6 @@ namespace CES.Business.Models
         public string Url { get; set; } = string.Empty;
         public long FileSize { get; set; }
         public string StorageProvider { get; set; } = string.Empty;
+        public string Status { get; set; } = "Pending";
     }
 }

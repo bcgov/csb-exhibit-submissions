@@ -23,7 +23,7 @@ public class LocationsControllerTests
         var mockCourtListService = new Mock<ICourtListService>();
         mockCourtListService
             .Setup(s => s.GetJCCourtList(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>()))
-            .ReturnsAsync(new Collection<CourtList> { new() { AppearanceID = "APP001" } });
+            .ReturnsAsync(new Collection<CourtList> { new() { AppearanceId = "APP001" } });
 
         var factory = new TestWebApplicationFactory().WithWebHostBuilder(builder =>
         {

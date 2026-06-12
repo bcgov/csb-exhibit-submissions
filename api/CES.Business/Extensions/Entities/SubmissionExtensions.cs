@@ -9,17 +9,22 @@ namespace CES.Business.Extensions.Entities
         {
             var entity = new Submission
             {
-                AccusedDOB = model.AccusedDOB,
-                AccusedName = model.AccusedName,
-                AppearanceDateTime = model.AppearanceDateTime,
-                AppearanceID = model.AppearanceID,
-                CourtListType = model.CourtListType,
-                FileNumberText = model.FileNumberText,
                 LocationId = model.LocationId,
                 LocationNameText = model.LocationNameText,
                 RoomCode = model.RoomCode,
                 RoomText = model.RoomText,
-                OfficerNumber = model.OfficerNumber
+                OfficerNumber = model.OfficerNumber,
+                Tickets = model.Tickets.Select(t => new SubmissionTicket
+                {
+                    AppearanceId = t.AppearanceId,
+                    AppearanceDateTime = t.AppearanceDateTime,
+                    AppearanceSequenceNumber = t.AppearanceSequenceNumber,
+                    AppearanceReasonCode = t.AppearanceReasonCode,
+                    CourtListType = t.CourtListType,
+                    FileNumberText = t.FileNumberText,
+                    AccusedName = t.AccusedName,
+                    AccusedDOB = t.AccusedDOB
+                }).ToList()
             };
 
             return entity;
@@ -27,29 +32,37 @@ namespace CES.Business.Extensions.Entities
 
         public static SubmissionReviewModel ToReviewModel(this Submission entity)
         {
+            var firstTicket = entity.Tickets.FirstOrDefault();
+
             return new SubmissionReviewModel
             {
-                SubmissionDate = entity.UploadDate,
-                CourtDateTime = entity.AppearanceDateTime ?? "",
-                AccusedName = entity.AccusedName ?? "",
                 Id = entity.Id,
+                SubmissionDate = entity.UploadDate,
+                CourtDateTime = firstTicket?.AppearanceDateTime ?? "",
                 Location = entity.LocationNameText ?? "",
                 Room = entity.RoomText ?? "",
-                FileNumber = entity.FileNumberText,
-
+                Tickets = entity.Tickets.Select(t => new SubmissionTicketModel
+                {
+                    AppearanceId = t.AppearanceId,
+                    AppearanceDateTime = t.AppearanceDateTime,
+                    AppearanceSequenceNumber = t.AppearanceSequenceNumber,
+                    AppearanceReasonCode = t.AppearanceReasonCode,
+                    CourtListType = t.CourtListType,
+                    FileNumberText = t.FileNumberText,
+                    AccusedName = t.AccusedName,
+                    AccusedDOB = t.AccusedDOB
+                }).ToList(),
                 Files = entity.Files.Select(f => new SubmissionFile
-                            {
-                                ContentType = f.ContentType,
-                                FileSize = f.FileSize,
-                                Id = f.Id,
-                                OriginalFileName = f.OriginalFileName,
-                                StorageProvider = f.StorageProvider,
-                                StoredFileName = f.StoredFileName,
-                                Url = "",
-                                
-                            }).ToList()
+                {
+                    ContentType = f.ContentType,
+                    FileSize = f.FileSize,
+                    Id = f.Id,
+                    OriginalFileName = f.OriginalFileName,
+                    StorageProvider = f.StorageProvider,
+                    StoredFileName = f.StoredFileName,
+                    Url = "",
+                }).ToList()
             };
         }
     }
-    
 }

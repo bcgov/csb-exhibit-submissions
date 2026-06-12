@@ -12,11 +12,11 @@ namespace CES.EF
     {
         public static void BindRelationships(this ModelBuilder modelBuilder)
         {
-            //modelBuilder.Entity<ApplicationUser>()
-            //    .HasOne(u => u.Profile)
-            //    .WithOne(a => a.User)
-            //    .HasForeignKey<Profile>(a => a.UserId);
-
+            modelBuilder.Entity<Submission>()
+                .HasMany(s => s.Tickets)
+                .WithOne(t => t.Submission)
+                .HasForeignKey(t => t.SubmissionId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

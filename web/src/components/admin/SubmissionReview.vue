@@ -1,120 +1,114 @@
 <script setup lang="ts">
-import { convertUtcToLocal, formatDateTime, formatFileSize, shortenString, splitDateTimeForDisplay } from '@/helpers/formatters'
-import type { SubmissionAcceptanceModel } from '@/models/SubmissionAcceptanceModel'
-import type { SubmissionFile, SubmissionReviewModel } from '@/models/SubmissionReviewModel'
-import useSubmissionService from '@/services/SubmissionService'
-import { onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import FileViewer from '../shared/FileViewer.vue'
+import { convertUtcToLocal, formatDateTime, formatFileSize, shortenString, splitDateTimeForDisplay } from '@/helpers/formatters';
+import type { SubmissionAcceptanceModel } from '@/models/SubmissionAcceptanceModel';
+import type { SubmissionFile, SubmissionReviewModel } from '@/models/SubmissionReviewModel';
+import useSubmissionService from '@/services/SubmissionService';
+import { onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import AppModal from '../shared/AppModal.vue';
+import FileViewer from '../shared/FileViewer.vue';
 
-const route = useRoute()
-const router = useRouter()
+const route = useRoute();
+const router = useRouter();
 
-const submissionId = Number(route.params.id)
+const submissionId = Number(route.params.id);
 
-const previewFile = ref<SubmissionFile | null>(null)
+const previewFile = ref<SubmissionFile | null>(null);
 
-const { retrieveSubmission, acceptSubmissionFiles, rejectAndCloseSubmission } = useSubmissionService()
+const { retrieveSubmission, acceptSubmissionFiles, rejectAndCloseSubmission } = useSubmissionService();
 
-const submission = ref<SubmissionReviewModel | undefined>(undefined)
-const selectedFiles = ref<string[]>([])
+const submission = ref<SubmissionReviewModel | undefined>(undefined);
+const selectedFiles = ref<string[]>([]);
+const acceptError = ref<string | null>(null);
+const showRejectModal = ref(false);
 
-const getFileUrl = (fileId: string, action: 'view' | 'download') => `/api/files/${fileId}/${action}`
+const getFileUrl = (fileId: string, action: 'view' | 'download') => `/api/files/${fileId}/${action}`;
 
 onMounted(async () => {
-  const data = await retrieveSubmission(submissionId)
-  if (!data) return
+  const data = await retrieveSubmission(submissionId);
+  if (!data) return;
 
   submission.value = {
     ...data,
     files: data.files.map((f: SubmissionFile) => ({
       ...f,
       viewUrl: getFileUrl(f.id, 'view'),
-      downloadUrl: getFileUrl(f.id, 'download')
-    }))
-  }
+      downloadUrl: getFileUrl(f.id, 'download'),
+    })),
+  };
 
-  selectedFiles.value = submission.value.files.map(f => f.id)
-})
+  selectedFiles.value = submission.value.files.map(f => f.id);
+});
 
 const openPreview = (file: SubmissionFile) => {
-  previewFile.value = file
-}
+  previewFile.value = file;
+};
 
 const closePreview = () => {
-  previewFile.value = null
-}
+  previewFile.value = null;
+};
 
 const downloadFile = async (file: SubmissionFile) => {
   try {
-    const response = await fetch(file.downloadUrl)
+    const response = await fetch(file.downloadUrl);
 
     if (response.status === 404) {
-      console.warn("File not found")
-      return
+      console.warn('File not found');
+      return;
     }
 
     if (!response.ok) {
-      console.error(`File not found (${response.status})`)
-      // throw new Error(`Download failed (${response.status})`)
-      return
+      console.error(`File not found (${response.status})`);
+      return;
     }
 
-    const blob = await response.blob()
-    const url = window.URL.createObjectURL(blob)
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
 
-    const a = document.createElement('a')
-    a.href = url
-    a.download = file.originalFileName
-
-    document.body.appendChild(a)
-    a.click()
-
-    a.remove()
-    window.URL.revokeObjectURL(url)
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.originalFileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
   } catch (err) {
-    console.error("Download error:", err)
+    console.error('Download error:', err);
   }
-}
+};
 
 const acceptSubmission = async () => {
-
   if (selectedFiles.value.length === 0) {
-    alert('Please select at least one file.')
-    return
+    acceptError.value = 'Please select at least one file.';
+    return;
   }
-
-  // if (!confirm('Accept selected files?')) return
+  acceptError.value = null;
 
   const payload: SubmissionAcceptanceModel = {
     fileId: submissionId,
-    acceptedFiles: selectedFiles.value
-  }
+    acceptedFiles: selectedFiles.value,
+  };
 
-  console.log(payload)
-
-  const returnvalue = await acceptSubmissionFiles(payload)
-  console.log(returnvalue, "return value")
-  router.push('/admin/list')
-}
+  const returnValue = await acceptSubmissionFiles(payload);
+  console.log(returnValue, 'return value');
+  router.push('/admin/list');
+};
 
 const removeSubmission = async () => {
-  if (!confirm('Reject and delete this submission? Any unaccepted submissions will be removed!')) return
   const payload: SubmissionAcceptanceModel = {
     fileId: submissionId,
-    acceptedFiles: selectedFiles.value
-  }
+    acceptedFiles: selectedFiles.value,
+  };
   await rejectAndCloseSubmission(payload);
-  router.push('/admin/list')
-}
+  router.push('/admin/list');
+};
 
 const fileIcon = (type: string) => {
-  if (type.startsWith('image')) return '🖼'
-  if (type.startsWith('video')) return '🎬'
-  if (type.includes('pdf')) return '📄'
-  return '📁'
-}
-
+  if (type.startsWith('image')) return '🖼';
+  if (type.startsWith('video')) return '🎬';
+  if (type.includes('pdf')) return '📄';
+  return '📁';
+};
 </script>
 
 <template>
@@ -127,54 +121,73 @@ const fileIcon = (type: string) => {
         <div><strong>Court Time:</strong> {{ splitDateTimeForDisplay(submission.courtDateTime).time }}</div>
         <div><strong>Location:</strong> {{ submission.location }}</div>
         <div><strong>Room:</strong> {{ submission.room }}</div>
-        <div><strong>Ticket #:</strong> {{ submission.fileNumber }}</div>
-        <div><strong>Disputant:</strong> {{ submission.accusedName }}</div>
         <div><strong>Submission Date:</strong> {{ submission.submissionDate ?
-          formatDateTime(convertUtcToLocal(submission.submissionDate), true) : "" }}</div>
+          formatDateTime(convertUtcToLocal(submission.submissionDate), true) : '' }}</div>
       </div>
+
+      <!-- Tickets section -->
+      <h3>Tickets ({{ submission.tickets?.length ?? 0 }})</h3>
+      <table class="ticket-table">
+        <thead>
+          <tr>
+            <th>File #</th>
+            <th>Accused Name</th>
+            <th>Appearance Time</th>
+            <th>Appearance Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="ticket in submission.tickets" :key="ticket.appearanceId">
+            <td class="text-monospace">{{ ticket.fileNumberText }}</td>
+            <td>{{ ticket.accusedName }}</td>
+            <td>{{ ticket.appearanceDateTime?.split(/[T ]/)[1]?.slice(0, 5) ?? '' }}</td>
+            <td>{{ ticket.appearanceReasonCode }}</td>
+          </tr>
+        </tbody>
+      </table>
 
       <h3>Submitted Evidence</h3>
 
       <div class="file-list">
         <div class="file-row" v-for="file in submission.files" :key="file.id">
-
           <div class="file-accept">
-            <input type="checkbox" :value="file.id" v-model="selectedFiles">
+            <input type="checkbox" :value="file.id" v-model="selectedFiles" />
           </div>
           <div class="file-left">
             <span class="icon">{{ fileIcon(file.contentType) }}</span>
-
-            <span class="name">
-              {{ shortenString(file.originalFileName) }}
-            </span>
+            <span class="name">{{ shortenString(file.originalFileName) }}</span>
           </div>
-
-          <div class="file-size">
-            {{ formatFileSize(file.fileSize) }}
-          </div>
+          <div class="file-size">{{ formatFileSize(file.fileSize) }}</div>
           <div class="file-actions">
             <button @click="openPreview(file)">View</button>
             <button @click="downloadFile(file)">Download</button>
           </div>
-
         </div>
       </div>
 
       <div class="actions-main">
         <button class="accept" @click="acceptSubmission">Accept Selected</button>
-
-        <button class="remove" @click="removeSubmission">Reject / Delete All</button>
+        <button class="remove" @click="showRejectModal = true">Reject / Delete All</button>
       </div>
+      <p v-if="acceptError" class="accept-error">{{ acceptError }}</p>
     </div>
+
+    <AppModal
+      v-if="showRejectModal"
+      title="Reject Submissions"
+      confirm-label="Reject / Delete All"
+      :confirm-danger="true"
+      @confirm="showRejectModal = false; removeSubmission()"
+      @cancel="showRejectModal = false"
+    >
+      Reject and delete these submissions? Any unaccepted files will be permanently removed.
+    </AppModal>
 
     <div v-if="previewFile" class="preview-modal">
       <div class="modal-content">
-
         <button class="close" @click="closePreview">✖</button>
-
         <FileViewer :fileUrl="previewFile.viewUrl" :download-url="previewFile.downloadUrl"
           :mimeType="previewFile.contentType" />
-
       </div>
     </div>
   </div>
@@ -192,6 +205,27 @@ const fileIcon = (type: string) => {
   grid-template-columns: repeat(auto-fit, minmax(275px, 1fr));
   gap: 10px;
   margin-bottom: 30px;
+}
+
+.ticket-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+}
+
+.ticket-table th,
+.ticket-table td {
+  border: 1px solid #ddd;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+.ticket-table thead {
+  background: #f5f5f5;
+}
+
+.text-monospace {
+  font-family: monospace;
 }
 
 .icon {
@@ -264,7 +298,6 @@ const fileIcon = (type: string) => {
 .file-list {
   border: 1px solid #ddd;
   border-radius: 6px;
-  /* overflow: hidden; */
 }
 
 .file-row {
@@ -312,5 +345,11 @@ const fileIcon = (type: string) => {
 .file-actions button {
   padding: 4px 10px;
   font-size: 0.85rem;
+}
+
+.accept-error {
+  margin-top: 8px;
+  color: #e53935;
+  font-size: 0.9rem;
 }
 </style>
