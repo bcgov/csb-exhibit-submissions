@@ -15,12 +15,13 @@ const submissionId = Number(route.params.id);
 
 const previewFile = ref<SubmissionFile | null>(null);
 
-const { retrieveSubmission, acceptSubmissionFiles, rejectAndCloseSubmission } = useSubmissionService();
+const { retrieveSubmission, acceptSubmissionFiles, rejectAndCloseSubmission, removeFile } = useSubmissionService();
 
 const submission = ref<SubmissionReviewModel | undefined>(undefined);
 const selectedFiles = ref<string[]>([]);
 const acceptError = ref<string | null>(null);
 const showRejectModal = ref(false);
+const removeError = ref<string | null>(null);
 
 const getFileUrl = (fileId: string, action: 'view' | 'download') => `/api/files/${fileId}/${action}`;
 
@@ -103,11 +104,30 @@ const removeSubmission = async () => {
   router.push('/admin/list');
 };
 
+const removeExhibit = async (file: SubmissionFile) => {
+  removeError.value = null;
+  const success = await removeFile(file.id);
+  if (success && submission.value) {
+    submission.value = {
+      ...submission.value,
+      files: submission.value.files.filter(f => f.id !== file.id),
+    };
+    selectedFiles.value = selectedFiles.value.filter(id => id !== file.id);
+  } else if (!success) {
+    removeError.value = 'Could not remove exhibit. It may already be Entered.';
+  }
+};
+
 const fileIcon = (type: string) => {
   if (type.startsWith('image')) return '🖼';
   if (type.startsWith('video')) return '🎬';
   if (type.includes('pdf')) return '📄';
   return '📁';
+};
+
+const formatClassificationDate = (iso?: string | null): string => {
+  if (!iso) return '—';
+  return formatDateTime(convertUtcToLocal(iso), true);
 };
 </script>
 
@@ -158,12 +178,31 @@ const fileIcon = (type: string) => {
             <span class="name">{{ shortenString(file.originalFileName) }}</span>
           </div>
           <div class="file-size">{{ formatFileSize(file.fileSize) }}</div>
+
+          <!-- Classification read-only columns -->
+          <div class="classification-info">
+            <span class="cl-chip" :class="`cl-${(file.status ?? 'Unclassified').toLowerCase()}`">
+              {{ file.status ?? 'Unclassified' }}
+            </span>
+            <span v-if="file.markedValue" class="cl-field">M: {{ file.markedValue }} <small>({{ formatClassificationDate(file.markedAt) }})</small></span>
+            <span v-if="file.enteredValue" class="cl-field">E: {{ file.enteredValue }} <small>({{ formatClassificationDate(file.enteredAt) }})</small></span>
+            <span v-if="file.description" class="cl-field cl-desc" :title="file.description">{{ file.description }}</span>
+          </div>
+
           <div class="file-actions">
             <button @click="openPreview(file)">View</button>
             <button @click="downloadFile(file)">Download</button>
+            <button
+              class="remove-file-btn"
+              :disabled="file.enteredValue != null"
+              :title="file.enteredValue != null ? 'Entered exhibits cannot be removed' : 'Remove this exhibit'"
+              @click="removeExhibit(file)"
+            >Remove</button>
           </div>
         </div>
       </div>
+
+      <p v-if="removeError" class="remove-error">{{ removeError }}</p>
 
       <div class="actions-main">
         <button class="accept" @click="acceptSubmission">Accept Selected</button>
@@ -196,7 +235,7 @@ const fileIcon = (type: string) => {
 <style scoped>
 .review-page {
   padding: 2rem;
-  max-width: 900px;
+  max-width: 960px;
   margin: auto;
 }
 
@@ -229,20 +268,15 @@ const fileIcon = (type: string) => {
 }
 
 .icon {
-  font-size: 40px;
-  margin-bottom: 5px;
+  font-size: 22px;
+  width: 26px;
+  text-align: center;
 }
 
 .name {
-  font-size: 0.9rem;
-  margin-bottom: 8px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.actions button {
-  margin: 3px;
 }
 
 .actions-main {
@@ -303,10 +337,10 @@ const fileIcon = (type: string) => {
 .file-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 10px 14px;
   border-bottom: 1px solid #eee;
-  column-gap: 20px;
+  column-gap: 14px;
+  flex-wrap: wrap;
 }
 
 .file-row:hover {
@@ -325,26 +359,75 @@ const fileIcon = (type: string) => {
   min-width: 0;
 }
 
-.icon {
-  font-size: 22px;
-  width: 26px;
-  text-align: center;
+.file-size {
+  white-space: nowrap;
+  font-size: 0.85rem;
+  color: #666;
 }
 
-.name {
+.classification-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 2;
+  min-width: 0;
+}
+
+.cl-chip {
+  font-size: 0.72rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cl-unclassified { background: #f0f0f0; color: #555; }
+.cl-marked       { background: #fff3cd; color: #856404; }
+.cl-entered      { background: #d1e7dd; color: #0a3622; }
+
+.cl-field {
+  font-size: 0.78rem;
+  color: #444;
+  white-space: nowrap;
+}
+
+.cl-desc {
+  max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: help;
 }
 
 .file-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .file-actions button {
   padding: 4px 10px;
   font-size: 0.85rem;
+}
+
+.remove-file-btn {
+  background: none;
+  border: 1px solid #c0392b;
+  color: #c0392b;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.remove-file-btn:disabled {
+  border-color: #ccc;
+  color: #aaa;
+  cursor: not-allowed;
+}
+
+.remove-error {
+  margin-top: 8px;
+  color: #c0392b;
+  font-size: 0.9rem;
 }
 
 .accept-error {

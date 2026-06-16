@@ -119,9 +119,12 @@ namespace CES.Business.Services
             if (file == null)
                 return false;
 
+            if (file.EnteredValue != null)
+                throw new InvalidOperationException("Entered exhibits cannot be removed.");
+
             await _fileStorage.DeleteAsync(file);
             file.IsDeleted = true;
-            file.SetUpdateBy("Officer");
+            file.SetUpdateBy("Admin");
             await _datastore.SaveChangesAsync();
             return true;
         }
@@ -155,7 +158,12 @@ namespace CES.Business.Services
                         FileSize = f.FileSize,
                         StorageProvider = f.StorageProvider,
                         Url = "",
-                        Status = f.IsDeleted ? "Removed" : "Pending"
+                        Status = f.DeriveStatus(),
+                        MarkedValue = f.MarkedValue,
+                        MarkedAt = f.MarkedAt,
+                        EnteredValue = f.EnteredValue,
+                        EnteredAt = f.EnteredAt,
+                        Description = f.Description,
                     }).ToList()
                 };
             }).ToList();

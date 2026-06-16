@@ -346,4 +346,46 @@ public class SubmissionServiceTests : IDisposable
         result.Should().BeFalse();
         _fileStorageMock.Verify(s => s.DeleteAsync(It.IsAny<StoredFiles>()), Times.Never);
     }
+
+    [Fact]
+    public async Task RemoveFile_Rejects_WhenFileIsEntered()
+    {
+        var fileId = Guid.NewGuid();
+        var file = BuildStoredFile(fileId);
+        file.EnteredValue = "5";
+        file.EnteredAt = DateTime.UtcNow;
+        _db.StoredFiles.Add(file);
+        await _db.SaveChangesAsync();
+
+        _fileStorageMock.Setup(s => s.DeleteAsync(It.IsAny<StoredFiles>())).Returns(Task.CompletedTask);
+
+        var act = async () => await _service.RemoveFileAsync(fileId);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Entered*");
+        _fileStorageMock.Verify(s => s.DeleteAsync(It.IsAny<StoredFiles>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetSubmissionsByFileNumber_IncludesClassificationFields()
+    {
+        var submission = BuildSubmission("FILE001");
+        var file = BuildStoredFile();
+        file.MarkedValue = "B";
+        file.MarkedAt = DateTime.UtcNow;
+        file.EnteredValue = "4";
+        file.EnteredAt = DateTime.UtcNow;
+        file.Description = "test exhibit";
+        submission.Files.Add(file);
+        _db.Submissions.Add(submission);
+        await _db.SaveChangesAsync();
+
+        var result = await _service.GetSubmissionsByFileNumberAsync("FILE001");
+
+        var resultFile = result.First().Files.First();
+        resultFile.MarkedValue.Should().Be("B");
+        resultFile.EnteredValue.Should().Be("4");
+        resultFile.Description.Should().Be("test exhibit");
+        resultFile.Status.Should().Be("Entered");
+    }
 }

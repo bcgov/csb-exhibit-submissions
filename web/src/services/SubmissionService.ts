@@ -1,7 +1,13 @@
 import type { ExhibitSubmissionModel } from '@/models/ExhibitSubmissionModel'
 import type { PriorSubmissionModel } from '@/models/PriorSubmissionModel'
 import type { SubmissionAcceptanceModel } from '@/models/SubmissionAcceptanceModel'
-import type { SubmissionReviewModel } from '@/models/SubmissionReviewModel'
+import type {
+  ExhibitDescriptionModel,
+  ExhibitEnterModel,
+  ExhibitMarkModel,
+  SubmissionFile,
+  SubmissionReviewModel,
+} from '@/models/SubmissionReviewModel'
 import api from './apiClient'
 
 export default function useSubmissionService() {
@@ -101,6 +107,24 @@ export default function useSubmissionService() {
     }
   }
 
+  const markExhibit = async (fileId: string, model: ExhibitMarkModel): Promise<SubmissionFile> => {
+    const result = await api.post<SubmissionFile>(`/files/${fileId}/mark`, model)
+    return result.data
+  }
+
+  const enterExhibit = async (fileId: string, model: ExhibitEnterModel): Promise<SubmissionFile> => {
+    const result = await api.post<SubmissionFile>(`/files/${fileId}/enter`, model)
+    return result.data
+  }
+
+  const updateExhibitDescription = async (
+    fileId: string,
+    model: ExhibitDescriptionModel,
+  ): Promise<SubmissionFile> => {
+    const result = await api.patch<SubmissionFile>(`/files/${fileId}/description`, model)
+    return result.data
+  }
+
   return {
     submitExhibits,
     retrieveSubmission,
@@ -109,5 +133,8 @@ export default function useSubmissionService() {
     rejectAndCloseSubmission,
     getSubmissionsByFileNumber,
     removeFile,
+    markExhibit,
+    enterExhibit,
+    updateExhibitDescription,
   }
 }

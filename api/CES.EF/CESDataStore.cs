@@ -21,7 +21,8 @@ namespace CES.EF
         public DbSet<Submission> Submissions { get; set; }
         public DbSet<SubmissionTicket> SubmissionTickets { get; set; }
         public DbSet<StoredFiles> StoredFiles { get; set; }
-        
+        public DbSet<SubmissionAuditLog> SubmissionAuditLogs { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
