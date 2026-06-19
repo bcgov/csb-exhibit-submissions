@@ -1,4 +1,13 @@
 <script setup lang="ts">
+import {
+  CLASSIFICATION_EDIT_WINDOW_SECONDS,
+  DESCRIPTION_MAX_LENGTH,
+  ENTERED_MAX,
+  ENTERED_MIN,
+  MARKED_MIN,
+  SAVE_INDICATOR_FADE_SECONDS,
+  VIEWABLE_CONTENT_TYPE_PREFIXES
+} from '@/constants/classification'
 import { formatDateTime, formatDateyyyymmdd } from '@/helpers/formatters'
 import type { ExhibitSubmissionModel, SubmissionTicketModel } from '@/models/ExhibitSubmissionModel'
 import type { PriorSubmissionModel } from '@/models/PriorSubmissionModel'
@@ -9,16 +18,6 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import FileDropZone from '../shared/FileDropZone.vue'
 import FileViewer from '../shared/FileViewer.vue'
-import {
-  CLASSIFICATION_EDIT_WINDOW_SECONDS,
-  DESCRIPTION_MAX_LENGTH,
-  ENTERED_MAX,
-  ENTERED_MIN,
-  MARKED_MAX,
-  MARKED_MIN,
-  SAVE_INDICATOR_FADE_SECONDS,
-  VIEWABLE_CONTENT_TYPE_PREFIXES,
-} from '@/constants/classification'
 
 const router = useRouter()
 const {
@@ -441,8 +440,12 @@ const submitForm = async () => {
 
 .prior-file-item {
   padding: 0.6rem 0.75rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #d0d0d0;
   font-size: 0.85rem;
+}
+
+.prior-file-item:nth-child(even) {
+  background: #f8f9fa;
 }
 
 .prior-file-item:last-child {
@@ -488,11 +491,25 @@ const submitForm = async () => {
   border-radius: 10px;
   font-weight: 600;
   white-space: nowrap;
+  min-width: 88px;
+  display: inline-block;
+  text-align: center;
 }
 
-.chip-unclassified { background: #f0f0f0; color: #555; }
-.chip-marked       { background: #fff3cd; color: #856404; }
-.chip-entered      { background: #d1e7dd; color: #0a3622; }
+.chip-unclassified {
+  background: #f0f0f0;
+  color: #555;
+}
+
+.chip-marked {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.chip-entered {
+  background: #d1e7dd;
+  color: #0a3622;
+}
 
 .prior-file-row2 {
   display: flex;
@@ -505,6 +522,7 @@ const submitForm = async () => {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
+  width: 115px;
 }
 
 .classification-group label {
@@ -573,6 +591,14 @@ const submitForm = async () => {
   font-size: 0.72rem;
   color: #777;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ticket-overflow {
+  cursor: help;
+  font-style: italic;
+  opacity: 0.85;
 }
 
 .save-indicator {
@@ -582,8 +608,18 @@ const submitForm = async () => {
   align-self: center;
 }
 
-.save-success { color: #28a745; }
-.save-error   { color: #c0392b; cursor: help; }
+.save-success {
+  color: #28a745;
+}
+
+.save-error {
+  color: #c0392b;
+  cursor: help;
+}
+
+.view-container {
+  min-width: 50px;
+}
 
 .view-btn {
   background: none;
@@ -597,7 +633,9 @@ const submitForm = async () => {
   align-self: flex-start;
 }
 
-.view-btn:hover { background: #e8f0fe; }
+.view-btn:hover {
+  background: #e8f0fe;
+}
 
 .prior-empty {
   font-size: 0.82rem;
@@ -618,7 +656,9 @@ const submitForm = async () => {
   max-width: 250px;
 }
 
-.dropzone { margin-top: 1rem; }
+.dropzone {
+  margin-top: 1rem;
+}
 
 .actions {
   margin-top: 1.5rem;
@@ -636,12 +676,26 @@ const submitForm = async () => {
   cursor: pointer;
 }
 
-.back-btn:hover { background: #5a6268; }
+.back-btn:hover {
+  background: #5a6268;
+}
 
-.success-text { font-size: 0.8rem; color: green; margin-top: 0.25rem; }
-.error-text   { font-size: 0.8rem; color: red; margin-top: 0.25rem; }
+.success-text {
+  font-size: 0.8rem;
+  color: green;
+  margin-top: 0.25rem;
+}
 
-.upload-progress { width: 100%; margin-top: 1rem; }
+.error-text {
+  font-size: 0.8rem;
+  color: red;
+  margin-top: 0.25rem;
+}
+
+.upload-progress {
+  width: 100%;
+  margin-top: 1rem;
+}
 
 /* History popup */
 .history-overlay {
@@ -696,7 +750,9 @@ const submitForm = async () => {
   text-align: left;
 }
 
-.history-table thead { background: #f5f5f5; }
+.history-table thead {
+  background: #f5f5f5;
+}
 
 .dialog-footer {
   margin-top: 1rem;
@@ -791,24 +847,25 @@ const submitForm = async () => {
               <div class="prior-file-row1">
                 <span class="prior-file-name">{{ entry.file.originalFileName }}</span>
                 <span class="prior-file-date">{{ formatDateTime(entry.submissionDate ?? '', true) }}</span>
-                <span class="prior-file-tickets">File #{{ entry.fileNumbers.join(', ') }}</span>
+                <span class="prior-file-tickets">
+                  File #{{ entry.fileNumbers.length <= 2 ? entry.fileNumbers.join(', ') : entry.fileNumbers[0] }}<span
+                    v-if="entry.fileNumbers.length > 2"
+                    class="ticket-overflow"
+                    :title="entry.fileNumbers.join(' \n')"> (+{{ entry.fileNumbers.length - 1 }})</span>
+                </span>
                 <span :class="statusChipClass(entry.file.status)">{{ entry.file.status ?? 'Unclassified' }}</span>
 
                 <!-- Save indicator -->
-                <span v-if="saveIndicators[entry.file.id] === 'success'" class="save-indicator save-success" title="Saved">✓</span>
-                <span
-                  v-else-if="saveIndicators[entry.file.id]"
-                  class="save-indicator save-error"
-                  :title="saveIndicators[entry.file.id] as string"
-                >✕</span>
+                <span v-if="saveIndicators[entry.file.id] === 'success'" class="save-indicator save-success"
+                  title="Saved">✓</span>
+                <span v-else-if="saveIndicators[entry.file.id]" class="save-indicator save-error"
+                  :title="saveIndicators[entry.file.id] as string">✕</span>
 
                 <!-- View button (browser-viewable types only; no download) -->
-                <button
-                  v-if="isViewable(entry.file.contentType)"
-                  type="button"
-                  class="view-btn"
-                  @click="openPreview(entry.file)"
-                >View</button>
+                <div class="view-container">
+                  <button v-if="isViewable(entry.file.contentType)" type="button" class="view-btn"
+                    @click="openPreview(entry.file)">View</button>
+                </div>
               </div>
 
               <!-- Row 2: classification controls -->
@@ -817,11 +874,8 @@ const submitForm = async () => {
                 <!-- Marked -->
                 <div class="classification-group">
                   <label>Marked</label>
-                  <select
-                    :disabled="!isMarkedEnabled(entry.file)"
-                    :value="entry.file.markedValue ?? ''"
-                    @change="onMarkChange(entry.file, ($event.target as HTMLSelectElement).value)"
-                  >
+                  <select :disabled="!isMarkedEnabled(entry.file)" :value="entry.file.markedValue ?? ''"
+                    @change="onMarkChange(entry.file, ($event.target as HTMLSelectElement).value)">
                     <option value="">—</option>
                     <option v-for="letter in markedLetters" :key="letter" :value="letter">{{ letter }}</option>
                   </select>
@@ -833,11 +887,8 @@ const submitForm = async () => {
                 <!-- Entered -->
                 <div class="classification-group">
                   <label>Entered</label>
-                  <select
-                    :disabled="!isEnteredEnabled(entry.file)"
-                    :value="entry.file.enteredValue ?? ''"
-                    @change="onEnterChange(entry.file, ($event.target as HTMLSelectElement).value)"
-                  >
+                  <select :disabled="!isEnteredEnabled(entry.file)" :value="entry.file.enteredValue ?? ''"
+                    @change="onEnterChange(entry.file, ($event.target as HTMLSelectElement).value)">
                     <option value="">—</option>
                     <option v-for="num in enteredNumbers" :key="num" :value="num">{{ num }}</option>
                   </select>
@@ -849,18 +900,11 @@ const submitForm = async () => {
                 <!-- Description -->
                 <div class="description-group">
                   <label>Description</label>
-                  <input
-                    type="text"
-                    :disabled="!isDescriptionEnabled(entry.file)"
-                    :maxlength="DESCRIPTION_MAX_LENGTH"
-                    v-model="localDescriptions[entry.file.id]"
-                    @blur="onDescriptionBlur(entry.file)"
-                    placeholder="Optional description…"
-                  />
-                  <span
-                    class="desc-counter"
-                    :class="{ over: (localDescriptions[entry.file.id]?.length ?? 0) > DESCRIPTION_MAX_LENGTH }"
-                  >
+                  <input type="text" :disabled="!isDescriptionEnabled(entry.file)" :maxlength="DESCRIPTION_MAX_LENGTH"
+                    v-model="localDescriptions[entry.file.id]" @blur="onDescriptionBlur(entry.file)"
+                    placeholder="Optional description…" />
+                  <span class="desc-counter"
+                    :class="{ over: (localDescriptions[entry.file.id]?.length ?? 0) > DESCRIPTION_MAX_LENGTH }">
                     {{ DESCRIPTION_MAX_LENGTH - (localDescriptions[entry.file.id]?.length ?? 0) }} remaining
                   </span>
                 </div>
@@ -884,14 +928,10 @@ const submitForm = async () => {
 
       <div class="upload-progress">
         <div class="progress" style="height: 20px;">
-          <div
-            class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
-            role="progressbar"
-            :style="{ width: uploadProgress + '%' }"
-            :aria-valuenow="uploadProgress"
-            aria-valuemin="0"
-            aria-valuemax="100"
-          ></div>
+          <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar"
+            :style="{ width: uploadProgress + '%' }" :aria-valuenow="uploadProgress" aria-valuemin="0"
+            aria-valuemax="100">
+          </div>
         </div>
       </div>
 
@@ -908,11 +948,8 @@ const submitForm = async () => {
     <div v-if="previewFile" class="preview-overlay" @click.self="closePreview">
       <div class="preview-dialog">
         <button type="button" class="close-btn" @click="closePreview">✖</button>
-        <FileViewer
-          :fileUrl="`/api/files/${previewFile.id}/view`"
-          :mimeType="previewFile.contentType"
-          :hideDownload="true"
-        />
+        <FileViewer :fileUrl="`/api/files/${previewFile.id}/view`" :mimeType="previewFile.contentType"
+          :hideDownload="true" />
       </div>
     </div>
 
@@ -921,11 +958,7 @@ const submitForm = async () => {
       <div class="history-dialog">
         <h3>Exhibit History by Ticket Number</h3>
         <div class="history-search">
-          <input
-            v-model="historyFileNumber"
-            placeholder="Enter file/ticket number…"
-            @keyup.enter="loadHistory"
-          />
+          <input v-model="historyFileNumber" placeholder="Enter file/ticket number…" @keyup.enter="loadHistory" />
           <button type="button" @click="loadHistory" :disabled="historyLoading">Search</button>
         </div>
 
@@ -961,7 +994,9 @@ const submitForm = async () => {
             </tbody>
           </table>
         </template>
-        <p v-else-if="historyFileNumber && !historyLoading" class="prior-empty">No exhibits found for this ticket number.</p>
+        <p v-else-if="historyFileNumber && !historyLoading" class="prior-empty">No exhibits found for this ticket
+          number.
+        </p>
 
         <div class="dialog-footer">
           <button type="button" @click="historyDialogOpen = false">Close</button>
