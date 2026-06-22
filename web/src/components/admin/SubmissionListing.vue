@@ -71,38 +71,6 @@ const prevPage = () => {
 };
 </script>
 
-<style scoped>
-.submission-list-page {
-  padding: 2rem;
-}
-
-.submission-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 1rem;
-}
-
-.submission-table th,
-.submission-table td {
-  border: 1px solid #ddd;
-  padding: 0.75rem;
-}
-
-.submission-table tr:hover {
-  background-color: #cac8c8;
-  cursor: pointer;
-}
-
-.selected {
-  background-color: #dceeff;
-}
-
-.pagination {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-}
-</style>
 
 
 

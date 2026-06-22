@@ -1,0 +1,186 @@
+@use "variables" as *;
+
+// --- FileDropZone ---
+
+.dropzone {
+  margin-top: 2rem;
+  padding: 2rem;
+  border: 2px dashed #aaa;
+  text-align: center;
+  cursor: pointer;
+
+  &:hover {
+    background: $color-bg-light;
+  }
+
+  .file-list {
+    margin-top: 1rem;
+    list-style: none;
+    padding: 0;
+
+    li {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+  }
+
+  .file-info {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .icon {
+    font-size: 18px;
+  }
+
+  .small {
+    font-size: 0.8rem;
+    color: #666;
+  }
+}
+
+// --- AutocompleteSelect ---
+
+.autocomplete-wrapper {
+  position: relative;
+
+  input,
+  select {
+    padding: 0.5rem;
+    font-size: 1rem;
+    border: 1px solid $color-border-medium;
+    border-radius: 4px;
+  }
+
+  .loading-text {
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 0.25rem;
+  }
+}
+
+.dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid $color-border-medium;
+  border-top: none;
+  max-height: 200px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  z-index: 10;
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.dropdown-item {
+  padding: 0.5rem;
+  cursor: pointer;
+
+  &:hover,
+  &.active {
+    background-color: $color-border;
+  }
+}
+
+// --- AppModal ---
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: $color-overlay;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-box {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem 2rem;
+  max-width: 480px;
+  width: 90%;
+  box-shadow: $shadow-medium;
+
+  .modal-title {
+    margin: 0 0 1rem;
+    font-size: 1.15rem;
+  }
+
+  .modal-body {
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+}
+
+.btn-cancel {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.btn-confirm {
+  background: $color-success;
+  color: white;
+
+  &.danger {
+    background: $color-danger;
+  }
+}
+
+// --- FileViewer ---
+
+.evidence-viewer {
+  width: 100%;
+  max-width: 1000px;
+
+  .viewer {
+    width: 100%;
+    max-height: 600px;
+    border: 1px solid $color-border;
+    border-radius: 6px;
+    object-fit: scale-down;
+  }
+
+  iframe.viewer {
+    height: 600px;
+  }
+
+  .audio-viewer {
+    width: 100%;
+    margin: 1rem 0;
+  }
+
+  .actions {
+    margin-top: 10px;
+  }
+
+  .download-btn {
+    padding: 8px 14px;
+    background: $color-primary;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+
+    &:hover {
+      background: $color-primary-hover;
+    }
+  }
+
+  .download-only {
+    padding: 20px;
+    background: $color-bg-light;
+  }
+}
