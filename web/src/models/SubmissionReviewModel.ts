@@ -1,5 +1,7 @@
 import type { SubmissionTicketModel } from './ExhibitSubmissionModel';
 
+export type SubmissionStatus = 'Pending' | 'Accepted' | 'Rejected'
+
 export interface SubmissionFile {
   id: string;
   originalFileName: string;
@@ -15,6 +17,7 @@ export interface SubmissionFile {
   enteredValue?: string | null;
   enteredAt?: string | null;
   description?: string | null;
+  deletedAt?: string | null;
 }
 
 export interface ExhibitMarkModel {
@@ -36,6 +39,30 @@ export interface SubmissionReviewModel {
   location: string;
   room: string;
   locationName: string;
+  status: SubmissionStatus;
+  statusChangedDate?: string | null;
+  exhibitCount: number;
   tickets: SubmissionTicketModel[];
   files: SubmissionFile[];
+}
+
+export interface SubmissionListFilter {
+  submissionDateFrom?: string;
+  submissionDateTo?: string;
+  fileNumberText?: string;
+  accusedName?: string;
+  status?: SubmissionStatus | '';
+  page: number;
+  pageSize: number;
+}
+
+export interface PagedResult<T> {
+  items: T[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface SubmissionActionModel {
+  submissionId: number;
 }

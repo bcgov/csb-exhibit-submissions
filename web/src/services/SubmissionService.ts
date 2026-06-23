@@ -1,11 +1,13 @@
 import type { ExhibitSubmissionModel } from '@/models/ExhibitSubmissionModel'
 import type { PriorSubmissionModel } from '@/models/PriorSubmissionModel'
-import type { SubmissionAcceptanceModel } from '@/models/SubmissionAcceptanceModel'
 import type {
   ExhibitDescriptionModel,
   ExhibitEnterModel,
   ExhibitMarkModel,
+  PagedResult,
+  SubmissionActionModel,
   SubmissionFile,
+  SubmissionListFilter,
   SubmissionReviewModel,
 } from '@/models/SubmissionReviewModel'
 import api from './apiClient'
@@ -22,7 +24,6 @@ export default function useSubmissionService() {
     try {
       const formData = new FormData()
 
-      // Shared submission fields
       formData.append('shortDate', model.shortDate)
       formData.append('locationId', model.locationId)
       formData.append('locationNameText', model.locationNameText)
@@ -30,7 +31,6 @@ export default function useSubmissionService() {
       formData.append('roomText', model.roomText)
       formData.append('officerNumber', model.officerNumber)
 
-      // Indexed ticket fields: tickets[n].fieldName
       model.tickets.forEach((ticket, i) => {
         formData.append(`tickets[${i}].appearanceId`, ticket.appearanceId)
         formData.append(`tickets[${i}].appearanceDateTime`, ticket.appearanceDateTime)
@@ -42,14 +42,13 @@ export default function useSubmissionService() {
         formData.append(`tickets[${i}].accusedDOB`, ticket.accusedDOB)
       })
 
-      // Only newly-selected files are uploaded; prior exhibits already live on the server.
       files.forEach((file) => {
         formData.append('files', file)
       })
 
       const apiReturn = await api.post(url, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 0, // disabled to support large files
+        timeout: 0,
         onUploadProgress: (event) => {
           const percent = Math.round((event.loaded * 100) / (event.total ?? 1))
           progressCallback?.(percent)
@@ -72,22 +71,38 @@ export default function useSubmissionService() {
     return apiReturn?.data
   }
 
-  const retrieveSubmissionListing = async (): Promise<SubmissionReviewModel[] | undefined> => {
+  const retrieveSubmissionListing = async (
+    filter?: Partial<SubmissionListFilter>,
+  ): Promise<PagedResult<SubmissionReviewModel> | undefined> => {
     const url = `/submissions/listing/`
-    const apiReturn = await api.get<SubmissionReviewModel[]>(url)
+    const params: Record<string, unknown> = {}
+    if (filter?.submissionDateFrom) params['submissionDateFrom'] = filter.submissionDateFrom
+    if (filter?.submissionDateTo) params['submissionDateTo'] = filter.submissionDateTo
+    if (filter?.fileNumberText) params['fileNumberText'] = filter.fileNumberText
+    if (filter?.accusedName) params['accusedName'] = filter.accusedName
+    if (filter?.status) params['status'] = filter.status
+    if (filter?.page) params['page'] = filter.page
+    if (filter?.pageSize) params['pageSize'] = filter.pageSize
+    const apiReturn = await api.get<PagedResult<SubmissionReviewModel>>(url, { params })
     return apiReturn?.data
   }
 
-  const acceptSubmissionFiles = async (model: SubmissionAcceptanceModel): Promise<boolean> => {
-    const url = `/submissions/accept/`
-    const apiReturn = await api.post(url, model)
-    return apiReturn.data ?? false
+  const acceptSubmission = async (model: SubmissionActionModel): Promise<boolean> => {
+    try {
+      await api.post(`/submissions/accept/`, model)
+      return true
+    } catch {
+      return false
+    }
   }
 
-  const rejectAndCloseSubmission = async (model: SubmissionAcceptanceModel): Promise<boolean> => {
-    const url = `/submissions/reject/`
-    const apiReturn = await api.post(url, model)
-    return apiReturn.data ?? false
+  const rejectSubmission = async (model: SubmissionActionModel): Promise<boolean> => {
+    try {
+      await api.post(`/submissions/reject/`, model)
+      return true
+    } catch {
+      return false
+    }
   }
 
   const getSubmissionsByFileNumber = async (fileNumberText: string): Promise<PriorSubmissionModel[]> => {
@@ -129,8 +144,8 @@ export default function useSubmissionService() {
     submitExhibits,
     retrieveSubmission,
     retrieveSubmissionListing,
-    acceptSubmissionFiles,
-    rejectAndCloseSubmission,
+    acceptSubmission,
+    rejectSubmission,
     getSubmissionsByFileNumber,
     removeFile,
     markExhibit,

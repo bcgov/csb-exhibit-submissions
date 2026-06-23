@@ -1,3 +1,4 @@
+using CES.Entities.Enums;
 using CES.Entities.Infrastructure;
 
 namespace CES.Entities
@@ -12,6 +13,8 @@ namespace CES.Entities
         public string? OfficerNumber { get; set; } = string.Empty;
         public List<StoredFiles> Files { get; set; } = new List<StoredFiles>();
         public ICollection<SubmissionTicket> Tickets { get; set; } = new List<SubmissionTicket>();
+        public SubmissionStatus Status { get; set; } = SubmissionStatus.Pending;
+        public DateTime? StatusChangedDateUTC { get; set; }
 
         public Submission()
         {

@@ -29,9 +29,9 @@ namespace CES.API.FileStorage
             throw new NotImplementedException();
         }
         
-        public async Task AcceptAsync(StoredFiles file)
+        public Task AcceptSubmissionAsync(Submission submission)
         {
-            return;
+            throw new NotImplementedException();
         }
-        }
+    }
 }

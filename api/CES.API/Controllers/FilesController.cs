@@ -1,7 +1,5 @@
 using CES.Business.Interfaces;
 using CES.Business.Models;
-using CES.Entities.Interfaces;
-using CES.Business.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -21,40 +19,43 @@ namespace CES.API.Controllers
 
         [HttpPost]
         [Route("api/files/{fileId:guid}/mark")]
-        [Authorize(Roles = "User")]
+        [Authorize(Roles = "User,Admin")]
         public async Task<IActionResult> MarkExhibit(Guid fileId, [FromBody] ExhibitMarkModel model)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var changedBy = User.FindFirstValue(ClaimTypes.UserData) ?? "Officer";
-            var result = await _fileService.MarkExhibitAsync(fileId, model.MarkedValue, changedBy);
+            var isAdmin = User.IsInRole("Admin");
+            var changedBy = User.FindFirstValue(ClaimTypes.UserData) ?? (isAdmin ? "Admin" : "Officer");
+            var result = await _fileService.MarkExhibitAsync(fileId, model.MarkedValue, changedBy, isAdmin);
             return Ok(result);
         }
 
         [HttpPost]
         [Route("api/files/{fileId:guid}/enter")]
-        [Authorize(Roles = "User")]
+        [Authorize(Roles = "User,Admin")]
         public async Task<IActionResult> EnterExhibit(Guid fileId, [FromBody] ExhibitEnterModel model)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var changedBy = User.FindFirstValue(ClaimTypes.UserData) ?? "Officer";
-            var result = await _fileService.EnterExhibitAsync(fileId, model.EnteredValue, changedBy);
+            var isAdmin = User.IsInRole("Admin");
+            var changedBy = User.FindFirstValue(ClaimTypes.UserData) ?? (isAdmin ? "Admin" : "Officer");
+            var result = await _fileService.EnterExhibitAsync(fileId, model.EnteredValue, changedBy, isAdmin);
             return Ok(result);
         }
 
         [HttpPatch]
         [Route("api/files/{fileId:guid}/description")]
-        [Authorize(Roles = "User")]
+        [Authorize(Roles = "User,Admin")]
         public async Task<IActionResult> UpdateDescription(Guid fileId, [FromBody] ExhibitDescriptionModel model)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var changedBy = User.FindFirstValue(ClaimTypes.UserData) ?? "Officer";
-            var result = await _fileService.UpdateExhibitDescriptionAsync(fileId, model.Description, changedBy);
+            var isAdmin = User.IsInRole("Admin");
+            var changedBy = User.FindFirstValue(ClaimTypes.UserData) ?? (isAdmin ? "Admin" : "Officer");
+            var result = await _fileService.UpdateExhibitDescriptionAsync(fileId, model.Description, changedBy, isAdmin);
             return Ok(result);
         }
 
@@ -68,9 +69,11 @@ namespace CES.API.Controllers
             if (file == null)
                 return NotFound();
 
+            if (file.IsDeleted)
+                return NotFound();
+
             var stream = await _fileStorage.GetAsync(file);
 
-            // return File(stream, file.ContentType, enableRangeProcessing: true);
             return new FileStreamResult(stream, file.ContentType) { EnableRangeProcessing = true };
         }
 
@@ -84,50 +87,12 @@ namespace CES.API.Controllers
             if (file == null)
                 return NotFound();
 
+            if (file.IsDeleted)
+                return NotFound();
+
             var stream = await _fileStorage.GetAsync(file);
 
             return File(stream, file.ContentType, file.OriginalFileName);
         }
-
-
-/*
-    WIP: To secure the file view and downloading so that users have to be authorized.
-    current /view and /download links are not secure if someone knows/guesses the file GUID
-*/
-        // [Authorize]
-        // [HttpGet("{id}/stream-url")]
-        // public async Task<IActionResult> GetStreamUrl(Guid fileId)
-        // {
-        //     var file = await _fileService.RetrieveFileMetaData(fileId);
-        //     if (file == null)
-        //         return NotFound();
-
-        //     // expires in 2 minutes
-        //     var expires = DateTime.UtcNow.AddMinutes(2);
-
-        //     var token = await CES.Business.Services.CryptographyService.GenerateVideoViewToken(file.Id, expires);
-
-        //     var url = $"{Request.Scheme}://{Request.Host}/api/files/stream/{file.Id}?token={token}";
-
-        //     return Ok(new { url });
-        // }
-
-        // [AllowAnonymous]
-        // [HttpGet("stream/{id}")]
-        // public async Task<IActionResult> Stream(Guid fileId, string token)
-        // {
-        //     var isTokenValid = await CES.Business.Services.CryptographyService.ValidateVideoToken(fileId, token);
-        //     if (!isTokenValid)
-        //         return Unauthorized();
-
-        //     var file = await _fileService.RetrieveFileMetaData(fileId);
-        //     if (file == null)
-        //         return NotFound();
-
-        //     var stream = await _fileStorage.GetAsync(file);
-
-        //     // return File(stream, file.ContentType, enableRangeProcessing: true);
-        //     return new FileStreamResult(stream, file.ContentType) { EnableRangeProcessing = true };
-        // }
     }
 }

@@ -1,6 +1,8 @@
+using CES.Business.Constants;
 using CES.Business.Extensions.Entities;
 using CES.Business.Interfaces;
 using CES.Business.Models;
+using CES.Entities.Enums;
 using CES.Entities.Infrastructure;
 using CES.Entities.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -46,7 +48,7 @@ namespace CES.Business.Services
         {
             var entity = await _datastore.Submissions
                 .Include(s => s.Tickets)
-                .Include(s => s.Files.Where(f => !f.IsDeleted))
+                .Include(s => s.Files) // include all files (including Removed) for historical view
                 .FirstOrDefaultAsync(s => s.Id == submissionId);
 
             if (entity == null)
@@ -55,75 +57,128 @@ namespace CES.Business.Services
             return entity.ToReviewModel();
         }
 
-        public async Task<List<SubmissionReviewModel>> RetrieveSubmissionListing()
+        public async Task<PagedResult<SubmissionReviewModel>> RetrieveSubmissionListing(SubmissionListFilter filter)
         {
-            var submissions = await _datastore.Submissions
-                .Where(s => !s.IsDeleted)
+            var pageSize = Math.Clamp(filter.PageSize, 1, PagingConstants.MaxPageSize);
+            if (pageSize == 0) pageSize = PagingConstants.DefaultPageSize;
+            var page = Math.Max(1, filter.Page);
+
+            var query = _datastore.Submissions
                 .Include(s => s.Tickets)
-                .ToListAsync();
+                .Include(s => s.Files)
+                .AsQueryable();
 
-            return submissions.Select(s => s.ToReviewModel()).ToList();
-        }
+            if (filter.SubmissionDateFrom.HasValue)
+                query = query.Where(s => s.UploadDate >= filter.SubmissionDateFrom.Value);
 
-        public async Task<bool> AcceptSubmissions(EvidenceAcceptanceModel model)
-        {
-            var submission = await _datastore.Submissions
-                .Include(s => s.Files.Where(f => !f.IsDeleted))
-                .FirstOrDefaultAsync(s => s.Id == model.FileId);
+            if (filter.SubmissionDateTo.HasValue)
+                query = query.Where(s => s.UploadDate <= filter.SubmissionDateTo.Value);
 
-            if (submission == null)
-                return false;
-
-            int processedCount = 0;
-            foreach (var file in model.acceptedFiles)
+            if (!string.IsNullOrWhiteSpace(filter.FileNumberText))
             {
-                var storedFile = await _datastore.StoredFiles.FirstOrDefaultAsync(f => f.Id == file);
-                if (storedFile == null)
-                    return false;
-
-                await _fileStorage.AcceptAsync(storedFile);
-                storedFile.IsDeleted = true;
-                processedCount++;
+                var fnLower = filter.FileNumberText.ToLower();
+                query = query.Where(s => s.Tickets.Any(t => t.FileNumberText.ToLower().Contains(fnLower)));
             }
 
-            if (processedCount == submission.Files.Count())
-                submission.IsDeleted = true;
+            if (!string.IsNullOrWhiteSpace(filter.AccusedName))
+            {
+                var nameLower = filter.AccusedName.ToLower();
+                query = query.Where(s => s.Tickets.Any(t => t.AccusedName != null && t.AccusedName.ToLower().Contains(nameLower)));
+            }
 
-            await _datastore.SaveChangesAsync();
-            return true;
+            if (filter.Status.HasValue)
+                query = query.Where(s => s.Status == filter.Status.Value);
+
+            var totalCount = await query.CountAsync();
+
+            var submissions = await query
+                .OrderByDescending(s => s.UploadDate)
+                .ThenBy(s => s.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResult<SubmissionReviewModel>
+            {
+                Items = submissions.Select(s => s.ToReviewModel()).ToList(),
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+            };
         }
 
-        public async Task<bool> RejectSubmissions(EvidenceAcceptanceModel model)
+        public async Task<(bool success, string? error)> AcceptSubmissions(SubmissionActionModel model)
         {
             var submission = await _datastore.Submissions
-                .Include(s => s.Files.Where(f => !f.IsDeleted))
-                .FirstOrDefaultAsync(s => s.Id == model.FileId);
+                .Include(s => s.Files)
+                .Include(s => s.Tickets)
+                .FirstOrDefaultAsync(s => s.Id == model.SubmissionId);
 
             if (submission == null)
-                return false;
+                return (false, "Submission not found.");
 
-            foreach (var file in submission.Files)
+            if (submission.Status != SubmissionStatus.Pending)
+                return (false, "Only Pending submissions can be accepted.");
+
+            var unreadyFiles = submission.Files
+                .Where(f => !f.IsDeleted && f.EnteredValue == null)
+                .Select(f => f.OriginalFileName)
+                .ToList();
+
+            if (unreadyFiles.Count > 0)
+                return (false, $"All exhibits must be Entered or Removed before accepting. Unready: {string.Join(", ", unreadyFiles)}");
+
+            await _fileStorage.AcceptSubmissionAsync(submission);
+
+            submission.Status = SubmissionStatus.Accepted;
+            submission.StatusChangedDateUTC = SystemDate.UtcNow();
+
+            await _datastore.SaveChangesAsync();
+            return (true, null);
+        }
+
+        public async Task<(bool success, string? error)> RejectSubmissions(SubmissionActionModel model)
+        {
+            var submission = await _datastore.Submissions
+                .Include(s => s.Files)
+                .FirstOrDefaultAsync(s => s.Id == model.SubmissionId);
+
+            if (submission == null)
+                return (false, "Submission not found.");
+
+            if (submission.Status != SubmissionStatus.Pending)
+                return (false, "Only Pending submissions can be rejected.");
+
+            var now = SystemDate.UtcNow();
+            foreach (var file in submission.Files.Where(f => !f.IsDeleted))
             {
                 await _fileStorage.DeleteAsync(file);
                 file.IsDeleted = true;
+                file.DeletedAtUTC = now;
             }
 
-            submission.IsDeleted = true;
+            submission.Status = SubmissionStatus.Rejected;
+            submission.StatusChangedDateUTC = now;
+
             await _datastore.SaveChangesAsync();
-            return true;
+            return (true, null);
         }
 
         public async Task<bool> RemoveFileAsync(Guid fileId)
         {
-            var file = await _datastore.StoredFiles.FirstOrDefaultAsync(f => f.Id == fileId && !f.IsDeleted);
+            var file = await _datastore.StoredFiles
+                .Include(f => f.Submission)
+                .FirstOrDefaultAsync(f => f.Id == fileId && !f.IsDeleted);
+
             if (file == null)
                 return false;
 
-            if (file.EnteredValue != null)
-                throw new InvalidOperationException("Entered exhibits cannot be removed.");
+            if (file.Submission.Status != SubmissionStatus.Pending)
+                throw new InvalidOperationException("Exhibits can only be removed from Pending submissions.");
 
             await _fileStorage.DeleteAsync(file);
             file.IsDeleted = true;
+            file.DeletedAtUTC = SystemDate.UtcNow();
             file.SetUpdateBy("Admin");
             await _datastore.SaveChangesAsync();
             return true;
@@ -134,8 +189,7 @@ namespace CES.Business.Services
             var submissions = await _datastore.Submissions
                 .Where(s => !s.IsDeleted && s.Tickets.Any(t => t.FileNumberText == fileNumberText))
                 .Include(s => s.Tickets)
-                // .Include(s => s.Files.Where(f => !f.IsDeleted))
-                .Include(s => s.Files) 
+                .Include(s => s.Files)
                 .OrderByDescending(s => s.UploadDate)
                 .ToListAsync();
 
@@ -164,6 +218,7 @@ namespace CES.Business.Services
                         EnteredValue = f.EnteredValue,
                         EnteredAt = f.EnteredAt,
                         Description = f.Description,
+                        DeletedAt = f.DeletedAtUTC,
                     }).ToList()
                 };
             }).ToList();

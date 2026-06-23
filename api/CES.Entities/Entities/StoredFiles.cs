@@ -21,6 +21,8 @@ namespace CES.Entities
         public int SubmissionId { get; set; }
         public Submission Submission { get; set; } = null!;
 
+        public DateTime? DeletedAtUTC { get; set; }
+
         // Classification fields (added for CES-28)
         public string? MarkedValue { get; set; }
         public DateTime? MarkedAt { get; set; }

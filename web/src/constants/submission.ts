@@ -1,0 +1,1 @@
+export const SUBMISSION_LIST_PAGE_SIZE = 20
