@@ -76,44 +76,79 @@ namespace CES.API.FileStorage
 
             var hash = await CES.Business.Services.CryptographyService.ComputeSHA256Async(sourcePath);
 
-            using var zipStream = new FileStream(zipPath, FileMode.Create);
-            using var archive = new ZipArchive(zipStream, ZipArchiveMode.Create);
+            await using var zipStream = new FileStream(zipPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 65536, useAsync: true);
 
-            // Add original file
-            var fileEntry = archive.CreateEntry(file.OriginalFileName);
-
-            using (var entryStream = fileEntry.Open())
-            using (var fileStream = new FileStream(sourcePath, FileMode.Open, FileAccess.Read))
+            // ZipArchive must be disposed (writes Central Directory + EOCD) before zipStream is flushed.
+            // leaveOpen: true lets us control zipStream lifetime separately via await using above.
+            using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, leaveOpen: true))
             {
-                await fileStream.CopyToAsync(entryStream);
-            }
-
-            // Create metadata.json
-            var metadataEntry = archive.CreateEntry("metadata.json");
-
-            var metadata = new {
-                                    Path = file.StoredPath,
-                                    File = file,
-                                    HashAlgorithm = "SHA256",
-                                    FileHash = hash
-                                };
-            using (var entryStream = metadataEntry.Open())
-            {
-                await JsonSerializer.SerializeAsync(entryStream, metadata, new JsonSerializerOptions
+                var fileEntry = archive.CreateEntry(file.OriginalFileName);
+                using (var entryStream = fileEntry.Open())
+                await using (var fileStream = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 65536, useAsync: true))
                 {
-                    WriteIndented = true
-                });
-            }
+                    await fileStream.CopyToAsync(entryStream);
+                }
 
-            // sha256.txt
-            var hashEntry = archive.CreateEntry("sha256.txt");
+                var metadataEntry = archive.CreateEntry("metadata.json");
+                var metadata = new
+                {
+                    Path = file.StoredPath,
+                    HashAlgorithm = "SHA256",
+                    FileHash = hash,
+                    File = new
+                    {
+                        file.Id,
+                        file.OriginalFileName,
+                        file.ContentType,
+                        file.FileSize,
+                        file.CreatedDateUTC,
+                        file.CreatedBy,
+                        file.Description,
+                        file.MarkedValue,
+                        file.MarkedAt,
+                        file.EnteredValue,
+                        file.EnteredAt,
+                    },
+                    Submission = file.Submission == null ? null : new
+                    {
+                        file.Submission.UploadDate,
+                        file.Submission.LocationId,
+                        file.Submission.LocationNameText,
+                        file.Submission.RoomCode,
+                        file.Submission.RoomText,
+                        file.Submission.OfficerNumber,
+                        Tickets = file.Submission.Tickets?.Select(t => new
+                        {
+                            t.AppearanceId,
+                            t.AppearanceDateTime,
+                            t.FileNumberText,
+                            t.AccusedName,
+                            t.AccusedDOB,
+                        }),
+                    },
+                };
+                using (var entryStream = metadataEntry.Open())
+                {
+                    await JsonSerializer.SerializeAsync(entryStream, metadata, new JsonSerializerOptions
+                    {
+                        WriteIndented = true
+                    });
+                }
 
-            using (var entryStream = new StreamWriter(hashEntry.Open()))
-            {
-                await entryStream.WriteLineAsync($"File: {file.OriginalFileName}");
-                await entryStream.WriteLineAsync($"SHA256: {hash}");
-            }
-        
+                var hashEntry = archive.CreateEntry("sha256.txt");
+                await using (var writer = new StreamWriter(hashEntry.Open()))
+                {
+                    await writer.WriteLineAsync($"File: {file.OriginalFileName}");
+                    await writer.WriteLineAsync($"SHA256: {hash}");
+                    await writer.WriteLineAsync($"Description: {file.Description ?? "—"}");
+                    await writer.WriteLineAsync($"Marked: {file.MarkedValue ?? "—"}");
+                    await writer.WriteLineAsync($"Marked At: {(file.MarkedAt.HasValue ? file.MarkedAt.Value.ToString("yyyy-MM-dd HH:mm:ss") + " UTC" : "—")}");
+                    await writer.WriteLineAsync($"Entered: {file.EnteredValue ?? "—"}");
+                    await writer.WriteLineAsync($"Entered At: {(file.EnteredAt.HasValue ? file.EnteredAt.Value.ToString("yyyy-MM-dd HH:mm:ss") + " UTC" : "—")}");
+                }
+            } // ZipArchive.Dispose() writes Central Directory + EOCD to zipStream here
+
+            await zipStream.FlushAsync(); // ensure all bytes reach disk before DisposeAsync closes the file
         }
     }
 }

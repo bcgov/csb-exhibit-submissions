@@ -1,0 +1,490 @@
+@use "variables" as *;
+
+// --- CourtListing ---
+
+.search-container {
+  max-width: 500px;
+  margin: 0 auto;
+
+  input[type="text"],
+  select {
+    padding: 0.5rem;
+    font-size: 1rem;
+    border: 1px solid $color-border-medium;
+    border-radius: 4px;
+  }
+
+  .autocomplete-wrapper {
+    margin-bottom: 0;
+  }
+}
+
+.court-results {
+  .submission-table {
+    width: 100%;
+    border-collapse: collapse;
+
+    th,
+    td {
+      border: 1px solid $color-border;
+      padding: 0.75rem;
+    }
+
+    .checkbox-col {
+      width: 40px;
+      text-align: center;
+    }
+
+    tr:hover {
+      background-color: $color-bg-light;
+      cursor: pointer;
+    }
+
+    .selected {
+      background-color: $color-bg-light-blue;
+    }
+  }
+
+  .offence-list {
+    font-size: 0.7rem;
+  }
+}
+
+.floating-upload-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: $color-bg-dark-blue;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.5rem;
+  z-index: 100;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.25);
+
+  .selected-count {
+    font-size: 0.95rem;
+  }
+
+  .upload-btn {
+    background: white;
+    color: $color-bg-dark-blue;
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1.25rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.95rem;
+
+    &:hover {
+      background: $color-bg-light-blue;
+    }
+  }
+}
+
+// --- SubmissionForm ---
+
+.exhibit-page {
+  padding: 2rem;
+  max-width: 900px;
+  margin: auto;
+
+  .shared-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+
+    input {
+      padding: 0.5rem;
+    }
+  }
+
+  .ticket-panel {
+    border: 1px solid $color-border;
+    border-radius: 6px;
+    margin-bottom: 1.5rem;
+
+    .ticket-panel-header {
+      padding: 0.6rem 1rem;
+      background: $color-bg-light;
+      font-weight: 600;
+      border-bottom: 1px solid $color-border;
+      border-radius: 6px 6px 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .history-link {
+      font-size: 0.78rem;
+      background: $color-bg-light-blue;
+      color: #1a56db;
+      border: none;
+      border-radius: 12px;
+      padding: 0.15rem 0.6rem;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .ticket-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid #eee;
+      gap: 1rem;
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    .ticket-info {
+      flex: 1;
+      font-size: 0.9rem;
+    }
+
+    .ticket-file-num {
+      font-weight: 600;
+      font-family: monospace;
+    }
+
+    .ticket-detail {
+      color: #555;
+      font-size: 0.8rem;
+    }
+
+    .remove-btn {
+      background: none;
+      border: 1px solid $color-danger;
+      color: $color-danger;
+      border-radius: 4px;
+      padding: 0.2rem 0.6rem;
+      cursor: pointer;
+      font-size: 0.8rem;
+      white-space: nowrap;
+
+      &:hover {
+        background: #fdecea;
+      }
+    }
+  }
+
+  .prior-exhibits-section {
+    margin-bottom: 1.5rem;
+
+    h4 {
+      margin-bottom: 0.5rem;
+      font-size: 0.95rem;
+    }
+  }
+
+  .prior-file-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+
+    .prior-file-item {
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid #d0d0d0;
+      font-size: 0.85rem;
+
+      &:nth-child(even) {
+        background: $color-bg-light;
+      }
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    .prior-file-row1 {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.45rem;
+      flex-wrap: wrap;
+    }
+
+    .prior-file-name {
+      font-weight: 500;
+      color: #333;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .prior-file-date {
+      color: #666;
+      white-space: nowrap;
+      font-size: 0.8rem;
+    }
+
+    .prior-file-tickets {
+      font-size: 0.8rem;
+      padding: 0.1rem 0.45rem;
+      border-radius: 3px;
+      background: $color-bg-light-blue;
+      color: #1a56db;
+      white-space: nowrap;
+    }
+
+    .ticket-overflow {
+      cursor: help;
+      font-style: italic;
+      opacity: 0.85;
+    }
+
+    .prior-file-row2 {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .classification-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+      width: 115px;
+
+      label {
+        font-size: 0.7rem;
+        color: #666;
+        font-weight: 500;
+      }
+
+      select,
+      input[type="text"] {
+        padding: 0.2rem 0.35rem;
+        font-size: 0.8rem;
+        border: 1px solid $color-border-medium;
+        border-radius: 3px;
+        background: white;
+        min-width: 70px;
+
+        &:disabled {
+          background: $color-bg-light;
+          color: #999;
+          cursor: not-allowed;
+        }
+      }
+    }
+
+    .description-group {
+      flex: 1;
+      min-width: 180px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+
+      label {
+        font-size: 0.7rem;
+        color: #666;
+        font-weight: 500;
+      }
+
+      input {
+        padding: 0.2rem 0.35rem;
+        font-size: 0.8rem;
+        border: 1px solid $color-border-medium;
+        border-radius: 3px;
+        width: 100%;
+        box-sizing: border-box;
+
+        &:disabled {
+          background: $color-bg-light;
+          color: #999;
+          cursor: not-allowed;
+        }
+      }
+    }
+
+    .desc-counter {
+      font-size: 0.68rem;
+      color: #888;
+      text-align: right;
+
+      &.over {
+        color: $color-danger;
+      }
+    }
+
+    .timestamp-text {
+      font-size: 0.72rem;
+      color: #777;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .save-indicator {
+      font-size: 0.8rem;
+      margin-left: auto;
+      white-space: nowrap;
+      align-self: center;
+    }
+
+    .save-success {
+      color: $color-success;
+    }
+
+    .save-error {
+      color: $color-danger;
+      cursor: help;
+    }
+
+    .view-container {
+      min-width: 50px;
+    }
+
+    .view-btn {
+      background: none;
+      border: 1px solid $color-primary;
+      color: $color-primary;
+      border-radius: 3px;
+      padding: 0.15rem 0.5rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+      white-space: nowrap;
+      align-self: flex-start;
+
+      &:hover {
+        background: $color-bg-light-blue;
+      }
+    }
+  }
+
+  .prior-empty {
+    font-size: 0.82rem;
+    color: #888;
+    font-style: italic;
+  }
+
+  .prior-error {
+    font-size: 0.82rem;
+    color: #b00;
+  }
+
+  .officer-field {
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    max-width: 250px;
+  }
+
+  .dropzone {
+    margin-top: 1rem;
+  }
+
+  .actions {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  .upload-progress {
+    width: 100%;
+    margin-top: 1rem;
+  }
+}
+
+// --- Officer overlays (history popup + file preview) ---
+
+.history-overlay,
+.preview-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.history-overlay {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.preview-overlay {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.history-dialog {
+  background: white;
+  border-radius: 6px;
+  padding: 1.5rem;
+  width: 90%;
+  max-width: 750px;
+  max-height: 80vh;
+  overflow-y: auto;
+
+  h3 {
+    margin: 0 0 1rem;
+    font-size: 1rem;
+  }
+
+  .history-search {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+
+    input {
+      flex: 1;
+      padding: 0.4rem 0.6rem;
+      border: 1px solid $color-border-medium;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+  }
+
+  .history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+
+    th,
+    td {
+      border: 1px solid $color-border;
+      padding: 0.4rem 0.6rem;
+      text-align: left;
+    }
+
+    thead {
+      background: $color-bg-light;
+    }
+  }
+
+  .dialog-footer {
+    margin-top: 1rem;
+    text-align: right;
+  }
+}
+
+.preview-dialog {
+  background: white;
+  padding: 20px;
+  max-width: 1000px;
+  width: 90%;
+  max-height: 90vh;
+  position: relative;
+  overflow-y: auto;
+
+  .close-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+  }
+}

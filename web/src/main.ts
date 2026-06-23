@@ -6,7 +6,8 @@ import 'vuetify/styles'
 // import { createVuetify } from 'vuetify'
 import { registerPlugins } from './plugins'
 
-import "./assets/styles/main.scss"
+import "@bcgov/design-tokens/css/variables.css"
+import "./styles/main.scss"
 
 const pinia = createPinia()
 const app = createApp(App)

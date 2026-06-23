@@ -1,0 +1,102 @@
+@use "variables" as *;
+
+// --- Layout helpers ---
+
+.form-group {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+// --- Typography ---
+
+.text-monospace {
+  font-family: monospace;
+}
+
+// --- Form feedback ---
+
+.required {
+  color: $color-danger;
+}
+
+.error-text {
+  font-size: 0.8rem;
+  color: $color-danger;
+  margin-top: 0.25rem;
+}
+
+.success-text {
+  font-size: 0.8rem;
+  color: $color-success;
+  margin-top: 0.25rem;
+}
+
+// --- Buttons ---
+
+.submit-btn {
+  padding: 0.75rem 1.5rem;
+  margin: 1rem 0;
+  background-color: $color-primary;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+
+  &:disabled {
+    background-color: $color-primary-disabled;
+    cursor: not-allowed;
+  }
+}
+
+.back-btn {
+  padding: 0.5rem 1rem;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+
+  &:hover {
+    background: #5a6268;
+  }
+}
+
+// --- Classification status chips ---
+// Used by both officer (SubmissionForm) and admin (SubmissionReview) with
+// different class name prefixes (.chip-* vs .cl-*) to avoid template changes.
+
+%chip-base {
+  font-size: 0.72rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  min-width: 88px;
+  display: inline-block;
+  text-align: center;
+}
+
+.chip,
+.cl-chip {
+  @extend %chip-base;
+}
+
+.chip-unclassified,
+.cl-unclassified {
+  background: #f0f0f0;
+  color: #555;
+}
+
+.chip-marked,
+.cl-marked {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.chip-entered,
+.cl-entered {
+  background: #d1e7dd;
+  color: #0a3622;
+}

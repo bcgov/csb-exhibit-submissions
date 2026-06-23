@@ -106,7 +106,7 @@ namespace CES.API.Controllers
 
         [HttpDelete]
         [Route("api/submissions/files/{fileId:guid}")]
-        [Authorize(Roles = "User")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RemoveFile(Guid fileId)
         {
             var result = await _submissionService.RemoveFileAsync(fileId);

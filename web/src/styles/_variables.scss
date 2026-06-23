@@ -1,0 +1,19 @@
+@use "@bcgov/design-tokens/scss/variables" as t;
+
+// Convenience aliases over bcgov design tokens for use across all style partials.
+// Raw token variables are available via `t.$<token-name>` if a specific alias isn't defined here.
+
+$color-primary:          t.$surface-color-primary-button-default;   // #013366
+$color-primary-hover:    t.$surface-color-primary-button-hover;     // #1E5189
+$color-primary-disabled: t.$surface-color-primary-button-disabled;  // #EDEBE9
+$color-danger:           t.$surface-color-primary-danger-button-default; // #CE3E39
+$color-danger-hover:     t.$surface-color-primary-danger-button-hover;   // #A2312D
+$color-success:          t.$support-border-color-success;            // #42814A
+$color-border:           t.$surface-color-border-default;            // #D8D8D8
+$color-border-medium:    t.$surface-color-border-medium;             // #898785
+$color-bg-light:         t.$surface-color-background-light-gray;     // #FAF9F8
+$color-bg-light-blue:    t.$surface-color-background-light-blue;     // #F1F8FE
+$color-bg-dark-blue:     t.$surface-color-background-dark-blue;      // #053662
+$color-overlay:          t.$surface-color-overlay-default;           // rgba(0,0,0,0.45)
+$color-disabled-bg:      t.$surface-color-primary-disabled;          // #EDEBE9
+$shadow-medium:          t.$surface-shadow-medium;

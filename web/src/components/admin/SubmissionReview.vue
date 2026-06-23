@@ -15,12 +15,13 @@ const submissionId = Number(route.params.id);
 
 const previewFile = ref<SubmissionFile | null>(null);
 
-const { retrieveSubmission, acceptSubmissionFiles, rejectAndCloseSubmission } = useSubmissionService();
+const { retrieveSubmission, acceptSubmissionFiles, rejectAndCloseSubmission, removeFile } = useSubmissionService();
 
 const submission = ref<SubmissionReviewModel | undefined>(undefined);
 const selectedFiles = ref<string[]>([]);
 const acceptError = ref<string | null>(null);
 const showRejectModal = ref(false);
+const removeError = ref<string | null>(null);
 
 const getFileUrl = (fileId: string, action: 'view' | 'download') => `/api/files/${fileId}/${action}`;
 
@@ -103,11 +104,30 @@ const removeSubmission = async () => {
   router.push('/admin/list');
 };
 
+const removeExhibit = async (file: SubmissionFile) => {
+  removeError.value = null;
+  const success = await removeFile(file.id);
+  if (success && submission.value) {
+    submission.value = {
+      ...submission.value,
+      files: submission.value.files.filter(f => f.id !== file.id),
+    };
+    selectedFiles.value = selectedFiles.value.filter(id => id !== file.id);
+  } else if (!success) {
+    removeError.value = 'Could not remove exhibit. It may already be Entered.';
+  }
+};
+
 const fileIcon = (type: string) => {
   if (type.startsWith('image')) return '🖼';
   if (type.startsWith('video')) return '🎬';
   if (type.includes('pdf')) return '📄';
   return '📁';
+};
+
+const formatClassificationDate = (iso?: string | null): string => {
+  if (!iso) return '—';
+  return formatDateTime(convertUtcToLocal(iso), true);
 };
 </script>
 
@@ -158,12 +178,31 @@ const fileIcon = (type: string) => {
             <span class="name">{{ shortenString(file.originalFileName) }}</span>
           </div>
           <div class="file-size">{{ formatFileSize(file.fileSize) }}</div>
+
+          <!-- Classification read-only columns -->
+          <div class="classification-info">
+            <span class="cl-chip" :class="`cl-${(file.status ?? 'Unclassified').toLowerCase()}`">
+              {{ file.status ?? 'Unclassified' }}
+            </span>
+            <span v-if="file.markedValue" class="cl-field">M: {{ file.markedValue }} <small>({{ formatClassificationDate(file.markedAt) }})</small></span>
+            <span v-if="file.enteredValue" class="cl-field">E: {{ file.enteredValue }} <small>({{ formatClassificationDate(file.enteredAt) }})</small></span>
+            <span v-if="file.description" class="cl-field cl-desc" :title="file.description">{{ file.description }}</span>
+          </div>
+
           <div class="file-actions">
             <button @click="openPreview(file)">View</button>
             <button @click="downloadFile(file)">Download</button>
+            <button
+              class="remove-file-btn"
+              :disabled="file.enteredValue != null"
+              :title="file.enteredValue != null ? 'Entered exhibits cannot be removed' : 'Remove this exhibit'"
+              @click="removeExhibit(file)"
+            >Remove</button>
           </div>
         </div>
       </div>
+
+      <p v-if="removeError" class="remove-error">{{ removeError }}</p>
 
       <div class="actions-main">
         <button class="accept" @click="acceptSubmission">Accept Selected</button>
@@ -193,163 +232,3 @@ const fileIcon = (type: string) => {
   </div>
 </template>
 
-<style scoped>
-.review-page {
-  padding: 2rem;
-  max-width: 900px;
-  margin: auto;
-}
-
-.details-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(275px, 1fr));
-  gap: 10px;
-  margin-bottom: 30px;
-}
-
-.ticket-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 1.5rem;
-}
-
-.ticket-table th,
-.ticket-table td {
-  border: 1px solid #ddd;
-  padding: 0.6rem 0.75rem;
-  font-size: 0.9rem;
-}
-
-.ticket-table thead {
-  background: #f5f5f5;
-}
-
-.text-monospace {
-  font-family: monospace;
-}
-
-.icon {
-  font-size: 40px;
-  margin-bottom: 5px;
-}
-
-.name {
-  font-size: 0.9rem;
-  margin-bottom: 8px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.actions button {
-  margin: 3px;
-}
-
-.actions-main {
-  margin-top: 30px;
-  display: flex;
-  gap: 10px;
-}
-
-.accept {
-  background: #4caf50;
-  color: white;
-}
-
-.remove {
-  background: #e53935;
-  color: white;
-}
-
-.preview-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-content {
-  background: white;
-  padding: 20px;
-  max-width: 1000px;
-  width: 90%;
-  max-height: 90vh;
-  position: relative;
-}
-
-.modal-content img,
-.modal-content video,
-.modal-content iframe {
-  max-width: 100%;
-  max-height: 70vh;
-}
-
-.close {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-}
-
-.file-list {
-  border: 1px solid #ddd;
-  border-radius: 6px;
-}
-
-.file-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-bottom: 1px solid #eee;
-  column-gap: 20px;
-}
-
-.file-row:hover {
-  background: #f7f7f7;
-}
-
-.file-row:last-child {
-  border-bottom: none;
-}
-
-.file-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
-}
-
-.icon {
-  font-size: 22px;
-  width: 26px;
-  text-align: center;
-}
-
-.name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.file-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.file-actions button {
-  padding: 4px 10px;
-  font-size: 0.85rem;
-}
-
-.accept-error {
-  margin-top: 8px;
-  color: #e53935;
-  font-size: 0.9rem;
-}
-</style>

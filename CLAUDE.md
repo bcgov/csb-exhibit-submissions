@@ -53,10 +53,10 @@ Migrations run automatically on startup. PostgreSQL must be running.
 ### Testing
 
 ```bash
-# Backend (29 tests: 12 unit + 17 integration)
+# Backend (78 tests: 39 unit in CES.Business.Tests + 39 integration in CES.API.Tests)
 dotnet test api/CES.API/CES.API.sln
 
-# Frontend (29 tests: stores, services, components)
+# Frontend (46 tests across 8 test files: stores, services, components)
 cd web && npm run test
 
 # Frontend with coverage
@@ -107,7 +107,7 @@ The API exposes controllers for: Login/Logout, Users, Submissions, Review, Files
 
 ### Key Integration Points
 
-- **File uploads:** Dropzone on the frontend, max 100MB, stored locally by the API
+- **File uploads:** Dropzone on the frontend, max 100MB, stored locally by the API under the path `{locationId}/{shortDate}/{roomCode}/{submissionId}` (submission-scoped, not per-ticket)
 - **Email:** SMTP configuration in `appsettings.json`
 - **BC Gov design system:** BC Gov design tokens and fonts are imported for consistent styling
 
@@ -137,6 +137,7 @@ Feature specifications live in [`/spec`](spec/). Read the relevant spec before i
 - See [spec/testing-implementation.md](spec/testing-implementation.md) for the full testing strategy, framework choices, project structure, and test case inventory.
 
 ## Code Style
+- **`AppearanceId` casing:** use `appearanceId` in TypeScript/JSON/form keys and `AppearanceId` in C# properties. Never reintroduce the old `appearanceID` / `AppearanceID` variants — these were normalized as part of the multi-ticket work and the casing is now consistent across the codebase. Everything under `api/jc-interface-client/` (generated NSwag client) is excluded from this rule.
 - Never hardcode configuration values, prices, rates, or magic numbers inline.
 - All such values must be defined in a constants file or loaded from environment variables.
 - If you introduce a numeric literal that isn't obvious (e.g. not `0`, `1`, `100`), extract it to a named constant with a comment explaining the source.

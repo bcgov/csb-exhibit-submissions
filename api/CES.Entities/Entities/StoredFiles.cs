@@ -17,6 +17,17 @@ namespace CES.Entities
         public DateTime? UpdatedDateUTC { get; set; }
         public bool IsDeleted { get; set; } = false;
 
+        // FK to parent Submission (explicit property — EF previously managed as shadow FK)
+        public int SubmissionId { get; set; }
+        public Submission Submission { get; set; } = null!;
+
+        // Classification fields (added for CES-28)
+        public string? MarkedValue { get; set; }
+        public DateTime? MarkedAt { get; set; }
+        public string? EnteredValue { get; set; }
+        public DateTime? EnteredAt { get; set; }
+        public string? Description { get; set; }
+
         public StoredFiles()
         {
             CreatedDateUTC = SystemDate.UtcNow();
@@ -27,6 +38,6 @@ namespace CES.Entities
             UpdatedBy = updator;
             UpdatedDateUTC = SystemDate.UtcNow();
         }
-        
+
     }
 }

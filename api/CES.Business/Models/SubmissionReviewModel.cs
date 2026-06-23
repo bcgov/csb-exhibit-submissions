@@ -23,6 +23,11 @@ namespace CES.Business.Models
         public string Url { get; set; } = string.Empty;
         public long FileSize { get; set; }
         public string StorageProvider { get; set; } = string.Empty;
-        public string Status { get; set; } = "Pending";
+        public string Status { get; set; } = "Unclassified";
+        public string? MarkedValue { get; set; }
+        public DateTime? MarkedAt { get; set; }
+        public string? EnteredValue { get; set; }
+        public DateTime? EnteredAt { get; set; }
+        public string? Description { get; set; }
     }
 }

@@ -4,6 +4,7 @@ import { server } from '@/test/setup';
 import useSubmissionService from '@/services/SubmissionService';
 import type { ExhibitSubmissionModel } from '@/models/ExhibitSubmissionModel';
 import type { SubmissionAcceptanceModel } from '@/models/SubmissionAcceptanceModel';
+import type { SubmissionFile } from '@/models/SubmissionReviewModel';
 
 vi.mock('@/router', () => ({
   default: {
@@ -163,5 +164,94 @@ describe('SubmissionService', () => {
     const result = await removeFile(fileId);
 
     expect(result).toBe(false);
+  });
+
+  it('markExhibit sends POST /api/files/:fileId/mark and returns updated file', async () => {
+    const fileId = '550e8400-e29b-41d4-a716-446655440002';
+    const mockFile: SubmissionFile = {
+      id: fileId,
+      originalFileName: 'exhibit.mp4',
+      storedFileName: 'stored.mp4',
+      viewUrl: '',
+      downloadUrl: '',
+      contentType: 'video/mp4',
+      fileSize: 1024,
+      storageProvider: 'Local',
+      status: 'Marked',
+      markedValue: 'B',
+    };
+    let capturedBody: unknown = null;
+    server.use(
+      http.post(`/api/files/${fileId}/mark`, async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json(mockFile);
+      }),
+    );
+
+    const { markExhibit } = useSubmissionService();
+    const result = await markExhibit(fileId, { markedValue: 'B' });
+
+    expect(capturedBody).toMatchObject({ markedValue: 'B' });
+    expect(result.markedValue).toBe('B');
+    expect(result.status).toBe('Marked');
+  });
+
+  it('enterExhibit sends POST /api/files/:fileId/enter and returns updated file', async () => {
+    const fileId = '550e8400-e29b-41d4-a716-446655440003';
+    const mockFile: SubmissionFile = {
+      id: fileId,
+      originalFileName: 'exhibit.mp4',
+      storedFileName: 'stored.mp4',
+      viewUrl: '',
+      downloadUrl: '',
+      contentType: 'video/mp4',
+      fileSize: 1024,
+      storageProvider: 'Local',
+      status: 'Entered',
+      enteredValue: '5',
+    };
+    let capturedBody: unknown = null;
+    server.use(
+      http.post(`/api/files/${fileId}/enter`, async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json(mockFile);
+      }),
+    );
+
+    const { enterExhibit } = useSubmissionService();
+    const result = await enterExhibit(fileId, { enteredValue: '5' });
+
+    expect(capturedBody).toMatchObject({ enteredValue: '5' });
+    expect(result.enteredValue).toBe('5');
+    expect(result.status).toBe('Entered');
+  });
+
+  it('updateExhibitDescription sends PATCH /api/files/:fileId/description and returns updated file', async () => {
+    const fileId = '550e8400-e29b-41d4-a716-446655440004';
+    const mockFile: SubmissionFile = {
+      id: fileId,
+      originalFileName: 'exhibit.mp4',
+      storedFileName: 'stored.mp4',
+      viewUrl: '',
+      downloadUrl: '',
+      contentType: 'video/mp4',
+      fileSize: 1024,
+      storageProvider: 'Local',
+      status: 'Unclassified',
+      description: 'key piece of evidence',
+    };
+    let capturedBody: unknown = null;
+    server.use(
+      http.patch(`/api/files/${fileId}/description`, async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json(mockFile);
+      }),
+    );
+
+    const { updateExhibitDescription } = useSubmissionService();
+    const result = await updateExhibitDescription(fileId, { description: 'key piece of evidence' });
+
+    expect(capturedBody).toMatchObject({ description: 'key piece of evidence' });
+    expect(result.description).toBe('key piece of evidence');
   });
 });

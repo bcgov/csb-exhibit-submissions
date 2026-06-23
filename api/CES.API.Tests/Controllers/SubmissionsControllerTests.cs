@@ -233,14 +233,19 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
     }
 
     [Fact]
-    public async Task RemoveFile_WithUserRole_Returns200_WhenFileExists()
+    public async Task RemoveFile_WithAdminRole_Returns200_WhenFileExists()
     {
+        // Upload as User, then remove as Admin (endpoint now requires Admin role)
         WithAuth(JwtTokenHelper.UserToken());
         await _client.PostAsync("/api/submissions/submit", BuildSubmitForm());
 
-        var listResponse = await _client.GetAsync("/api/submissions/by-file-number?fileNumberText=FILE000");
-        var priorList = await listResponse.Content.ReadFromJsonAsync<List<PriorSubmission>>();
-        var fileId = priorList!.First().Files.First().Id;
+        WithAuth(JwtTokenHelper.AdminToken());
+        var listResponse = await _client.GetAsync("/api/submissions/listing");
+        var list = await listResponse.Content.ReadFromJsonAsync<List<SubmissionListItem>>();
+        var submissionId = list!.Last().Id;
+        var subResponse = await _client.GetAsync($"/api/submissions/retrieve?fileId={submissionId}");
+        var submission = await subResponse.Content.ReadFromJsonAsync<SubmissionDetail>();
+        var fileId = submission!.Files.First().Id;
 
         var response = await _client.DeleteAsync($"/api/submissions/files/{fileId}");
 
@@ -248,9 +253,9 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
     }
 
     [Fact]
-    public async Task RemoveFile_WithUserRole_Returns404_WhenFileNotFound()
+    public async Task RemoveFile_WithAdminRole_Returns404_WhenFileNotFound()
     {
-        WithAuth(JwtTokenHelper.UserToken());
+        WithAuth(JwtTokenHelper.AdminToken());
 
         var response = await _client.DeleteAsync($"/api/submissions/files/{Guid.NewGuid()}");
 
@@ -258,9 +263,9 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
     }
 
     [Fact]
-    public async Task RemoveFile_WithAdminRole_Returns403()
+    public async Task RemoveFile_WithUserRole_Returns403()
     {
-        WithAuth(JwtTokenHelper.AdminToken());
+        WithAuth(JwtTokenHelper.UserToken());
 
         var response = await _client.DeleteAsync($"/api/submissions/files/{Guid.NewGuid()}");
 

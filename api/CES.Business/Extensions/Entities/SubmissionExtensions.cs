@@ -61,6 +61,12 @@ namespace CES.Business.Extensions.Entities
                     StorageProvider = f.StorageProvider,
                     StoredFileName = f.StoredFileName,
                     Url = "",
+                    Status = f.DeriveStatus(),
+                    MarkedValue = f.MarkedValue,
+                    MarkedAt = f.MarkedAt,
+                    EnteredValue = f.EnteredValue,
+                    EnteredAt = f.EnteredAt,
+                    Description = f.Description,
                 }).ToList()
             };
         }

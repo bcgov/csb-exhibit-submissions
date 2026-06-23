@@ -6,6 +6,10 @@ import { aliases, mdi } from 'vuetify/iconsets/mdi-svg';
 import { VDateInput } from 'vuetify/labs/VDateInput';
 import 'vuetify/styles';
 
+// Custom palette values that don't have an exact match in the bcgov design tokens.
+const FORM_FIELD_BG = '#dae5f5';           // light blue tint for VSelect / VDateInput backgrounds
+const TERTIARY_BTN_COLOR = '#183a4a';      // dark navy for VBtnTertiary
+
 // https://vuetifyjs.com/en/introduction/why-vuetify/#feature-guides
 
 export default createVuetify({
@@ -42,10 +46,10 @@ export default createVuetify({
     VBtnTertiary: {
       rounded: true,
       class: 'text-none',
-      baseColor: '#183a4a',
+      baseColor: TERTIARY_BTN_COLOR,
     },
     VSelect: {
-      bgColor: '#dae5f5',
+      bgColor: FORM_FIELD_BG,
       rounded: true,
       variant: 'solo',
       clearable: true,
@@ -58,7 +62,7 @@ export default createVuetify({
     },
     VDateInput: {
       density: 'comfortable',
-      bgColor: '#dae5f5',
+      bgColor: FORM_FIELD_BG,
       variant: 'solo',
       label: 'Date',
       clearable: false,

@@ -4,19 +4,58 @@ using CES.Entities.Interfaces;
 using CES.Business.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace CES.API.Controllers
 {
     public class FilesController : Controller
     {
-
         private readonly IFileStorage _fileStorage;
-        private IFileService _fileService;
+        private readonly IFileService _fileService;
 
         public FilesController(IFileStorage fileStorage, IFileService fileService)
         {
             _fileStorage = fileStorage;
             _fileService = fileService;
+        }
+
+        [HttpPost]
+        [Route("api/files/{fileId:guid}/mark")]
+        [Authorize(Roles = "User")]
+        public async Task<IActionResult> MarkExhibit(Guid fileId, [FromBody] ExhibitMarkModel model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var changedBy = User.FindFirstValue(ClaimTypes.UserData) ?? "Officer";
+            var result = await _fileService.MarkExhibitAsync(fileId, model.MarkedValue, changedBy);
+            return Ok(result);
+        }
+
+        [HttpPost]
+        [Route("api/files/{fileId:guid}/enter")]
+        [Authorize(Roles = "User")]
+        public async Task<IActionResult> EnterExhibit(Guid fileId, [FromBody] ExhibitEnterModel model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var changedBy = User.FindFirstValue(ClaimTypes.UserData) ?? "Officer";
+            var result = await _fileService.EnterExhibitAsync(fileId, model.EnteredValue, changedBy);
+            return Ok(result);
+        }
+
+        [HttpPatch]
+        [Route("api/files/{fileId:guid}/description")]
+        [Authorize(Roles = "User")]
+        public async Task<IActionResult> UpdateDescription(Guid fileId, [FromBody] ExhibitDescriptionModel model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var changedBy = User.FindFirstValue(ClaimTypes.UserData) ?? "Officer";
+            var result = await _fileService.UpdateExhibitDescriptionAsync(fileId, model.Description, changedBy);
+            return Ok(result);
         }
 
         [HttpGet]
