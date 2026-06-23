@@ -124,6 +124,7 @@ Feature specifications live in [`/spec`](spec/). Read the relevant spec before i
 | [multi-ticket-exhibit-upload.md](spec/multi-ticket-exhibit-upload.md) | Officer selects multiple tickets on Court Search; one exhibit upload is linked to all of them. Requires new `SubmissionTickets` table and changes to the submit API contract. |
 | [testing-implementation.md](spec/testing-implementation.md) | Initial testing strategy for backend (xUnit + Moq + WebApplicationFactory) and frontend (Vitest + MSW). Defines project structure, NuGet/npm packages, test cases, and CI integration. |
 | [exhibit-classification.md](spec/exhibit-classification.md) | Officers classify each uploaded exhibit as Marked (A–Z) and/or Entered (1–50) at direction of the JJ. Tracks classification timestamps, enforces a state machine, and supports ticket-number retrieval of exhibit history across court sessions. |
+| [admin-listing-update.md](spec/admin-listing-update.md) | Reworks the admin Submission Listing/Review: explicit `Pending`/`Accepted`/`Rejected` submission lifecycle (replaces `IsDeleted` overloading), historical view of all submissions, a search/filter panel, admin-editable exhibit classification, Accept gated on all-exhibits-final, and whole-submission Reject with a destructive warning. |
 
 ---
 

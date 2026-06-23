@@ -1,6 +1,6 @@
 # Exhibit Classification — Marked, Entered, and Description
 
-**Status:** Draft
+**Status:** Complete
 **Date:** 2026-06-04
 **Revised:** 2026-06-12 — reframed onto the Prior Exhibits list (post-submit), added Description editing, the 10-second UI correction window, in-browser-only viewing, save feedback indicators, and a generic submission audit log. Aligned identifiers with the shipped [multi-ticket-exhibit-upload.md](multi-ticket-exhibit-upload.md) (Guid file ids, `SubmissionFile`, `GetSubmissionsByFileNumberAsync`).
 **JIRA:** CES-28
