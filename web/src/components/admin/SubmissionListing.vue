@@ -1,4 +1,3 @@
-
 <script setup lang="ts">
 import { SUBMISSION_LIST_PAGE_SIZE } from '@/constants/submission';
 import { formatDateTime, splitDateTimeForDisplay } from '@/helpers/formatters';
@@ -89,8 +88,7 @@ const fileNumberDisplay = (item: SubmissionReviewModel): string => {
 const accusedDisplay = (item: SubmissionReviewModel): string => {
   if (!item.tickets || item.tickets.length === 0) return '';
   const first = item.tickets[0]!.accusedName ?? '';
-  const extra = item.tickets.length - 1;
-  return extra > 0 ? `${first} (+${extra} more)` : first;
+  return first;
 };
 
 const statusChipClass = (status: SubmissionStatus | string): string => {
@@ -165,13 +163,9 @@ const statusChipClass = (status: SubmissionStatus | string): string => {
         </thead>
 
         <tbody>
-          <tr
-            v-for="item in pagedResult.items"
-            :key="item.id"
+          <tr v-for="item in pagedResult.items" :key="item.id"
             :class="{ selected: selectedId === item.id, 'row-rejected': item.status === 'Rejected' }"
-            @click="selectRow(item.id)"
-            @dblclick="openReview(item.id)"
-          >
+            @click="selectRow(item.id)" @dblclick="openReview(item.id)">
             <td>{{ formatDateTime(item.submissionDate ?? '', true) }}</td>
             <td>{{ splitDateTimeForDisplay(item.courtDateTime).date }}</td>
             <td>{{ splitDateTimeForDisplay(item.courtDateTime).time }}</td>

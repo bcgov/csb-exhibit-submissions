@@ -7,9 +7,9 @@ import useSubmissionService from '@/services/SubmissionService'
 import { useCourtFileSelectionStore } from '@/stores/useCourtFileSelectionStore'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import ExhibitList from '../shared/ExhibitList.vue'
 import FileDropZone from '../shared/FileDropZone.vue'
 import FileViewer from '../shared/FileViewer.vue'
-import ExhibitList from '../shared/ExhibitList.vue'
 
 const router = useRouter()
 const {
@@ -228,6 +228,14 @@ const submitForm = async () => {
         </div>
       </div>
 
+
+      <!-- Officer number -->
+      <div class="officer-field">
+        <label>Officer Number</label>
+        <input type="text" v-model="officerNumber" />
+      </div>
+
+
       <!-- Ticket list panel -->
       <div class="ticket-panel">
         <div class="ticket-panel-header">
@@ -258,23 +266,13 @@ const submitForm = async () => {
           Could not load prior exhibit history. You can still proceed with the upload.
         </p>
 
-        <ExhibitList
-          v-else-if="flatPriorFiles.length > 0"
-          :entries="flatPriorFiles"
+        <ExhibitList v-else-if="flatPriorFiles.length > 0" :entries="flatPriorFiles"
           :mark-fn="(id: string, v: string) => markExhibit(id, { markedValue: v })"
           :enter-fn="(id: string, v: string) => enterExhibit(id, { enteredValue: v })"
           :description-fn="(id: string, d: string) => updateExhibitDescription(id, { description: d })"
-          @file-updated="updateFileInStore"
-          @preview-file="openPreview"
-        />
+          @file-updated="updateFileInStore" @preview-file="openPreview" />
 
         <p v-else class="prior-empty">No previous exhibits for the selected tickets.</p>
-      </div>
-
-      <!-- Officer number -->
-      <div class="officer-field">
-        <label>Officer Number</label>
-        <input type="text" v-model="officerNumber" />
       </div>
 
       <!-- Dropzone -->
@@ -294,7 +292,7 @@ const submitForm = async () => {
 
       <div class="actions">
         <button type="button" class="back-btn" @click="goBack">Back</button>
-        <button type="submit" :disabled="uploading">Submit Exhibit</button>
+        <button type="submit" :disabled="uploading">Upload Exhibit</button>
       </div>
     </form>
 
