@@ -120,7 +120,7 @@ describe('SubmissionReview', () => {
       const wrapper = mountReview()
       await flushPromises()
 
-      expect(wrapper.find('.classification-controls').exists()).toBe(true)
+      expect(wrapper.find('.prior-file-row2').exists()).toBe(true)
       expect(wrapper.find('label').text()).toContain('Marked')
     })
 
@@ -152,12 +152,12 @@ describe('SubmissionReview', () => {
       const wrapper = mountReview()
       await flushPromises()
 
-      expect(wrapper.find('.remove-file-btn').exists()).toBe(true)
+      expect(wrapper.find('.rm-btn').exists()).toBe(true)
     })
   })
 
   describe('Removed exhibits', () => {
-    it('applies file-row-removed class to Removed files', async () => {
+    it('applies prior-file-item-removed class to Removed files', async () => {
       mockRetrieveSubmission.mockResolvedValue(
         makeSubmission({
           files: [makeFile({ status: 'Removed', deletedAt: '2026-06-01T12:00:00Z' })],
@@ -166,7 +166,7 @@ describe('SubmissionReview', () => {
       const wrapper = mountReview()
       await flushPromises()
 
-      expect(wrapper.find('.file-row-removed').exists()).toBe(true)
+      expect(wrapper.find('.prior-file-item-removed').exists()).toBe(true)
     })
 
     it('does not show classification controls for Removed files', async () => {
@@ -178,7 +178,7 @@ describe('SubmissionReview', () => {
       const wrapper = mountReview()
       await flushPromises()
 
-      expect(wrapper.find('.classification-controls').exists()).toBe(false)
+      expect(wrapper.find('.prior-file-row2').exists()).toBe(false)
     })
 
     it('does not show Remove button for Removed files', async () => {
@@ -190,12 +190,12 @@ describe('SubmissionReview', () => {
       const wrapper = mountReview()
       await flushPromises()
 
-      expect(wrapper.find('.remove-file-btn').exists()).toBe(false)
+      expect(wrapper.find('.rm-btn').exists()).toBe(false)
     })
   })
 
   describe('terminal submissions (Accepted/Rejected)', () => {
-    it('hides classification controls when submission is Accepted', async () => {
+    it('disables classification controls when submission is Accepted', async () => {
       mockRetrieveSubmission.mockResolvedValue(
         makeSubmission({
           status: 'Accepted',
@@ -205,7 +205,9 @@ describe('SubmissionReview', () => {
       const wrapper = mountReview()
       await flushPromises()
 
-      expect(wrapper.find('.classification-controls').exists()).toBe(false)
+      const row2 = wrapper.find('.prior-file-row2')
+      expect(row2.exists()).toBe(true)
+      expect(row2.find('select').attributes('disabled')).toBeDefined()
     })
 
     it('hides Accept/Reject buttons when submission is Accepted', async () => {
@@ -228,7 +230,7 @@ describe('SubmissionReview', () => {
       const wrapper = mountReview()
       await flushPromises()
 
-      const actions = wrapper.find('.file-actions')
+      const actions = wrapper.find('.view-container')
       expect(actions.exists()).toBe(true)
       expect(actions.text()).toContain('Download')
     })
@@ -377,11 +379,11 @@ describe('SubmissionReview', () => {
       const wrapper = mountReview()
       await flushPromises()
 
-      await wrapper.find('.remove-file-btn').trigger('click')
+      await wrapper.find('.rm-btn').trigger('click')
       await flushPromises()
 
-      expect(wrapper.find('.file-row-removed').exists()).toBe(true)
-      expect(wrapper.find('.remove-file-btn').exists()).toBe(false)
+      expect(wrapper.find('.prior-file-item-removed').exists()).toBe(true)
+      expect(wrapper.find('.rm-btn').exists()).toBe(false)
     })
 
     it('shows remove error when removeFile fails', async () => {
@@ -392,7 +394,7 @@ describe('SubmissionReview', () => {
       const wrapper = mountReview()
       await flushPromises()
 
-      await wrapper.find('.remove-file-btn').trigger('click')
+      await wrapper.find('.rm-btn').trigger('click')
       await flushPromises()
 
       expect(wrapper.find('.remove-error').exists()).toBe(true)

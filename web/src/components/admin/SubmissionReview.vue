@@ -1,18 +1,11 @@
 <script setup lang="ts">
-import {
-  DESCRIPTION_MAX_LENGTH,
-  ENTERED_MAX,
-  ENTERED_MIN,
-  MARKED_MAX,
-  MARKED_MIN,
-  VIEWABLE_CONTENT_TYPE_PREFIXES,
-} from '@/constants/classification';
-import { convertUtcToLocal, formatDateTime, formatFileSize, shortenString, splitDateTimeForDisplay } from '@/helpers/formatters';
+import { convertUtcToLocal, formatDateTime, splitDateTimeForDisplay } from '@/helpers/formatters';
 import type { SubmissionActionModel, SubmissionFile, SubmissionReviewModel } from '@/models/SubmissionReviewModel';
 import useSubmissionService from '@/services/SubmissionService';
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppModal from '../shared/AppModal.vue';
+import ExhibitList from '../shared/ExhibitList.vue';
 import FileViewer from '../shared/FileViewer.vue';
 
 const route = useRoute();
@@ -36,15 +29,11 @@ const showRejectModal = ref(false);
 const removeError = ref<string | null>(null);
 const previewFile = ref<SubmissionFile | null>(null);
 
-// Save indicator state: null = idle, true = saved, false/string = error
-const saveIndicators = reactive<Record<string, boolean | string | null>>({});
-// Local description values for two-way binding before blur
-const localDescriptions = reactive<Record<string, string>>({});
-
-const markedLetters = Array.from({ length: 26 }, (_, i) => String.fromCharCode(MARKED_MIN.charCodeAt(0) + i));
-const enteredNumbers = Array.from({ length: ENTERED_MAX - ENTERED_MIN + 1 }, (_, i) => String(ENTERED_MIN + i));
-
 const getFileUrl = (fileId: string, action: 'view' | 'download') => `/api/files/${fileId}/${action}`;
+
+const exhibitEntries = computed(() =>
+  (submission.value?.files ?? []).map(f => ({ file: f, fileNumbers: [] as string[] })),
+);
 
 const isTerminal = computed(() => submission.value?.status === 'Accepted' || submission.value?.status === 'Rejected');
 
@@ -55,9 +44,6 @@ const acceptReadiness = computed((): { ready: boolean; blockingNames: string[] }
     .map(f => f.originalFileName);
   return { ready: blocking.length === 0, blockingNames: blocking };
 });
-
-const isViewable = (contentType: string) =>
-  VIEWABLE_CONTENT_TYPE_PREFIXES.some(p => contentType.startsWith(p));
 
 onMounted(async () => {
   const data = await retrieveSubmission(submissionId);
@@ -71,11 +57,6 @@ onMounted(async () => {
       downloadUrl: getFileUrl(f.id, 'download'),
     })),
   };
-
-  // Seed local descriptions
-  submission.value.files.forEach(f => {
-    localDescriptions[f.id] = f.description ?? '';
-  });
 });
 
 const openPreview = (file: SubmissionFile) => {
@@ -103,13 +84,6 @@ const downloadFile = async (file: SubmissionFile) => {
   }
 };
 
-const setSaveIndicator = (fileId: string, value: boolean | string | null) => {
-  saveIndicators[fileId] = value;
-  if (value !== null) {
-    setTimeout(() => { saveIndicators[fileId] = null; }, 5000);
-  }
-};
-
 const updateFileInSubmission = (updated: SubmissionFile) => {
   if (!submission.value) return;
   submission.value = {
@@ -118,39 +92,6 @@ const updateFileInSubmission = (updated: SubmissionFile) => {
       f.id === updated.id ? { ...f, ...updated, viewUrl: f.viewUrl, downloadUrl: f.downloadUrl } : f,
     ),
   };
-};
-
-const onMarkChange = async (file: SubmissionFile, value: string) => {
-  try {
-    const updated = await markExhibit(file.id, { markedValue: value });
-    updateFileInSubmission(updated);
-    setSaveIndicator(file.id, true);
-  } catch {
-    setSaveIndicator(file.id, 'Failed to save Marked value');
-  }
-};
-
-const onEnterChange = async (file: SubmissionFile, value: string) => {
-  if (!value) return;
-  try {
-    const updated = await enterExhibit(file.id, { enteredValue: value });
-    updateFileInSubmission(updated);
-    setSaveIndicator(file.id, true);
-  } catch {
-    setSaveIndicator(file.id, 'Failed to save Entered value');
-  }
-};
-
-const onDescriptionBlur = async (file: SubmissionFile) => {
-  const desc = localDescriptions[file.id] ?? '';
-  if (desc === (file.description ?? '')) return;
-  try {
-    const updated = await updateExhibitDescription(file.id, { description: desc });
-    updateFileInSubmission(updated);
-    setSaveIndicator(file.id, true);
-  } catch {
-    setSaveIndicator(file.id, 'Failed to save description');
-  }
 };
 
 const doAcceptSubmission = async () => {
@@ -190,17 +131,6 @@ const removeExhibit = async (file: SubmissionFile) => {
   }
 };
 
-const fileIcon = (type: string) => {
-  if (type.startsWith('image')) return '🖼';
-  if (type.startsWith('video')) return '🎬';
-  if (type.includes('pdf')) return '📄';
-  return '📁';
-};
-
-const formatClassificationDate = (iso?: string | null): string => {
-  if (!iso) return '—';
-  return formatDateTime(convertUtcToLocal(iso), true);
-};
 </script>
 
 <template>
@@ -244,89 +174,20 @@ const formatClassificationDate = (iso?: string | null): string => {
 
       <h3>Submitted Evidence</h3>
 
-      <div class="file-list">
-        <div
-          class="file-row"
-          v-for="file in submission.files"
-          :key="file.id"
-          :class="{ 'file-row-removed': file.status === 'Removed' }"
-        >
-          <div class="file-left">
-            <span class="icon">{{ fileIcon(file.contentType) }}</span>
-            <span class="name">{{ shortenString(file.originalFileName) }}</span>
-          </div>
-          <div class="file-size">{{ formatFileSize(file.fileSize) }}</div>
-
-          <!-- Classification display -->
-          <div class="classification-info">
-            <span class="cl-chip" :class="`cl-${(file.status ?? 'Unclassified').toLowerCase()}`">
-              {{ file.status ?? 'Unclassified' }}
-            </span>
-            <span v-if="file.markedValue" class="cl-field">M: {{ file.markedValue }} <small>({{ formatClassificationDate(file.markedAt) }})</small></span>
-            <span v-if="file.enteredValue" class="cl-field">E: {{ file.enteredValue }} <small>({{ formatClassificationDate(file.enteredAt) }})</small></span>
-            <span v-if="file.description" class="cl-field cl-desc" :title="file.description">{{ file.description }}</span>
-          </div>
-
-          <!-- Admin classification controls — only for Pending submissions, non-Removed files -->
-          <template v-if="!isTerminal && file.status !== 'Removed'">
-            <div class="classification-controls">
-              <!-- Marked -->
-              <div class="classification-group">
-                <label>Marked</label>
-                <select :value="file.markedValue ?? ''"
-                  @change="onMarkChange(file, ($event.target as HTMLSelectElement).value)">
-                  <option value="">—</option>
-                  <option v-for="letter in markedLetters" :key="letter" :value="letter">{{ letter }}</option>
-                </select>
-              </div>
-
-              <!-- Entered -->
-              <div class="classification-group">
-                <label>Entered</label>
-                <select :value="file.enteredValue ?? ''"
-                  @change="onEnterChange(file, ($event.target as HTMLSelectElement).value)">
-                  <option value="">—</option>
-                  <option v-for="num in enteredNumbers" :key="num" :value="num">{{ num }}</option>
-                </select>
-              </div>
-
-              <!-- Description -->
-              <div class="description-group">
-                <label>Description</label>
-                <input
-                  type="text"
-                  :maxlength="DESCRIPTION_MAX_LENGTH"
-                  v-model="localDescriptions[file.id]"
-                  @blur="onDescriptionBlur(file)"
-                  placeholder="Optional description…"
-                />
-                <span class="desc-counter"
-                  :class="{ over: (localDescriptions[file.id]?.length ?? 0) > DESCRIPTION_MAX_LENGTH }">
-                  {{ DESCRIPTION_MAX_LENGTH - (localDescriptions[file.id]?.length ?? 0) }} remaining
-                </span>
-              </div>
-
-              <span v-if="saveIndicators[file.id] === true" class="save-indicator save-ok">✓</span>
-              <span v-else-if="saveIndicators[file.id]" class="save-indicator save-error"
-                :title="saveIndicators[file.id] as string">✕</span>
-            </div>
-
-            <div class="file-actions">
-              <button v-if="isViewable(file.contentType)" @click="openPreview(file)">View</button>
-              <button @click="downloadFile(file)">Download</button>
-              <button class="remove-file-btn" @click="removeExhibit(file)">Remove</button>
-            </div>
-          </template>
-
-          <!-- View/Download for terminal states (non-Removed only) -->
-          <template v-else-if="isTerminal && file.status !== 'Removed'">
-            <div class="file-actions">
-              <button v-if="isViewable(file.contentType)" @click="openPreview(file)">View</button>
-              <button @click="downloadFile(file)">Download</button>
-            </div>
-          </template>
-        </div>
-      </div>
+      <ExhibitList
+        :entries="exhibitEntries"
+        :always-editable="!isTerminal"
+        :show-removed="true"
+        :can-download="true"
+        :can-remove="!isTerminal"
+        :mark-fn="(id: string, v: string) => markExhibit(id, { markedValue: v })"
+        :enter-fn="(id: string, v: string) => enterExhibit(id, { enteredValue: v })"
+        :description-fn="(id: string, d: string) => updateExhibitDescription(id, { description: d })"
+        @file-updated="updateFileInSubmission"
+        @preview-file="openPreview"
+        @download-file="downloadFile"
+        @remove-file="removeExhibit"
+      />
 
       <p v-if="removeError" class="remove-error">{{ removeError }}</p>
 
