@@ -41,6 +41,9 @@ namespace CES.Business.Extensions.Entities
                 CourtDateTime = firstTicket?.AppearanceDateTime ?? "",
                 Location = entity.LocationNameText ?? "",
                 Room = entity.RoomText ?? "",
+                Status = entity.Status.ToString(),
+                StatusChangedDate = entity.StatusChangedDateUTC,
+                ExhibitCount = entity.Files.Count(f => !f.IsDeleted),
                 Tickets = entity.Tickets.Select(t => new SubmissionTicketModel
                 {
                     AppearanceId = t.AppearanceId,
@@ -67,6 +70,7 @@ namespace CES.Business.Extensions.Entities
                     EnteredValue = f.EnteredValue,
                     EnteredAt = f.EnteredAt,
                     Description = f.Description,
+                    DeletedAt = f.DeletedAtUTC,
                 }).ToList()
             };
         }

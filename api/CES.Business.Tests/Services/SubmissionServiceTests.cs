@@ -3,6 +3,7 @@ using CES.Business.Models;
 using CES.Business.Services;
 using CES.EF;
 using CES.Entities;
+using CES.Entities.Enums;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Moq;
@@ -81,6 +82,8 @@ public class SubmissionServiceTests : IDisposable
         ]
     };
 
+    // ── SubmitEvidence ────────────────────────────────────────────────────────
+
     [Fact]
     public async Task SubmitEvidence_PersistsSubmissionAndFiles()
     {
@@ -156,6 +159,8 @@ public class SubmissionServiceTests : IDisposable
             Times.Exactly(2));
     }
 
+    // ── RetrieveSubmission ────────────────────────────────────────────────────
+
     [Fact]
     public async Task RetrieveSubmission_ReturnsModel_WhenExists()
     {
@@ -183,18 +188,55 @@ public class SubmissionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task RetrieveSubmissionListing_ExcludesDeleted()
+    public async Task RetrieveSubmission_IncludesRemovedFiles()
     {
-        _db.Submissions.AddRange(
-            BuildSubmission("F1"),
-            BuildSubmission("F2"),
-            new Submission { LocationId = "L3", RoomCode = "R3", IsDeleted = true }
-        );
+        var submission = BuildSubmission();
+        var active = BuildStoredFile();
+        var removed = BuildStoredFile();
+        removed.IsDeleted = true;
+        removed.DeletedAtUTC = DateTime.UtcNow;
+        submission.Files.Add(active);
+        submission.Files.Add(removed);
+        _db.Submissions.Add(submission);
         await _db.SaveChangesAsync();
 
-        var result = await _service.RetrieveSubmissionListing();
+        var result = await _service.RetrieveSubmission(submission.Id);
 
-        result.Should().HaveCount(2);
+        result!.Files.Should().HaveCount(2);
+        result.Files.Should().Contain(f => f.Status == "Removed");
+    }
+
+    // ── RetrieveSubmissionListing ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task RetrieveSubmissionListing_ReturnsAllStatuses()
+    {
+        var pending = BuildSubmission("F1");
+        var accepted = BuildSubmission("F2");
+        accepted.Status = SubmissionStatus.Accepted;
+        var rejected = BuildSubmission("F3");
+        rejected.Status = SubmissionStatus.Rejected;
+        _db.Submissions.AddRange(pending, accepted, rejected);
+        await _db.SaveChangesAsync();
+
+        var result = await _service.RetrieveSubmissionListing(new SubmissionListFilter());
+
+        result.TotalCount.Should().Be(3);
+        result.Items.Select(i => i.Status).Should().BeEquivalentTo(["Pending", "Accepted", "Rejected"], o => o.WithoutStrictOrdering());
+    }
+
+    [Fact]
+    public async Task RetrieveSubmissionListing_DoesNotHideAcceptedSubmissions()
+    {
+        var pending = BuildSubmission("F1");
+        var accepted = BuildSubmission("F2");
+        accepted.Status = SubmissionStatus.Accepted;
+        _db.Submissions.AddRange(pending, accepted);
+        await _db.SaveChangesAsync();
+
+        var result = await _service.RetrieveSubmissionListing(new SubmissionListFilter());
+
+        result.TotalCount.Should().Be(2);
     }
 
     [Fact]
@@ -204,119 +246,319 @@ public class SubmissionServiceTests : IDisposable
         _db.Submissions.Add(sub);
         await _db.SaveChangesAsync();
 
-        var result = await _service.RetrieveSubmissionListing();
+        var result = await _service.RetrieveSubmissionListing(new SubmissionListFilter());
 
-        result.First().Tickets.Should().HaveCount(1);
-        result.First().Tickets[0].FileNumberText.Should().Be("FILE001");
+        result.Items.Should().HaveCount(1);
+        result.Items[0].Tickets.Should().HaveCount(1);
+        result.Items[0].Tickets[0].FileNumberText.Should().Be("FILE001");
     }
 
     [Fact]
-    public async Task AcceptSubmissions_MarksFilesDeleted()
+    public async Task RetrieveSubmissionListing_FiltersByStatus()
     {
-        var fileId1 = Guid.NewGuid();
-        var fileId2 = Guid.NewGuid();
+        var pending = BuildSubmission("F1");
+        var accepted = BuildSubmission("F2");
+        accepted.Status = SubmissionStatus.Accepted;
+        _db.Submissions.AddRange(pending, accepted);
+        await _db.SaveChangesAsync();
+
+        var result = await _service.RetrieveSubmissionListing(new SubmissionListFilter { Status = SubmissionStatus.Pending });
+
+        result.TotalCount.Should().Be(1);
+        result.Items[0].Status.Should().Be("Pending");
+    }
+
+    [Fact]
+    public async Task RetrieveSubmissionListing_FiltersByFileNumber()
+    {
+        var match = BuildSubmission("FILE001");
+        var other = BuildSubmission("FILE999");
+        _db.Submissions.AddRange(match, other);
+        await _db.SaveChangesAsync();
+
+        var result = await _service.RetrieveSubmissionListing(new SubmissionListFilter { FileNumberText = "FILE001" });
+
+        result.TotalCount.Should().Be(1);
+        result.Items[0].Tickets[0].FileNumberText.Should().Be("FILE001");
+    }
+
+    [Fact]
+    public async Task RetrieveSubmissionListing_FiltersByAccusedName_CaseInsensitive()
+    {
+        var match = BuildSubmission("F1");
+        var other = BuildSubmission("F2");
+        other.Tickets.First().AccusedName = "Jones, Mary";
+        _db.Submissions.AddRange(match, other);
+        await _db.SaveChangesAsync();
+
+        var result = await _service.RetrieveSubmissionListing(new SubmissionListFilter { AccusedName = "smith" });
+
+        result.TotalCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task RetrieveSubmissionListing_Paging_ReturnsCorrectPage()
+    {
+        for (int i = 0; i < 5; i++)
+            _db.Submissions.Add(BuildSubmission($"F{i}"));
+        await _db.SaveChangesAsync();
+
+        var result = await _service.RetrieveSubmissionListing(new SubmissionListFilter { Page = 2, PageSize = 2 });
+
+        result.TotalCount.Should().Be(5);
+        result.Items.Should().HaveCount(2);
+        result.Page.Should().Be(2);
+        result.PageSize.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task RetrieveSubmissionListing_Paging_OutOfRangePageReturnsEmpty()
+    {
+        _db.Submissions.Add(BuildSubmission("F1"));
+        await _db.SaveChangesAsync();
+
+        var result = await _service.RetrieveSubmissionListing(new SubmissionListFilter { Page = 99, PageSize = 10 });
+
+        result.TotalCount.Should().Be(1);
+        result.Items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task RetrieveSubmissionListing_Paging_ClampsPageSizeToMax()
+    {
+        _db.Submissions.Add(BuildSubmission("F1"));
+        await _db.SaveChangesAsync();
+
+        var result = await _service.RetrieveSubmissionListing(new SubmissionListFilter { PageSize = 9999 });
+
+        result.PageSize.Should().Be(CES.Business.Constants.PagingConstants.MaxPageSize);
+    }
+
+    [Fact]
+    public async Task RetrieveSubmissionListing_ExhibitCount_CountsActiveFilesOnly()
+    {
+        var sub = BuildSubmission("F1");
+        var active = BuildStoredFile();
+        var removed = BuildStoredFile();
+        removed.IsDeleted = true;
+        sub.Files.Add(active);
+        sub.Files.Add(removed);
+        _db.Submissions.Add(sub);
+        await _db.SaveChangesAsync();
+
+        var result = await _service.RetrieveSubmissionListing(new SubmissionListFilter());
+
+        result.Items[0].ExhibitCount.Should().Be(1);
+    }
+
+    // ── AcceptSubmissions ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AcceptSubmissions_SetsStatusAccepted_WhenAllExhibitsReady()
+    {
         var submission = BuildSubmission();
-        submission.Files.Add(BuildStoredFile(fileId1));
-        submission.Files.Add(BuildStoredFile(fileId2));
+        var file = BuildStoredFile();
+        file.EnteredValue = "3";
+        submission.Files.Add(file);
         _db.Submissions.Add(submission);
         await _db.SaveChangesAsync();
 
-        _fileStorageMock
-            .Setup(s => s.AcceptAsync(It.IsAny<StoredFiles>()))
-            .Returns(Task.CompletedTask);
+        _fileStorageMock.Setup(s => s.AcceptSubmissionAsync(It.IsAny<Submission>())).Returns(Task.CompletedTask);
 
-        var model = new EvidenceAcceptanceModel
-        {
-            FileId = submission.Id,
-            acceptedFiles = [fileId1, fileId2]
-        };
+        var (success, error) = await _service.AcceptSubmissions(new SubmissionActionModel { SubmissionId = submission.Id });
 
-        var result = await _service.AcceptSubmissions(model);
-
-        result.Should().BeTrue();
-        _db.StoredFiles.Where(f => f.Id == fileId1 || f.Id == fileId2)
-            .All(f => f.IsDeleted).Should().BeTrue();
+        success.Should().BeTrue();
+        error.Should().BeNull();
+        _db.Submissions.Find(submission.Id)!.Status.Should().Be(SubmissionStatus.Accepted);
+        _db.Submissions.Find(submission.Id)!.StatusChangedDateUTC.Should().NotBeNull();
     }
 
     [Fact]
-    public async Task RejectSubmissions_DeletesSubmissionAndFiles()
+    public async Task AcceptSubmissions_DoesNotSetIsDeleted_OnSubmissionOrFiles()
+    {
+        var submission = BuildSubmission();
+        var file = BuildStoredFile();
+        file.EnteredValue = "3";
+        submission.Files.Add(file);
+        _db.Submissions.Add(submission);
+        await _db.SaveChangesAsync();
+
+        _fileStorageMock.Setup(s => s.AcceptSubmissionAsync(It.IsAny<Submission>())).Returns(Task.CompletedTask);
+
+        await _service.AcceptSubmissions(new SubmissionActionModel { SubmissionId = submission.Id });
+
+        _db.Submissions.Find(submission.Id)!.IsDeleted.Should().BeFalse();
+        _db.StoredFiles.Where(f => f.SubmissionId == submission.Id).All(f => !f.IsDeleted).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AcceptSubmissions_AcceptsRemovedExhibits_AsReady()
+    {
+        var submission = BuildSubmission();
+        var entered = BuildStoredFile();
+        entered.EnteredValue = "1";
+        var removed = BuildStoredFile();
+        removed.IsDeleted = true;
+        submission.Files.Add(entered);
+        submission.Files.Add(removed);
+        _db.Submissions.Add(submission);
+        await _db.SaveChangesAsync();
+
+        _fileStorageMock.Setup(s => s.AcceptSubmissionAsync(It.IsAny<Submission>())).Returns(Task.CompletedTask);
+
+        var (success, _) = await _service.AcceptSubmissions(new SubmissionActionModel { SubmissionId = submission.Id });
+
+        success.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AcceptSubmissions_RejectsWhenExhibitIsUnclassified()
+    {
+        var submission = BuildSubmission();
+        submission.Files.Add(BuildStoredFile()); // unclassified
+        _db.Submissions.Add(submission);
+        await _db.SaveChangesAsync();
+
+        var (success, error) = await _service.AcceptSubmissions(new SubmissionActionModel { SubmissionId = submission.Id });
+
+        success.Should().BeFalse();
+        error.Should().Contain("Unready");
+    }
+
+    [Fact]
+    public async Task AcceptSubmissions_RejectsWhenExhibitIsMarkedOnly()
+    {
+        var submission = BuildSubmission();
+        var file = BuildStoredFile();
+        file.MarkedValue = "A";
+        submission.Files.Add(file);
+        _db.Submissions.Add(submission);
+        await _db.SaveChangesAsync();
+
+        var (success, error) = await _service.AcceptSubmissions(new SubmissionActionModel { SubmissionId = submission.Id });
+
+        success.Should().BeFalse();
+        error.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task AcceptSubmissions_RejectsTerminalSubmission()
+    {
+        var submission = BuildSubmission();
+        submission.Status = SubmissionStatus.Accepted;
+        _db.Submissions.Add(submission);
+        await _db.SaveChangesAsync();
+
+        var (success, error) = await _service.AcceptSubmissions(new SubmissionActionModel { SubmissionId = submission.Id });
+
+        success.Should().BeFalse();
+        error.Should().Contain("Pending");
+    }
+
+    [Fact]
+    public async Task AcceptSubmissions_ReturnsFailure_WhenNotFound()
+    {
+        var (success, error) = await _service.AcceptSubmissions(new SubmissionActionModel { SubmissionId = 99999 });
+
+        success.Should().BeFalse();
+        error.Should().Contain("not found");
+    }
+
+    // ── RejectSubmissions ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task RejectSubmissions_SetsStatusRejected_AndDeletesFiles()
     {
         var submission = BuildSubmission();
         submission.Files.Add(BuildStoredFile());
         submission.Files.Add(BuildStoredFile());
         _db.Submissions.Add(submission);
-        await _db.SaveChangesAsync();
-
-        _fileStorageMock
-            .Setup(s => s.DeleteAsync(It.IsAny<StoredFiles>()))
-            .Returns(Task.CompletedTask);
-
-        var model = new EvidenceAcceptanceModel
-        {
-            FileId = submission.Id,
-            acceptedFiles = []
-        };
-
-        var result = await _service.RejectSubmissions(model);
-
-        result.Should().BeTrue();
-        _db.Submissions.Find(submission.Id)!.IsDeleted.Should().BeTrue();
-        _fileStorageMock.Verify(s => s.DeleteAsync(It.IsAny<StoredFiles>()), Times.Exactly(2));
-    }
-
-    [Fact]
-    public async Task GetSubmissionsByFileNumber_ReturnsMatchingSubmissions()
-    {
-        var sub1 = BuildSubmission("FILE001");
-        var sub2 = BuildSubmission("FILE001");
-        sub2.LocationId = "LOC002"; // different location — still returned
-        var sub3 = BuildSubmission("FILE999"); // different file number
-        _db.Submissions.AddRange(sub1, sub2, sub3);
-        await _db.SaveChangesAsync();
-
-        var result = await _service.GetSubmissionsByFileNumberAsync("FILE001");
-
-        result.Should().HaveCount(2);
-        result.All(r => r.Files.Count == 0).Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task GetSubmissionsByFileNumber_ExcludesDeletedSubmissions()
-    {
-        var active = BuildSubmission("FILE001");
-        var deleted = BuildSubmission("FILE001");
-        deleted.IsDeleted = true;
-        _db.Submissions.AddRange(active, deleted);
-        await _db.SaveChangesAsync();
-
-        var result = await _service.GetSubmissionsByFileNumberAsync("FILE001");
-
-        result.Should().HaveCount(1);
-    }
-
-    [Fact]
-    public async Task GetSubmissionsByFileNumber_ReturnsEmptyForUnknownFileNumber()
-    {
-        var result = await _service.GetSubmissionsByFileNumberAsync("UNKNOWN");
-
-        result.Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task RemoveFile_MarksFileDeleted_AndCallsStorageDelete()
-    {
-        var fileId = Guid.NewGuid();
-        var file = BuildStoredFile(fileId);
-        _db.StoredFiles.Add(file);
         await _db.SaveChangesAsync();
 
         _fileStorageMock.Setup(s => s.DeleteAsync(It.IsAny<StoredFiles>())).Returns(Task.CompletedTask);
 
-        var result = await _service.RemoveFileAsync(fileId);
+        var (success, error) = await _service.RejectSubmissions(new SubmissionActionModel { SubmissionId = submission.Id });
+
+        success.Should().BeTrue();
+        error.Should().BeNull();
+        _db.Submissions.Find(submission.Id)!.Status.Should().Be(SubmissionStatus.Rejected);
+        _db.Submissions.Find(submission.Id)!.IsDeleted.Should().BeFalse();
+        _db.StoredFiles.Where(f => f.SubmissionId == submission.Id).All(f => f.IsDeleted).Should().BeTrue();
+        _db.StoredFiles.Where(f => f.SubmissionId == submission.Id).All(f => f.DeletedAtUTC != null).Should().BeTrue();
+        _fileStorageMock.Verify(s => s.DeleteAsync(It.IsAny<StoredFiles>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task RejectSubmissions_RejectsTerminalSubmission()
+    {
+        var submission = BuildSubmission();
+        submission.Status = SubmissionStatus.Rejected;
+        _db.Submissions.Add(submission);
+        await _db.SaveChangesAsync();
+
+        var (success, error) = await _service.RejectSubmissions(new SubmissionActionModel { SubmissionId = submission.Id });
+
+        success.Should().BeFalse();
+        error.Should().Contain("Pending");
+    }
+
+    // ── RemoveFile ────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task RemoveFile_MarksFileDeleted_AndRecordsDeletionTimestamp()
+    {
+        var submission = BuildSubmission();
+        var file = BuildStoredFile();
+        submission.Files.Add(file);
+        _db.Submissions.Add(submission);
+        await _db.SaveChangesAsync();
+
+        _fileStorageMock.Setup(s => s.DeleteAsync(It.IsAny<StoredFiles>())).Returns(Task.CompletedTask);
+
+        var result = await _service.RemoveFileAsync(file.Id);
 
         result.Should().BeTrue();
-        _db.StoredFiles.Find(fileId)!.IsDeleted.Should().BeTrue();
-        _fileStorageMock.Verify(s => s.DeleteAsync(It.Is<StoredFiles>(f => f.Id == fileId)), Times.Once);
+        var dbFile = _db.StoredFiles.Find(file.Id)!;
+        dbFile.IsDeleted.Should().BeTrue();
+        dbFile.DeletedAtUTC.Should().NotBeNull();
+        _fileStorageMock.Verify(s => s.DeleteAsync(It.Is<StoredFiles>(f => f.Id == file.Id)), Times.Once);
+    }
+
+    [Fact]
+    public async Task RemoveFile_SucceedsOnEnteredExhibit_WhenPending()
+    {
+        var submission = BuildSubmission();
+        var file = BuildStoredFile();
+        file.EnteredValue = "5";
+        file.EnteredAt = DateTime.UtcNow;
+        submission.Files.Add(file);
+        _db.Submissions.Add(submission);
+        await _db.SaveChangesAsync();
+
+        _fileStorageMock.Setup(s => s.DeleteAsync(It.IsAny<StoredFiles>())).Returns(Task.CompletedTask);
+
+        var result = await _service.RemoveFileAsync(file.Id);
+
+        result.Should().BeTrue();
+        _db.StoredFiles.Find(file.Id)!.IsDeleted.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RemoveFile_RejectsWhenSubmissionIsAccepted()
+    {
+        var submission = BuildSubmission();
+        submission.Status = SubmissionStatus.Accepted;
+        var file = BuildStoredFile();
+        submission.Files.Add(file);
+        _db.Submissions.Add(submission);
+        await _db.SaveChangesAsync();
+
+        _fileStorageMock.Setup(s => s.DeleteAsync(It.IsAny<StoredFiles>())).Returns(Task.CompletedTask);
+
+        var act = async () => await _service.RemoveFileAsync(file.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Pending*");
+        _fileStorageMock.Verify(s => s.DeleteAsync(It.IsAny<StoredFiles>()), Times.Never);
     }
 
     [Fact]
@@ -347,23 +589,44 @@ public class SubmissionServiceTests : IDisposable
         _fileStorageMock.Verify(s => s.DeleteAsync(It.IsAny<StoredFiles>()), Times.Never);
     }
 
+    // ── GetSubmissionsByFileNumber ─────────────────────────────────────────────
+
     [Fact]
-    public async Task RemoveFile_Rejects_WhenFileIsEntered()
+    public async Task GetSubmissionsByFileNumber_ReturnsMatchingSubmissions()
     {
-        var fileId = Guid.NewGuid();
-        var file = BuildStoredFile(fileId);
-        file.EnteredValue = "5";
-        file.EnteredAt = DateTime.UtcNow;
-        _db.StoredFiles.Add(file);
+        var sub1 = BuildSubmission("FILE001");
+        var sub2 = BuildSubmission("FILE001");
+        sub2.LocationId = "LOC002";
+        var sub3 = BuildSubmission("FILE999");
+        _db.Submissions.AddRange(sub1, sub2, sub3);
         await _db.SaveChangesAsync();
 
-        _fileStorageMock.Setup(s => s.DeleteAsync(It.IsAny<StoredFiles>())).Returns(Task.CompletedTask);
+        var result = await _service.GetSubmissionsByFileNumberAsync("FILE001");
 
-        var act = async () => await _service.RemoveFileAsync(fileId);
+        result.Should().HaveCount(2);
+        result.All(r => r.Files.Count == 0).Should().BeTrue();
+    }
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Entered*");
-        _fileStorageMock.Verify(s => s.DeleteAsync(It.IsAny<StoredFiles>()), Times.Never);
+    [Fact]
+    public async Task GetSubmissionsByFileNumber_ExcludesDeletedSubmissions()
+    {
+        var active = BuildSubmission("FILE001");
+        var deleted = BuildSubmission("FILE001");
+        deleted.IsDeleted = true;
+        _db.Submissions.AddRange(active, deleted);
+        await _db.SaveChangesAsync();
+
+        var result = await _service.GetSubmissionsByFileNumberAsync("FILE001");
+
+        result.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task GetSubmissionsByFileNumber_ReturnsEmptyForUnknownFileNumber()
+    {
+        var result = await _service.GetSubmissionsByFileNumberAsync("UNKNOWN");
+
+        result.Should().BeEmpty();
     }
 
     [Fact]

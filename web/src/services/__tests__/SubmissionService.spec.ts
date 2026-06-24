@@ -3,8 +3,7 @@ import { http, HttpResponse } from 'msw';
 import { server } from '@/test/setup';
 import useSubmissionService from '@/services/SubmissionService';
 import type { ExhibitSubmissionModel } from '@/models/ExhibitSubmissionModel';
-import type { SubmissionAcceptanceModel } from '@/models/SubmissionAcceptanceModel';
-import type { SubmissionFile } from '@/models/SubmissionReviewModel';
+import type { SubmissionFile, SubmissionActionModel, PagedResult, SubmissionReviewModel } from '@/models/SubmissionReviewModel';
 
 vi.mock('@/router', () => ({
   default: {
@@ -39,6 +38,25 @@ const mockModel: ExhibitSubmissionModel = {
   officerNumber: 'OFF001',
 };
 
+const mockPagedResult: PagedResult<SubmissionReviewModel> = {
+  items: [
+    {
+      id: 1,
+      courtDateTime: '2026-01-01T09:00:00',
+      location: 'Test Court',
+      room: 'ROOM1',
+      locationName: 'Test Court',
+      status: 'Pending',
+      exhibitCount: 2,
+      tickets: [],
+      files: [],
+    },
+  ],
+  totalCount: 1,
+  page: 1,
+  pageSize: 20,
+};
+
 describe('SubmissionService', () => {
   it('submitExhibits sends multipart POST to /api/submissions/submit', async () => {
     let contentType = '';
@@ -56,21 +74,8 @@ describe('SubmissionService', () => {
     expect(contentType).toContain('multipart/form-data');
   });
 
-  it('submitExhibits calls progressCallback', async () => {
-    server.use(
-      http.post('/api/submissions/submit/', () => HttpResponse.json({ success: true })),
-    );
-
-    const progressValues: number[] = [];
-    const { submitExhibits } = useSubmissionService();
-    const file = new File(['video content'], 'test.mp4', { type: 'video/mp4' });
-    await submitExhibits(mockModel, [file], (percent) => progressValues.push(percent));
-
-    expect(progressValues.length).toBeGreaterThanOrEqual(0);
-  });
-
   it('retrieveSubmission fetches GET /api/submissions/retrieve', async () => {
-    const mockSubmission = { id: 1, tickets: [], files: [] };
+    const mockSubmission = { id: 1, status: 'Pending', exhibitCount: 0, tickets: [], files: [] };
     server.use(
       http.get('/api/submissions/retrieve/', () => HttpResponse.json(mockSubmission)),
     );
@@ -81,47 +86,78 @@ describe('SubmissionService', () => {
     expect(result).toMatchObject({ id: 1 });
   });
 
-  it('retrieveSubmissionListing fetches GET /api/submissions/listing', async () => {
+  it('retrieveSubmissionListing fetches GET /api/submissions/listing and returns PagedResult', async () => {
     server.use(
-      http.get('/api/submissions/listing/', () => HttpResponse.json([{ id: 1 }, { id: 2 }])),
+      http.get('/api/submissions/listing/', () => HttpResponse.json(mockPagedResult)),
     );
 
     const { retrieveSubmissionListing } = useSubmissionService();
     const result = await retrieveSubmissionListing();
 
-    expect(result).toHaveLength(2);
+    expect(result).toMatchObject({ totalCount: 1, page: 1 });
+    expect(result?.items).toHaveLength(1);
   });
 
-  it('acceptSubmissionFiles sends POST /api/submissions/accept', async () => {
+  it('retrieveSubmissionListing passes filter params as query string', async () => {
+    let capturedUrl = '';
+    server.use(
+      http.get('/api/submissions/listing/', ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json(mockPagedResult);
+      }),
+    );
+
+    const { retrieveSubmissionListing } = useSubmissionService();
+    await retrieveSubmissionListing({ status: 'Pending', page: 2, pageSize: 10 });
+
+    expect(capturedUrl).toContain('status=Pending');
+    expect(capturedUrl).toContain('page=2');
+    expect(capturedUrl).toContain('pageSize=10');
+  });
+
+  it('acceptSubmission sends POST /api/submissions/accept with submissionId', async () => {
     let capturedBody: unknown = null;
     server.use(
       http.post('/api/submissions/accept/', async ({ request }) => {
         capturedBody = await request.json();
-        return HttpResponse.json(true);
+        return HttpResponse.json('Submission accepted');
       }),
     );
 
-    const model: SubmissionAcceptanceModel = { fileId: 1, acceptedFiles: [] as string[] };
-    const { acceptSubmissionFiles } = useSubmissionService();
-    await acceptSubmissionFiles(model);
+    const model: SubmissionActionModel = { submissionId: 42 };
+    const { acceptSubmission } = useSubmissionService();
+    const result = await acceptSubmission(model);
 
-    expect(capturedBody).toMatchObject({ fileId: 1 });
+    expect(result).toBe(true);
+    expect(capturedBody).toMatchObject({ submissionId: 42 });
   });
 
-  it('rejectAndCloseSubmission sends POST /api/submissions/reject', async () => {
+  it('acceptSubmission returns false on API error', async () => {
+    server.use(
+      http.post('/api/submissions/accept/', () => new HttpResponse(null, { status: 422 })),
+    );
+
+    const { acceptSubmission } = useSubmissionService();
+    const result = await acceptSubmission({ submissionId: 1 });
+
+    expect(result).toBe(false);
+  });
+
+  it('rejectSubmission sends POST /api/submissions/reject with submissionId', async () => {
     let capturedBody: unknown = null;
     server.use(
       http.post('/api/submissions/reject/', async ({ request }) => {
         capturedBody = await request.json();
-        return HttpResponse.json(true);
+        return HttpResponse.json('Submission rejected');
       }),
     );
 
-    const model: SubmissionAcceptanceModel = { fileId: 2, acceptedFiles: [] as string[] };
-    const { rejectAndCloseSubmission } = useSubmissionService();
-    await rejectAndCloseSubmission(model);
+    const model: SubmissionActionModel = { submissionId: 7 };
+    const { rejectSubmission } = useSubmissionService();
+    const result = await rejectSubmission(model);
 
-    expect(capturedBody).toMatchObject({ fileId: 2 });
+    expect(result).toBe(true);
+    expect(capturedBody).toMatchObject({ submissionId: 7 });
   });
 
   it('getSubmissionsByFileNumber fetches GET /api/submissions/by-file-number', async () => {
@@ -157,7 +193,7 @@ describe('SubmissionService', () => {
   it('removeFile returns false on API error', async () => {
     const fileId = '550e8400-e29b-41d4-a716-446655440001';
     server.use(
-      http.delete(`/api/submissions/files/${fileId}`, () => new HttpResponse(null, { status: 404 })),
+      http.delete(`/api/submissions/files/${fileId}`, () => new HttpResponse(null, { status: 409 })),
     );
 
     const { removeFile } = useSubmissionService();

@@ -23,12 +23,12 @@ namespace CES.Business.Services
             return await _dataStore.StoredFiles.FindAsync(fileId);
         }
 
-        public async Task<SubmissionFile> MarkExhibitAsync(Guid fileId, string markedValue, string changedBy)
+        public async Task<SubmissionFile> MarkExhibitAsync(Guid fileId, string markedValue, string changedBy, bool isAdminOverride = false)
         {
             var file = await _dataStore.StoredFiles.FirstOrDefaultAsync(f => f.Id == fileId && !f.IsDeleted)
                 ?? throw new KeyNotFoundException($"File {fileId} not found.");
 
-            if (file.EnteredValue != null)
+            if (!isAdminOverride && file.EnteredValue != null)
                 throw new InvalidOperationException("Entered exhibits cannot be modified.");
 
             var normalised = markedValue.ToUpperInvariant();
@@ -54,7 +54,7 @@ namespace CES.Business.Services
             return ToSubmissionFile(file);
         }
 
-        public async Task<SubmissionFile> EnterExhibitAsync(Guid fileId, string enteredValue, string changedBy)
+        public async Task<SubmissionFile> EnterExhibitAsync(Guid fileId, string enteredValue, string changedBy, bool isAdminOverride = false)
         {
             var file = await _dataStore.StoredFiles.FirstOrDefaultAsync(f => f.Id == fileId && !f.IsDeleted)
                 ?? throw new KeyNotFoundException($"File {fileId} not found.");
@@ -66,8 +66,7 @@ namespace CES.Business.Services
                 throw new ArgumentException($"Entered value must be a number between {ClassificationConstants.EnteredMin} and {ClassificationConstants.EnteredMax}.");
             }
 
-            // Terminal lock: reject re-enter if past the correction window
-            if (file.EnteredAt.HasValue)
+            if (!isAdminOverride && file.EnteredAt.HasValue)
             {
                 var secondsSinceEntered = (SystemDate.UtcNow() - file.EnteredAt.Value).TotalSeconds;
                 if (secondsSinceEntered > ClassificationConstants.ClassificationEditWindowSeconds)
@@ -77,7 +76,6 @@ namespace CES.Business.Services
             var oldValue = file.EnteredValue;
             file.EnteredValue = enteredValue;
 
-            // EnteredAt is only set on first enter; corrections do not advance the timestamp
             if (!file.EnteredAt.HasValue)
                 file.EnteredAt = SystemDate.UtcNow();
 
@@ -97,12 +95,12 @@ namespace CES.Business.Services
             return ToSubmissionFile(file);
         }
 
-        public async Task<SubmissionFile> UpdateExhibitDescriptionAsync(Guid fileId, string description, string changedBy)
+        public async Task<SubmissionFile> UpdateExhibitDescriptionAsync(Guid fileId, string description, string changedBy, bool isAdminOverride = false)
         {
             var file = await _dataStore.StoredFiles.FirstOrDefaultAsync(f => f.Id == fileId && !f.IsDeleted)
                 ?? throw new KeyNotFoundException($"File {fileId} not found.");
 
-            if (file.EnteredValue != null)
+            if (!isAdminOverride && file.EnteredValue != null)
                 throw new InvalidOperationException("Entered exhibits cannot be modified.");
 
             if (description.Length > ClassificationConstants.DescriptionMaxLength)
@@ -141,6 +139,7 @@ namespace CES.Business.Services
             EnteredValue = f.EnteredValue,
             EnteredAt = f.EnteredAt,
             Description = f.Description,
+            DeletedAt = f.DeletedAtUTC,
         };
     }
 }

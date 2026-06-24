@@ -287,4 +287,60 @@ public class FileServiceTests : IDisposable
         entered.DeriveStatus().Should().Be("Entered");
         removed.DeriveStatus().Should().Be("Removed");
     }
+
+    // ── Admin override ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task MarkExhibit_AdminOverride_SucceedsOnEnteredFile()
+    {
+        var file = SeedFile(enteredValue: "5", enteredAt: DateTime.UtcNow);
+
+        var result = await _service.MarkExhibitAsync(file.Id, "A", "admin@test.ca", isAdminOverride: true);
+
+        result.MarkedValue.Should().Be("A");
+        _db.SubmissionAuditLogs.Should().Contain(l => l.FieldName == "MarkedValue" && l.ChangedBy == "admin@test.ca");
+    }
+
+    [Fact]
+    public async Task EnterExhibit_AdminOverride_SucceedsOutsideEditWindow()
+    {
+        var file = SeedFile(
+            enteredValue: "3",
+            enteredAt: DateTime.UtcNow - TimeSpan.FromSeconds(30));
+
+        var result = await _service.EnterExhibitAsync(file.Id, "7", "admin@test.ca", isAdminOverride: true);
+
+        result.EnteredValue.Should().Be("7");
+        _db.SubmissionAuditLogs.Should().Contain(l => l.FieldName == "EnteredValue" && l.ChangedBy == "admin@test.ca");
+    }
+
+    [Fact]
+    public async Task UpdateDescription_AdminOverride_SucceedsOnEnteredFile()
+    {
+        var file = SeedFile(enteredValue: "5", enteredAt: DateTime.UtcNow);
+
+        var result = await _service.UpdateExhibitDescriptionAsync(file.Id, "admin note", "admin@test.ca", isAdminOverride: true);
+
+        result.Description.Should().Be("admin note");
+        _db.SubmissionAuditLogs.Should().Contain(l => l.FieldName == "Description" && l.ChangedBy == "admin@test.ca");
+    }
+
+    [Fact]
+    public async Task MarkExhibit_AdminOverride_StillEnforcesValueRange()
+    {
+        var file = SeedFile(enteredValue: "5", enteredAt: DateTime.UtcNow);
+
+        var act = async () => await _service.MarkExhibitAsync(file.Id, "AA", "admin@test.ca", isAdminOverride: true);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task EnterExhibit_AdminOverride_StillEnforcesValueRange()
+    {
+        var file = SeedFile();
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _service.EnterExhibitAsync(file.Id, "999", "admin@test.ca", isAdminOverride: true));
+    }
 }

@@ -9,6 +9,6 @@ namespace CES.Business.Interfaces
         Task<StoredFiles> SaveAsync(FileUpload file, string storagePath);
         Task<Stream> GetAsync(StoredFiles storedFile);
         Task DeleteAsync(StoredFiles storedFile);
-        Task AcceptAsync(StoredFiles file);
+        Task AcceptSubmissionAsync(Submission submission);
     }
 }

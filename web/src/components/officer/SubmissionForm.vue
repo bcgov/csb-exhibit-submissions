@@ -1,21 +1,13 @@
 <script setup lang="ts">
-import {
-  CLASSIFICATION_EDIT_WINDOW_SECONDS,
-  DESCRIPTION_MAX_LENGTH,
-  ENTERED_MAX,
-  ENTERED_MIN,
-  MARKED_MIN,
-  SAVE_INDICATOR_FADE_SECONDS,
-  VIEWABLE_CONTENT_TYPE_PREFIXES
-} from '@/constants/classification'
 import { formatDateTime, formatDateyyyymmdd } from '@/helpers/formatters'
 import type { ExhibitSubmissionModel, SubmissionTicketModel } from '@/models/ExhibitSubmissionModel'
 import type { PriorSubmissionModel } from '@/models/PriorSubmissionModel'
 import type { SubmissionFile } from '@/models/SubmissionReviewModel'
 import useSubmissionService from '@/services/SubmissionService'
 import { useCourtFileSelectionStore } from '@/stores/useCourtFileSelectionStore'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import ExhibitList from '../shared/ExhibitList.vue'
 import FileDropZone from '../shared/FileDropZone.vue'
 import FileViewer from '../shared/FileViewer.vue'
 
@@ -38,16 +30,6 @@ const dropZoneRef = ref<InstanceType<typeof FileDropZone> | null>(null)
 
 const priorExhibits = ref<Map<string, PriorSubmissionModel[]>>(new Map())
 const priorExhibitsError = ref(false)
-
-// Per-file 10-second edit-window tracking (file ID sets)
-const markedWindowActive = reactive<Set<string>>(new Set())
-const enteredWindowActive = reactive<Set<string>>(new Set())
-
-// Per-file save indicator: 'success' | { error: string } | null
-const saveIndicators = reactive<Record<string, 'success' | string | null>>({})
-
-// Local description drafts (file ID -> current text)
-const localDescriptions = reactive<Record<string, string>>({})
 
 // History popup state
 const historyDialogOpen = ref(false)
@@ -136,12 +118,6 @@ const loadPriorExhibits = async () => {
       }),
     )
     priorExhibits.value = results
-    // Initialise local description drafts from loaded state
-    for (const entry of flatPriorFiles.value) {
-      if (!(entry.file.id in localDescriptions)) {
-        localDescriptions[entry.file.id] = entry.file.description ?? ''
-      }
-    }
   } catch {
     priorExhibitsError.value = true
   }
@@ -159,84 +135,6 @@ const updateFileInStore = (updated: SubmissionFile) => {
   }
 }
 
-const showSaveSuccess = (fileId: string) => {
-  saveIndicators[fileId] = 'success'
-  setTimeout(() => {
-    if (saveIndicators[fileId] === 'success') saveIndicators[fileId] = null
-  }, SAVE_INDICATOR_FADE_SECONDS * 1000)
-}
-
-const showSaveError = (fileId: string, message: string) => {
-  saveIndicators[fileId] = message
-}
-
-const startMarkedWindow = (fileId: string) => {
-  markedWindowActive.add(fileId)
-  setTimeout(() => markedWindowActive.delete(fileId), CLASSIFICATION_EDIT_WINDOW_SECONDS * 1000)
-}
-
-const startEnteredWindow = (fileId: string) => {
-  enteredWindowActive.add(fileId)
-  setTimeout(() => enteredWindowActive.delete(fileId), CLASSIFICATION_EDIT_WINDOW_SECONDS * 1000)
-}
-
-const isMarkedEnabled = (file: SubmissionFile): boolean => {
-  if (file.enteredValue != null) return false
-  if (file.markedValue == null) return true
-  return markedWindowActive.has(file.id)
-}
-
-const isEnteredEnabled = (file: SubmissionFile): boolean => {
-  if (file.enteredValue == null) return true
-  return enteredWindowActive.has(file.id)
-}
-
-const isDescriptionEnabled = (file: SubmissionFile): boolean => file.enteredValue == null
-
-const isViewable = (contentType: string): boolean =>
-  VIEWABLE_CONTENT_TYPE_PREFIXES.some(prefix => contentType.startsWith(prefix))
-
-const onMarkChange = async (file: SubmissionFile, value: string) => {
-  if (!value) return
-  try {
-    const updated = await markExhibit(file.id, { markedValue: value })
-    updateFileInStore(updated)
-    startMarkedWindow(file.id)
-    showSaveSuccess(file.id)
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Failed to mark exhibit.'
-    showSaveError(file.id, msg)
-  }
-}
-
-const onEnterChange = async (file: SubmissionFile, value: string) => {
-  if (!value) return
-  try {
-    const updated = await enterExhibit(file.id, { enteredValue: value })
-    updateFileInStore(updated)
-    // Clear Marked window immediately — only Entered is correctable within its own window
-    markedWindowActive.delete(file.id)
-    startEnteredWindow(file.id)
-    showSaveSuccess(file.id)
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Failed to enter exhibit.'
-    showSaveError(file.id, msg)
-  }
-}
-
-const onDescriptionBlur = async (file: SubmissionFile) => {
-  const description = localDescriptions[file.id] ?? ''
-  if (description === (file.description ?? '')) return // no change
-  try {
-    const updated = await updateExhibitDescription(file.id, { description })
-    updateFileInStore(updated)
-    showSaveSuccess(file.id)
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Failed to save description.'
-    showSaveError(file.id, msg)
-  }
-}
-
 const openPreview = (file: SubmissionFile) => { previewFile.value = file }
 const closePreview = () => { previewFile.value = null }
 
@@ -251,24 +149,6 @@ const loadHistory = async () => {
   } finally {
     historyLoading.value = false
   }
-}
-
-const markedLetters = Array.from({ length: 26 }, (_, i) =>
-  String.fromCharCode(MARKED_MIN.charCodeAt(0) + i),
-)
-const enteredNumbers = Array.from({ length: ENTERED_MAX - ENTERED_MIN + 1 }, (_, i) =>
-  String(ENTERED_MIN + i),
-)
-
-const statusChipClass = (status?: string) => {
-  if (status === 'Entered') return 'chip chip-entered'
-  if (status === 'Marked') return 'chip chip-marked'
-  return 'chip chip-unclassified'
-}
-
-const formatClassificationDate = (iso?: string | null): string => {
-  if (!iso) return ''
-  return formatDateTime(iso, true)
 }
 
 onMounted(async () => {
@@ -348,6 +228,14 @@ const submitForm = async () => {
         </div>
       </div>
 
+
+      <!-- Officer number -->
+      <div class="officer-field">
+        <label>Officer Number</label>
+        <input type="text" v-model="officerNumber" />
+      </div>
+
+
       <!-- Ticket list panel -->
       <div class="ticket-panel">
         <div class="ticket-panel-header">
@@ -378,88 +266,13 @@ const submitForm = async () => {
           Could not load prior exhibit history. You can still proceed with the upload.
         </p>
 
-        <template v-else-if="flatPriorFiles.length > 0">
-          <ul class="prior-file-list">
-            <li v-for="entry in flatPriorFiles" :key="entry.file.id" class="prior-file-item">
-
-              <!-- Row 1: name, date, ticket badge, status chip, save indicator, view button -->
-              <div class="prior-file-row1">
-                <span class="prior-file-name">{{ entry.file.originalFileName }}</span>
-                <span class="prior-file-date">{{ formatDateTime(entry.submissionDate ?? '', true) }}</span>
-                <span class="prior-file-tickets">
-                  File #{{ entry.fileNumbers.length <= 2 ? entry.fileNumbers.join(', ') : entry.fileNumbers[0] }}<span
-                    v-if="entry.fileNumbers.length > 2"
-                    class="ticket-overflow"
-                    :title="entry.fileNumbers.join(' \n')"> (+{{ entry.fileNumbers.length - 1 }})</span>
-                </span>
-                <span :class="statusChipClass(entry.file.status)">{{ entry.file.status ?? 'Unclassified' }}</span>
-
-                <!-- Save indicator -->
-                <span v-if="saveIndicators[entry.file.id] === 'success'" class="save-indicator save-success"
-                  title="Saved">✓</span>
-                <span v-else-if="saveIndicators[entry.file.id]" class="save-indicator save-error"
-                  :title="saveIndicators[entry.file.id] as string">✕</span>
-
-                <!-- View button (browser-viewable types only; no download) -->
-                <div class="view-container">
-                  <button v-if="isViewable(entry.file.contentType)" type="button" class="view-btn"
-                    @click="openPreview(entry.file)">View</button>
-                </div>
-              </div>
-
-              <!-- Row 2: classification controls -->
-              <div class="prior-file-row2">
-
-                <!-- Marked -->
-                <div class="classification-group">
-                  <label>Marked</label>
-                  <select :disabled="!isMarkedEnabled(entry.file)" :value="entry.file.markedValue ?? ''"
-                    @change="onMarkChange(entry.file, ($event.target as HTMLSelectElement).value)">
-                    <option value="">—</option>
-                    <option v-for="letter in markedLetters" :key="letter" :value="letter">{{ letter }}</option>
-                  </select>
-                  <span v-if="entry.file.markedAt" class="timestamp-text">
-                    {{ formatClassificationDate(entry.file.markedAt) }}
-                  </span>
-                </div>
-
-                <!-- Entered -->
-                <div class="classification-group">
-                  <label>Entered</label>
-                  <select :disabled="!isEnteredEnabled(entry.file)" :value="entry.file.enteredValue ?? ''"
-                    @change="onEnterChange(entry.file, ($event.target as HTMLSelectElement).value)">
-                    <option value="">—</option>
-                    <option v-for="num in enteredNumbers" :key="num" :value="num">{{ num }}</option>
-                  </select>
-                  <span v-if="entry.file.enteredAt" class="timestamp-text">
-                    {{ formatClassificationDate(entry.file.enteredAt) }}
-                  </span>
-                </div>
-
-                <!-- Description -->
-                <div class="description-group">
-                  <label>Description</label>
-                  <input type="text" :disabled="!isDescriptionEnabled(entry.file)" :maxlength="DESCRIPTION_MAX_LENGTH"
-                    v-model="localDescriptions[entry.file.id]" @blur="onDescriptionBlur(entry.file)"
-                    placeholder="Optional description…" />
-                  <span class="desc-counter"
-                    :class="{ over: (localDescriptions[entry.file.id]?.length ?? 0) > DESCRIPTION_MAX_LENGTH }">
-                    {{ DESCRIPTION_MAX_LENGTH - (localDescriptions[entry.file.id]?.length ?? 0) }} remaining
-                  </span>
-                </div>
-
-              </div>
-            </li>
-          </ul>
-        </template>
+        <ExhibitList v-else-if="flatPriorFiles.length > 0" :entries="flatPriorFiles"
+          :mark-fn="(id: string, v: string) => markExhibit(id, { markedValue: v })"
+          :enter-fn="(id: string, v: string) => enterExhibit(id, { enteredValue: v })"
+          :description-fn="(id: string, d: string) => updateExhibitDescription(id, { description: d })"
+          @file-updated="updateFileInStore" @preview-file="openPreview" />
 
         <p v-else class="prior-empty">No previous exhibits for the selected tickets.</p>
-      </div>
-
-      <!-- Officer number -->
-      <div class="officer-field">
-        <label>Officer Number</label>
-        <input type="text" v-model="officerNumber" />
       </div>
 
       <!-- Dropzone -->
@@ -479,7 +292,7 @@ const submitForm = async () => {
 
       <div class="actions">
         <button type="button" class="back-btn" @click="goBack">Back</button>
-        <button type="submit" :disabled="uploading">Submit Exhibit</button>
+        <button type="submit" :disabled="uploading">Upload Exhibit</button>
       </div>
     </form>
 
@@ -524,9 +337,9 @@ const submitForm = async () => {
                   <td>{{ formatDateTime(sub.submissionDate ?? '', true) }}</td>
                   <td>{{ file.status ?? 'Unclassified' }}</td>
                   <td>{{ file.markedValue ?? '—' }}</td>
-                  <td>{{ formatClassificationDate(file.markedAt) || '—' }}</td>
+                  <td>{{ file.markedAt ? formatDateTime(file.markedAt, true) : '—' }}</td>
                   <td>{{ file.enteredValue ?? '—' }}</td>
-                  <td>{{ formatClassificationDate(file.enteredAt) || '—' }}</td>
+                  <td>{{ file.enteredAt ? formatDateTime(file.enteredAt, true) : '—' }}</td>
                   <td>{{ file.description ?? '—' }}</td>
                 </tr>
               </template>

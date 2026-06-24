@@ -41,7 +41,7 @@ public class InMemoryFileStorage : IFileStorage
         return Task.CompletedTask;
     }
 
-    public Task AcceptAsync(StoredFiles file)
+    public Task AcceptSubmissionAsync(Submission submission)
     {
         return Task.CompletedTask;
     }

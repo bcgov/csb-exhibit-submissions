@@ -10,6 +10,9 @@ namespace CES.Business.Models
         public string CourtDateTime { get; set; } = string.Empty;
         public string Location { get; set; } = string.Empty;
         public string Room { get; set; } = string.Empty;
+        public string Status { get; set; } = "Pending";
+        public DateTime? StatusChangedDate { get; set; }
+        public int ExhibitCount { get; set; }
         public List<SubmissionTicketModel> Tickets { get; set; } = new();
         public List<SubmissionFile> Files { get; set; } = new List<SubmissionFile>();
     }
@@ -29,5 +32,6 @@ namespace CES.Business.Models
         public string? EnteredValue { get; set; }
         public DateTime? EnteredAt { get; set; }
         public string? Description { get; set; }
+        public DateTime? DeletedAt { get; set; }
     }
 }

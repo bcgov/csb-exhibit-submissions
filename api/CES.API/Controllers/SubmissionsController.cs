@@ -59,10 +59,10 @@ namespace CES.API.Controllers
         [HttpGet]
         [Route("api/submissions/listing")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> RetrieveSubmissionListing()
+        public async Task<IActionResult> RetrieveSubmissionListing([FromQuery] SubmissionListFilter filter)
         {
-            var model = await _submissionService.RetrieveSubmissionListing();
-            return Ok(model);
+            var result = await _submissionService.RetrieveSubmissionListing(filter);
+            return Ok(result);
         }
 
         [HttpGet]
@@ -80,28 +80,39 @@ namespace CES.API.Controllers
         [HttpPost]
         [Route("api/submissions/accept")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> AcceptSubmissions([FromBody] EvidenceAcceptanceModel model)
+        public async Task<IActionResult> AcceptSubmissions([FromBody] SubmissionActionModel model)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            if (model.acceptedFiles.Count == 0 || model.FileId == 0)
-                return BadRequest("No files accepted");
+            var (success, error) = await _submissionService.AcceptSubmissions(model);
+            if (!success)
+            {
+                if (error != null && error.Contains("not found"))
+                    return NotFound(error);
+                return UnprocessableEntity(error);
+            }
 
-            var result = await _submissionService.AcceptSubmissions(model);
-            return result ? Ok("Submission accepted") : BadRequest("Something failed");
+            return Ok("Submission accepted");
         }
 
         [HttpPost]
         [Route("api/submissions/reject")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> RejectSubmissions([FromBody] EvidenceAcceptanceModel model)
+        public async Task<IActionResult> RejectSubmissions([FromBody] SubmissionActionModel model)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _submissionService.RejectSubmissions(model);
-            return result ? Ok("Submission accepted") : BadRequest("Something failed");
+            var (success, error) = await _submissionService.RejectSubmissions(model);
+            if (!success)
+            {
+                if (error != null && error.Contains("not found"))
+                    return NotFound(error);
+                return UnprocessableEntity(error);
+            }
+
+            return Ok("Submission rejected");
         }
 
         [HttpDelete]

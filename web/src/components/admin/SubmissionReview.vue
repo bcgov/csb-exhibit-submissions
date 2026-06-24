@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { convertUtcToLocal, formatDateTime, formatFileSize, shortenString, splitDateTimeForDisplay } from '@/helpers/formatters';
-import type { SubmissionAcceptanceModel } from '@/models/SubmissionAcceptanceModel';
-import type { SubmissionFile, SubmissionReviewModel } from '@/models/SubmissionReviewModel';
+import { convertUtcToLocal, formatDateTime, splitDateTimeForDisplay } from '@/helpers/formatters';
+import type { SubmissionActionModel, SubmissionFile, SubmissionReviewModel } from '@/models/SubmissionReviewModel';
 import useSubmissionService from '@/services/SubmissionService';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppModal from '../shared/AppModal.vue';
+import ExhibitList from '../shared/ExhibitList.vue';
 import FileViewer from '../shared/FileViewer.vue';
 
 const route = useRoute();
@@ -13,17 +13,37 @@ const router = useRouter();
 
 const submissionId = Number(route.params.id);
 
-const previewFile = ref<SubmissionFile | null>(null);
-
-const { retrieveSubmission, acceptSubmissionFiles, rejectAndCloseSubmission, removeFile } = useSubmissionService();
+const {
+  retrieveSubmission,
+  acceptSubmission,
+  rejectSubmission,
+  removeFile,
+  markExhibit,
+  enterExhibit,
+  updateExhibitDescription,
+} = useSubmissionService();
 
 const submission = ref<SubmissionReviewModel | undefined>(undefined);
-const selectedFiles = ref<string[]>([]);
 const acceptError = ref<string | null>(null);
 const showRejectModal = ref(false);
 const removeError = ref<string | null>(null);
+const previewFile = ref<SubmissionFile | null>(null);
 
 const getFileUrl = (fileId: string, action: 'view' | 'download') => `/api/files/${fileId}/${action}`;
+
+const exhibitEntries = computed(() =>
+  (submission.value?.files ?? []).map(f => ({ file: f, fileNumbers: [] as string[] })),
+);
+
+const isTerminal = computed(() => submission.value?.status === 'Accepted' || submission.value?.status === 'Rejected');
+
+const acceptReadiness = computed((): { ready: boolean; blockingNames: string[] } => {
+  if (!submission.value) return { ready: false, blockingNames: [] };
+  const blocking = submission.value.files
+    .filter(f => !f.deletedAt && f.enteredValue == null)
+    .map(f => f.originalFileName);
+  return { ready: blocking.length === 0, blockingNames: blocking };
+});
 
 onMounted(async () => {
   const data = await retrieveSubmission(submissionId);
@@ -37,14 +57,11 @@ onMounted(async () => {
       downloadUrl: getFileUrl(f.id, 'download'),
     })),
   };
-
-  selectedFiles.value = submission.value.files.map(f => f.id);
 });
 
 const openPreview = (file: SubmissionFile) => {
   previewFile.value = file;
 };
-
 const closePreview = () => {
   previewFile.value = null;
 };
@@ -52,20 +69,9 @@ const closePreview = () => {
 const downloadFile = async (file: SubmissionFile) => {
   try {
     const response = await fetch(file.downloadUrl);
-
-    if (response.status === 404) {
-      console.warn('File not found');
-      return;
-    }
-
-    if (!response.ok) {
-      console.error(`File not found (${response.status})`);
-      return;
-    }
-
+    if (!response.ok) return;
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
-
     const a = document.createElement('a');
     a.href = url;
     a.download = file.originalFileName;
@@ -78,29 +84,34 @@ const downloadFile = async (file: SubmissionFile) => {
   }
 };
 
-const acceptSubmission = async () => {
-  if (selectedFiles.value.length === 0) {
-    acceptError.value = 'Please select at least one file.';
+const updateFileInSubmission = (updated: SubmissionFile) => {
+  if (!submission.value) return;
+  submission.value = {
+    ...submission.value,
+    files: submission.value.files.map(f =>
+      f.id === updated.id ? { ...f, ...updated, viewUrl: f.viewUrl, downloadUrl: f.downloadUrl } : f,
+    ),
+  };
+};
+
+const doAcceptSubmission = async () => {
+  if (!acceptReadiness.value.ready) {
+    acceptError.value = `${acceptReadiness.value.blockingNames.length} exhibit(s) not yet Entered or Removed.`;
     return;
   }
   acceptError.value = null;
-
-  const payload: SubmissionAcceptanceModel = {
-    fileId: submissionId,
-    acceptedFiles: selectedFiles.value,
-  };
-
-  const returnValue = await acceptSubmissionFiles(payload);
-  console.log(returnValue, 'return value');
-  router.push('/admin/list');
+  const payload: SubmissionActionModel = { submissionId };
+  const ok = await acceptSubmission(payload);
+  if (ok) {
+    router.push('/admin/list');
+  } else {
+    acceptError.value = 'Accept failed. Ensure all exhibits are Entered or Removed.';
+  }
 };
 
-const removeSubmission = async () => {
-  const payload: SubmissionAcceptanceModel = {
-    fileId: submissionId,
-    acceptedFiles: selectedFiles.value,
-  };
-  await rejectAndCloseSubmission(payload);
+const doRejectSubmission = async () => {
+  const payload: SubmissionActionModel = { submissionId };
+  await rejectSubmission(payload);
   router.push('/admin/list');
 };
 
@@ -108,27 +119,18 @@ const removeExhibit = async (file: SubmissionFile) => {
   removeError.value = null;
   const success = await removeFile(file.id);
   if (success && submission.value) {
+    // Mark as removed in place (keep in list, greyed out)
     submission.value = {
       ...submission.value,
-      files: submission.value.files.filter(f => f.id !== file.id),
+      files: submission.value.files.map(f =>
+        f.id === file.id ? { ...f, status: 'Removed', deletedAt: new Date().toISOString() } : f,
+      ),
     };
-    selectedFiles.value = selectedFiles.value.filter(id => id !== file.id);
   } else if (!success) {
-    removeError.value = 'Could not remove exhibit. It may already be Entered.';
+    removeError.value = 'Could not remove exhibit.';
   }
 };
 
-const fileIcon = (type: string) => {
-  if (type.startsWith('image')) return '🖼';
-  if (type.startsWith('video')) return '🎬';
-  if (type.includes('pdf')) return '📄';
-  return '📁';
-};
-
-const formatClassificationDate = (iso?: string | null): string => {
-  if (!iso) return '—';
-  return formatDateTime(convertUtcToLocal(iso), true);
-};
 </script>
 
 <template>
@@ -143,6 +145,10 @@ const formatClassificationDate = (iso?: string | null): string => {
         <div><strong>Room:</strong> {{ submission.room }}</div>
         <div><strong>Submission Date:</strong> {{ submission.submissionDate ?
           formatDateTime(convertUtcToLocal(submission.submissionDate), true) : '' }}</div>
+        <div>
+          <strong>Status:</strong>
+          <span :class="`status-chip status-${submission.status.toLowerCase()}`">{{ submission.status }}</span>
+        </div>
       </div>
 
       <!-- Tickets section -->
@@ -168,58 +174,48 @@ const formatClassificationDate = (iso?: string | null): string => {
 
       <h3>Submitted Evidence</h3>
 
-      <div class="file-list">
-        <div class="file-row" v-for="file in submission.files" :key="file.id">
-          <div class="file-accept">
-            <input type="checkbox" :value="file.id" v-model="selectedFiles" />
-          </div>
-          <div class="file-left">
-            <span class="icon">{{ fileIcon(file.contentType) }}</span>
-            <span class="name">{{ shortenString(file.originalFileName) }}</span>
-          </div>
-          <div class="file-size">{{ formatFileSize(file.fileSize) }}</div>
-
-          <!-- Classification read-only columns -->
-          <div class="classification-info">
-            <span class="cl-chip" :class="`cl-${(file.status ?? 'Unclassified').toLowerCase()}`">
-              {{ file.status ?? 'Unclassified' }}
-            </span>
-            <span v-if="file.markedValue" class="cl-field">M: {{ file.markedValue }} <small>({{ formatClassificationDate(file.markedAt) }})</small></span>
-            <span v-if="file.enteredValue" class="cl-field">E: {{ file.enteredValue }} <small>({{ formatClassificationDate(file.enteredAt) }})</small></span>
-            <span v-if="file.description" class="cl-field cl-desc" :title="file.description">{{ file.description }}</span>
-          </div>
-
-          <div class="file-actions">
-            <button @click="openPreview(file)">View</button>
-            <button @click="downloadFile(file)">Download</button>
-            <button
-              class="remove-file-btn"
-              :disabled="file.enteredValue != null"
-              :title="file.enteredValue != null ? 'Entered exhibits cannot be removed' : 'Remove this exhibit'"
-              @click="removeExhibit(file)"
-            >Remove</button>
-          </div>
-        </div>
-      </div>
+      <ExhibitList
+        :entries="exhibitEntries"
+        :always-editable="!isTerminal"
+        :show-removed="true"
+        :can-download="true"
+        :can-remove="!isTerminal"
+        :mark-fn="(id: string, v: string) => markExhibit(id, { markedValue: v })"
+        :enter-fn="(id: string, v: string) => enterExhibit(id, { enteredValue: v })"
+        :description-fn="(id: string, d: string) => updateExhibitDescription(id, { description: d })"
+        @file-updated="updateFileInSubmission"
+        @preview-file="openPreview"
+        @download-file="downloadFile"
+        @remove-file="removeExhibit"
+      />
 
       <p v-if="removeError" class="remove-error">{{ removeError }}</p>
 
-      <div class="actions-main">
-        <button class="accept" @click="acceptSubmission">Accept Selected</button>
-        <button class="remove" @click="showRejectModal = true">Reject / Delete All</button>
-      </div>
-      <p v-if="acceptError" class="accept-error">{{ acceptError }}</p>
+      <!-- Actions: only shown for Pending -->
+      <template v-if="!isTerminal">
+        <div class="actions-main">
+          <button
+            class="accept"
+            :disabled="!acceptReadiness.ready"
+            :title="acceptReadiness.ready ? 'Accept this submission' : `${acceptReadiness.blockingNames.length} exhibit(s) not yet Entered or Removed`"
+            @click="doAcceptSubmission"
+          >Accept</button>
+          <button class="remove" @click="showRejectModal = true">Reject Submission</button>
+        </div>
+        <p v-if="acceptError" class="accept-error">{{ acceptError }}</p>
+      </template>
     </div>
 
+    <!-- Reject confirmation modal -->
     <AppModal
       v-if="showRejectModal"
-      title="Reject Submissions"
-      confirm-label="Reject / Delete All"
+      title="Reject Submission"
+      confirm-label="Reject Submission"
       :confirm-danger="true"
-      @confirm="showRejectModal = false; removeSubmission()"
+      @confirm="showRejectModal = false; doRejectSubmission()"
       @cancel="showRejectModal = false"
     >
-      Reject and delete these submissions? Any unaccepted files will be permanently removed.
+      Rejecting this submission permanently deletes <strong>all</strong> associated files. This cannot be undone and the files are unretrievable.
     </AppModal>
 
     <div v-if="previewFile" class="preview-modal">
@@ -231,4 +227,3 @@ const formatClassificationDate = (iso?: string | null): string => {
     </div>
   </div>
 </template>
-
