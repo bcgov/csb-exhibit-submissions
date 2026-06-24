@@ -52,14 +52,14 @@
 
 .back-btn {
   padding: 0.5rem 1rem;
-  background: #6c757d;
-  color: white;
+  background: $color-gray-20;
+  color: $color-text-primary;
   border: none;
   border-radius: 4px;
   cursor: pointer;
 
   &:hover {
-    background: #5a6268;
+    background: $color-gray-30;
   }
 }
 
@@ -85,20 +85,20 @@
 
 .chip-unclassified,
 .cl-unclassified {
-  background: #f0f0f0;
-  color: #555;
+  background: $color-gray-20;
+  color: $color-text-secondary;
 }
 
 .chip-marked,
 .cl-marked {
-  background: #fff3cd;
-  color: #856404;
+  background: $color-warning-bg;
+  color: $color-text-primary;
 }
 
 .chip-entered,
 .cl-entered {
-  background: #d1e7dd;
-  color: #0a3622;
+  background: $color-success-bg;
+  color: $color-success;
 }
 
 // --- Submission status chips (admin listing) ---
@@ -108,16 +108,16 @@
 }
 
 .status-pending {
-  background: #f0f0f0;
-  color: #555;
+  background: $color-gray-20;
+  color: $color-text-secondary;
 }
 
 .status-accepted {
-  background: #d1e7dd;
-  color: #0a3622;
+  background: $color-success-bg;
+  color: $color-success;
 }
 
 .status-rejected {
-  background: #f8d7da;
-  color: #842029;
+  background: $color-danger-bg;
+  color: $color-danger-hover;
 }

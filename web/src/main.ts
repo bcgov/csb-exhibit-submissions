@@ -6,6 +6,7 @@ import 'vuetify/styles'
 // import { createVuetify } from 'vuetify'
 import { registerPlugins } from './plugins'
 
+import "@bcgov/bc-sans/css/BC_Sans.css"
 import "@bcgov/design-tokens/css/variables.css"
 import "./styles/main.scss"
 

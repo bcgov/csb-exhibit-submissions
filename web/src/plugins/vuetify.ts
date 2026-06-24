@@ -6,9 +6,9 @@ import { aliases, mdi } from 'vuetify/iconsets/mdi-svg';
 import { VDateInput } from 'vuetify/labs/VDateInput';
 import 'vuetify/styles';
 
-// Custom palette values that don't have an exact match in the bcgov design tokens.
-const FORM_FIELD_BG = '#dae5f5';           // light blue tint for VSelect / VDateInput backgrounds
-const TERTIARY_BTN_COLOR = '#183a4a';      // dark navy for VBtnTertiary
+// BC Gov design token values for Vuetify component overrides.
+const FORM_FIELD_BG = '#D8EAFD';           // BC Gov theme-blue-20: light blue tint for VSelect / VDateInput backgrounds
+const TERTIARY_BTN_COLOR = '#013366';      // BC Gov primary blue for VBtnTertiary
 
 // https://vuetifyjs.com/en/introduction/why-vuetify/#feature-guides
 

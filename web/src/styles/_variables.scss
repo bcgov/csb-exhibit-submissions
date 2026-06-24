@@ -17,3 +17,24 @@ $color-bg-dark-blue:     t.$surface-color-background-dark-blue;      // #053662
 $color-overlay:          t.$surface-color-overlay-default;           // rgba(0,0,0,0.45)
 $color-disabled-bg:      t.$surface-color-primary-disabled;          // #EDEBE9
 $shadow-medium:          t.$surface-shadow-medium;
+
+// Typography colors
+$color-text-primary:     t.$typography-color-primary;           // #2D2D2D
+$color-text-secondary:   t.$typography-color-secondary;         // #474543
+$color-text-disabled:    t.$typography-color-disabled;          // #9F9D9C
+$color-text-link:        t.$typography-color-link;              // #255A90
+$color-text-invert:      t.$typography-color-primary-invert;    // #FFFFFF
+
+// Support / status colors
+$color-danger-bg:        t.$support-surface-color-danger;       // #F4E1E2
+$color-success-bg:       t.$support-surface-color-success;      // #F6FFF8
+$color-warning-bg:       t.$support-surface-color-warning;      // #FEF1D8
+$color-warning-border:   t.$support-border-color-warning;       // #F8BB47
+$color-info-bg:          t.$support-surface-color-info;         // #F7F9FC
+$color-info-border:      t.$support-border-color-info;          // #053662
+
+// Gray scale
+$color-gray-20:          t.$theme-gray-20;                      // #F3F2F1
+$color-gray-30:          t.$theme-gray-30;                      // #ECEAE8
+$color-menus-hover:      t.$surface-color-menus-hover;          // #EDEBE9
+$color-border-dark:      t.$surface-color-border-dark;          // #353433
