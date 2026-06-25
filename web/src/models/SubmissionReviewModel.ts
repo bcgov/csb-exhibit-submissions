@@ -32,6 +32,14 @@ export interface ExhibitDescriptionModel {
   description: string;
 }
 
+export interface ExhibitHistoryEntry {
+  fieldName: string;
+  oldValue?: string | null;
+  newValue?: string | null;
+  changedBy?: string | null;
+  changedAtUTC: string;
+}
+
 export interface SubmissionReviewModel {
   id: number;
   submissionDate?: string;

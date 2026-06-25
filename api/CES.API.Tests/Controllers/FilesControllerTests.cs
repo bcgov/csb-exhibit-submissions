@@ -47,10 +47,11 @@ public class FilesControllerTests : IClassFixture<TestWebApplicationFactory>
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", JwtTokenHelper.AdminToken());
 
-        // Get listing to find the most recently uploaded submission
+        // Get listing to find the most recently uploaded submission.
+        // Listing is ordered newest-first, so the just-uploaded submission is first.
         var listResponse = await _client.GetAsync("/api/submissions/listing");
-        var list = await listResponse.Content.ReadFromJsonAsync<List<SubmissionListItem>>();
-        var submissionId = list!.Last().Id;
+        var paged = await listResponse.Content.ReadFromJsonAsync<PagedListResult>();
+        var submissionId = paged!.Items.First().Id;
 
         // Use retrieve (which includes files) to get file ID
         var subResponse = await _client.GetAsync($"/api/submissions/retrieve?fileId={submissionId}");
@@ -128,14 +129,17 @@ public class FilesControllerTests : IClassFixture<TestWebApplicationFactory>
     }
 
     [Fact]
-    public async Task MarkExhibit_WithAdminRole_Returns403()
+    public async Task MarkExhibit_WithAdminRole_Returns200AndUpdatedFile()
     {
+        var fileId = await UploadFileAndGetId();
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", JwtTokenHelper.AdminToken());
 
-        var response = await _client.PostAsJsonAsync($"/api/files/{Guid.NewGuid()}/mark", new { markedValue = "A" });
+        var response = await _client.PostAsJsonAsync($"/api/files/{fileId}/mark", new { markedValue = "C" });
+        var body = await response.Content.ReadFromJsonAsync<ClassificationFileResult>();
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        body!.MarkedValue.Should().Be("C");
     }
 
     [Fact]
@@ -245,16 +249,71 @@ public class FilesControllerTests : IClassFixture<TestWebApplicationFactory>
     }
 
     [Fact]
-    public async Task UpdateDescription_WithAdminRole_Returns403()
+    public async Task UpdateDescription_WithAdminRole_Returns200AndUpdatedFile()
     {
+        var fileId = await UploadFileAndGetId();
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", JwtTokenHelper.AdminToken());
 
-        var response = await _client.PatchAsJsonAsync($"/api/files/{Guid.NewGuid()}/description", new { description = "x" });
+        var response = await _client.PatchAsJsonAsync($"/api/files/{fileId}/description", new { description = "admin note" });
+        var body = await response.Content.ReadFromJsonAsync<ClassificationFileResult>();
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        body!.Description.Should().Be("admin note");
     }
 
+    // ── History endpoint ──────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetHistory_WithUserRole_Returns200AndRecordsChanges()
+    {
+        var fileId = await UploadFileAndGetId();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.UserToken());
+
+        await _client.PostAsJsonAsync($"/api/files/{fileId}/mark", new { markedValue = "B" });
+
+        var response = await _client.GetAsync($"/api/files/{fileId}/history");
+        var history = await response.Content.ReadFromJsonAsync<List<HistoryEntry>>();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        history.Should().ContainSingle(h => h.FieldName == "MarkedValue" && h.NewValue == "B");
+    }
+
+    [Fact]
+    public async Task GetHistory_WithAdminRole_Returns200()
+    {
+        var fileId = await UploadFileAndGetId();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.AdminToken());
+
+        var response = await _client.GetAsync($"/api/files/{fileId}/history");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task GetHistory_UnknownFile_Returns404()
+    {
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.UserToken());
+
+        var response = await _client.GetAsync($"/api/files/{Guid.NewGuid()}/history");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task GetHistory_WithoutAuth_Returns401()
+    {
+        _client.DefaultRequestHeaders.Authorization = null;
+
+        var response = await _client.GetAsync($"/api/files/{Guid.NewGuid()}/history");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    private record PagedListResult(List<SubmissionListItem> Items, int TotalCount, int Page, int PageSize);
     private record SubmissionListItem(int Id, List<SubmissionFileItem> Files);
     private record SubmissionFileItem(Guid Id);
     private record SubmissionDetail(int Id, List<SubmissionFileItem> Files);
@@ -264,4 +323,10 @@ public class FilesControllerTests : IClassFixture<TestWebApplicationFactory>
         string? MarkedValue,
         string? EnteredValue,
         string? Description);
+    private record HistoryEntry(
+        string FieldName,
+        string? OldValue,
+        string? NewValue,
+        string? ChangedBy,
+        DateTime ChangedAtUTC);
 }

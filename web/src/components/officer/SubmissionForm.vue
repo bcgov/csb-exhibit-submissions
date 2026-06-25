@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatDateTime, formatDateyyyymmdd } from '@/helpers/formatters'
+import { formatDateyyyymmdd } from '@/helpers/formatters'
 import type { ExhibitSubmissionModel, SubmissionTicketModel } from '@/models/ExhibitSubmissionModel'
 import type { PriorSubmissionModel } from '@/models/PriorSubmissionModel'
 import type { SubmissionFile } from '@/models/SubmissionReviewModel'
@@ -30,13 +30,6 @@ const dropZoneRef = ref<InstanceType<typeof FileDropZone> | null>(null)
 
 const priorExhibits = ref<Map<string, PriorSubmissionModel[]>>(new Map())
 const priorExhibitsError = ref(false)
-
-// History popup state
-const historyDialogOpen = ref(false)
-const historyFileNumber = ref('')
-const historyResults = ref<PriorSubmissionModel[]>([])
-const historyLoading = ref(false)
-const historyError = ref(false)
 
 // Preview/view modal (officer view-only, no download)
 const previewFile = ref<SubmissionFile | null>(null)
@@ -138,19 +131,6 @@ const updateFileInStore = (updated: SubmissionFile) => {
 const openPreview = (file: SubmissionFile) => { previewFile.value = file }
 const closePreview = () => { previewFile.value = null }
 
-const loadHistory = async () => {
-  if (!historyFileNumber.value.trim()) return
-  historyLoading.value = true
-  historyError.value = false
-  try {
-    historyResults.value = await getSubmissionsByFileNumber(historyFileNumber.value.trim())
-  } catch {
-    historyError.value = true
-  } finally {
-    historyLoading.value = false
-  }
-}
-
 onMounted(async () => {
   if (selectionStore.selectedFiles.length === 0) {
     router.push({ name: 'OfficerCourtList' })
@@ -240,9 +220,6 @@ const submitForm = async () => {
       <div class="ticket-panel">
         <div class="ticket-panel-header">
           <span>Tickets ({{ tickets.length }})</span>
-          <button type="button" class="history-link" @click="historyDialogOpen = true">
-            Exhibit History
-          </button>
         </div>
         <div v-for="ticket in tickets" :key="ticket.appearanceId" class="ticket-row">
           <div class="ticket-info">
@@ -302,57 +279,6 @@ const submitForm = async () => {
         <button type="button" class="close-btn" @click="closePreview">✖</button>
         <FileViewer :fileUrl="`/api/files/${previewFile.id}/view`" :mimeType="previewFile.contentType"
           :hideDownload="true" />
-      </div>
-    </div>
-
-    <!-- Exhibit History popup -->
-    <div v-if="historyDialogOpen" class="history-overlay" @click.self="historyDialogOpen = false">
-      <div class="history-dialog">
-        <h3>Exhibit History by Ticket Number</h3>
-        <div class="history-search">
-          <input v-model="historyFileNumber" placeholder="Enter file/ticket number…" @keyup.enter="loadHistory" />
-          <button type="button" @click="loadHistory" :disabled="historyLoading">Search</button>
-        </div>
-
-        <p v-if="historyError" class="prior-error">Could not load history. Please try again.</p>
-        <p v-else-if="historyLoading" style="color:#666;font-size:0.85rem;">Loading…</p>
-        <template v-else-if="historyResults.length > 0">
-          <table class="history-table">
-            <thead>
-              <tr>
-                <th>File Name</th>
-                <th>Submission Date</th>
-                <th>Status</th>
-                <th>Marked</th>
-                <th>Marked At</th>
-                <th>Entered</th>
-                <th>Entered At</th>
-                <th>Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              <template v-for="sub in historyResults" :key="sub.submissionId">
-                <tr v-for="file in sub.files.filter(f => f.status !== 'Removed')" :key="file.id">
-                  <td>{{ file.originalFileName }}</td>
-                  <td>{{ formatDateTime(sub.submissionDate ?? '', true) }}</td>
-                  <td>{{ file.status ?? 'Unclassified' }}</td>
-                  <td>{{ file.markedValue ?? '—' }}</td>
-                  <td>{{ file.markedAt ? formatDateTime(file.markedAt, true) : '—' }}</td>
-                  <td>{{ file.enteredValue ?? '—' }}</td>
-                  <td>{{ file.enteredAt ? formatDateTime(file.enteredAt, true) : '—' }}</td>
-                  <td>{{ file.description ?? '—' }}</td>
-                </tr>
-              </template>
-            </tbody>
-          </table>
-        </template>
-        <p v-else-if="historyFileNumber && !historyLoading" class="prior-empty">No exhibits found for this ticket
-          number.
-        </p>
-
-        <div class="dialog-footer">
-          <button type="button" @click="historyDialogOpen = false">Close</button>
-        </div>
       </div>
     </div>
   </div>

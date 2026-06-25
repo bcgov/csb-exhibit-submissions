@@ -123,17 +123,6 @@
       justify-content: space-between;
     }
 
-    .history-link {
-      font-size: 0.78rem;
-      background: $color-bg-light-blue;
-      color: $color-text-link;
-      border: none;
-      border-radius: $border-radius-circular;
-      padding: 0.15rem 0.6rem;
-      cursor: pointer;
-      font-weight: 500;
-    }
-
     .ticket-row {
       display: flex;
       align-items: center;
@@ -222,9 +211,8 @@
   }
 }
 
-// --- Officer overlays (history popup + file preview) ---
+// --- Officer overlays (file preview) ---
 
-.history-overlay,
 .preview-overlay {
   position: fixed;
   inset: 0;
@@ -232,65 +220,7 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
-}
-
-.history-overlay {
-  background: $color-overlay;
-}
-
-.preview-overlay {
   background: rgba(0, 0, 0, 0.65);
-}
-
-.history-dialog {
-  background: white;
-  border-radius: $border-radius-large;
-  padding: $padding-large;
-  width: 90%;
-  max-width: 750px;
-  max-height: 80vh;
-  overflow-y: auto;
-
-  h3 {
-    margin: 0 0 $margin-medium;
-    font-size: $font-size-body;
-  }
-
-  .history-search {
-    display: flex;
-    gap: $margin-small;
-    margin-bottom: $margin-medium;
-
-    input {
-      flex: 1;
-      padding: 0.4rem 0.6rem;
-      border: $border-width-small solid $color-border-medium;
-      border-radius: $border-radius-default;
-      font-size: 0.9rem;
-    }
-  }
-
-  .history-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.8rem;
-
-    th,
-    td {
-      border: $border-width-small solid $color-border;
-      padding: 0.4rem 0.6rem;
-      text-align: left;
-    }
-
-    thead {
-      background: $color-bg-light;
-    }
-  }
-
-  .dialog-footer {
-    margin-top: $margin-medium;
-    text-align: right;
-  }
 }
 
 .preview-dialog {

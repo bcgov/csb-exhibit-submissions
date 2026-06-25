@@ -60,6 +60,15 @@ namespace CES.API.Controllers
         }
 
         [HttpGet]
+        [Route("api/files/{fileId:guid}/history")]
+        [Authorize(Roles = "User,Admin")]
+        public async Task<IActionResult> GetHistory(Guid fileId)
+        {
+            var result = await _fileService.GetExhibitHistoryAsync(fileId);
+            return Ok(result);
+        }
+
+        [HttpGet]
         [Route("api/files/{fileId}/view")]
         // [Authorize(Roles = "Admin")]
         public async Task<IActionResult> View(Guid fileId)

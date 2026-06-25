@@ -224,6 +224,21 @@
     flex-wrap: wrap;
   }
 
+  .history-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.95rem;
+    line-height: 1;
+    color: $color-text-secondary;
+    flex: 0 0 auto;
+
+    &:hover {
+      color: $color-primary;
+    }
+  }
+
   .prior-file-name {
     font-weight: 500;
     color: $color-text-primary;
@@ -390,5 +405,64 @@
     &:hover {
       background: $color-danger-bg;
     }
+  }
+}
+
+// --- Per-exhibit change history popup (ExhibitList) ---
+
+.exhibit-history-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  background: $color-overlay;
+}
+
+.exhibit-history-dialog {
+  background: white;
+  border-radius: $border-radius-large;
+  padding: $padding-large;
+  width: 90%;
+  max-width: 750px;
+  max-height: 80vh;
+  overflow-y: auto;
+
+  h3 {
+    margin: 0 0 $margin-medium;
+    font-size: $font-size-body;
+    word-break: break-word;
+  }
+
+  .history-status {
+    font-size: 0.85rem;
+    color: $color-text-secondary;
+  }
+
+  .history-error {
+    color: $color-danger;
+  }
+
+  .exhibit-history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+
+    th,
+    td {
+      border: $border-width-small solid $color-border;
+      padding: 0.4rem 0.6rem;
+      text-align: left;
+    }
+
+    thead {
+      background: $color-bg-light;
+    }
+  }
+
+  .exhibit-history-footer {
+    margin-top: $margin-medium;
+    text-align: right;
   }
 }

@@ -290,4 +290,31 @@ describe('SubmissionService', () => {
     expect(capturedBody).toMatchObject({ description: 'key piece of evidence' });
     expect(result.description).toBe('key piece of evidence');
   });
+
+  it('getFileHistory fetches GET /api/files/:fileId/history and returns entries', async () => {
+    const fileId = '550e8400-e29b-41d4-a716-446655440005';
+    const mockHistory = [
+      {
+        fieldName: 'MarkedValue',
+        oldValue: null,
+        newValue: 'B',
+        changedBy: 'officer@test.ca',
+        changedAtUTC: '2026-01-01T09:00:00Z',
+      },
+    ];
+    let capturedUrl = '';
+    server.use(
+      http.get(`/api/files/${fileId}/history`, ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json(mockHistory);
+      }),
+    );
+
+    const { getFileHistory } = useSubmissionService();
+    const result = await getFileHistory(fileId);
+
+    expect(capturedUrl).toContain(`/api/files/${fileId}/history`);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ fieldName: 'MarkedValue', newValue: 'B' });
+  });
 });

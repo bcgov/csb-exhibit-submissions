@@ -3,6 +3,7 @@ import type { PriorSubmissionModel } from '@/models/PriorSubmissionModel'
 import type {
   ExhibitDescriptionModel,
   ExhibitEnterModel,
+  ExhibitHistoryEntry,
   ExhibitMarkModel,
   PagedResult,
   SubmissionActionModel,
@@ -140,6 +141,11 @@ export default function useSubmissionService() {
     return result.data
   }
 
+  const getFileHistory = async (fileId: string): Promise<ExhibitHistoryEntry[]> => {
+    const result = await api.get<ExhibitHistoryEntry[]>(`/files/${fileId}/history`)
+    return result?.data ?? []
+  }
+
   return {
     submitExhibits,
     retrieveSubmission,
@@ -151,5 +157,6 @@ export default function useSubmissionService() {
     markExhibit,
     enterExhibit,
     updateExhibitDescription,
+    getFileHistory,
   }
 }

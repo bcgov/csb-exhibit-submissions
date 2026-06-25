@@ -63,7 +63,8 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
         WithAuth(JwtTokenHelper.AdminToken());
         var listResponse = await _client.GetAsync("/api/submissions/listing");
         var paged = await listResponse.Content.ReadFromJsonAsync<PagedResult>();
-        return paged!.Items.Last().Id;
+        // Listing is ordered newest-first, so the just-submitted record is first.
+        return paged!.Items.First().Id;
     }
 
     // Helper: get first file id for a submission

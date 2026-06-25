@@ -9,8 +9,9 @@ import {
   VIEWABLE_CONTENT_TYPE_PREFIXES,
 } from '@/constants/classification'
 import { formatDateTime } from '@/helpers/formatters'
-import type { SubmissionFile } from '@/models/SubmissionReviewModel'
-import { computed, reactive, watch } from 'vue'
+import type { ExhibitHistoryEntry, SubmissionFile } from '@/models/SubmissionReviewModel'
+import useSubmissionService from '@/services/SubmissionService'
+import { computed, reactive, ref, watch } from 'vue'
 
 interface PriorFileEntry {
   file: SubmissionFile
@@ -39,6 +40,41 @@ const emit = defineEmits<{
   downloadFile: [file: SubmissionFile]
   removeFile: [file: SubmissionFile]
 }>()
+
+const { getFileHistory } = useSubmissionService()
+
+// Exhibit change-history popup state
+const historyFile = ref<SubmissionFile | null>(null)
+const historyEntries = ref<ExhibitHistoryEntry[]>([])
+const historyLoading = ref(false)
+const historyError = ref(false)
+
+const HISTORY_FIELD_LABELS: Record<string, string> = {
+  MarkedValue: 'Marked',
+  EnteredValue: 'Entered',
+  Description: 'Description',
+}
+
+const historyFieldLabel = (fieldName: string): string =>
+  HISTORY_FIELD_LABELS[fieldName] ?? fieldName
+
+const openHistory = async (file: SubmissionFile) => {
+  historyFile.value = file
+  historyEntries.value = []
+  historyError.value = false
+  historyLoading.value = true
+  try {
+    historyEntries.value = await getFileHistory(file.id)
+  } catch {
+    historyError.value = true
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+const closeHistory = () => {
+  historyFile.value = null
+}
 
 const markedWindowActive = reactive<Set<string>>(new Set())
 const enteredWindowActive = reactive<Set<string>>(new Set())
@@ -173,6 +209,13 @@ const onDescriptionBlur = async (file: SubmissionFile) => {
 
       <!-- Row 1: name, (date), (ticket badge), status chip, (save indicator), (actions) -->
       <div class="prior-file-row1">
+        <button
+          type="button"
+          class="history-btn"
+          title="View change history"
+          aria-label="View change history"
+          @click="openHistory(entry.file)"
+        >🕑</button>
         <span class="prior-file-name">{{ entry.file.originalFileName }}</span>
         <span v-if="entry.submissionDate" class="prior-file-date">
           {{ formatDateTime(entry.submissionDate, true) }}
@@ -275,4 +318,41 @@ const onDescriptionBlur = async (file: SubmissionFile) => {
       </div>
     </li>
   </ul>
+
+  <!-- Per-exhibit change history popup -->
+  <div v-if="historyFile" class="exhibit-history-overlay" @click.self="closeHistory">
+    <div class="exhibit-history-dialog" role="dialog" aria-modal="true">
+      <h3>Change History — {{ historyFile.originalFileName }}</h3>
+
+      <p v-if="historyLoading" class="history-status">Loading…</p>
+      <p v-else-if="historyError" class="history-status history-error">
+        Could not load change history. Please try again.
+      </p>
+      <table v-else-if="historyEntries.length > 0" class="exhibit-history-table">
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>From</th>
+            <th>To</th>
+            <th>Changed By</th>
+            <th>When</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(item, idx) in historyEntries" :key="idx">
+            <td>{{ historyFieldLabel(item.fieldName) }}</td>
+            <td>{{ item.oldValue ?? '—' }}</td>
+            <td>{{ item.newValue ?? '—' }}</td>
+            <td>{{ item.changedBy ?? '—' }}</td>
+            <td>{{ formatDateTime(item.changedAtUTC, true) }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-else class="history-status">No changes have been recorded for this exhibit.</p>
+
+      <div class="exhibit-history-footer">
+        <button type="button" @click="closeHistory">Close</button>
+      </div>
+    </div>
+  </div>
 </template>

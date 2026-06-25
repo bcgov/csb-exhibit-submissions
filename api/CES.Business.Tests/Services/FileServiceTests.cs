@@ -288,6 +288,43 @@ public class FileServiceTests : IDisposable
         removed.DeriveStatus().Should().Be("Removed");
     }
 
+    // ── GetExhibitHistoryAsync ────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetExhibitHistory_ReturnsEntriesInChronologicalOrder()
+    {
+        var file = SeedFile();
+        await _service.MarkExhibitAsync(file.Id, "A", "officer@test.ca");
+        await _service.UpdateExhibitDescriptionAsync(file.Id, "first note", "officer@test.ca");
+        await _service.EnterExhibitAsync(file.Id, "5", "admin@test.ca", isAdminOverride: true);
+
+        var history = await _service.GetExhibitHistoryAsync(file.Id);
+
+        history.Should().HaveCount(3);
+        history.Select(h => h.FieldName).Should().ContainInOrder("MarkedValue", "Description", "EnteredValue");
+        history[0].NewValue.Should().Be("A");
+        history[0].ChangedBy.Should().Be("officer@test.ca");
+        history.Should().BeInAscendingOrder(h => h.ChangedAtUTC);
+    }
+
+    [Fact]
+    public async Task GetExhibitHistory_ReturnsEmptyList_WhenNoChanges()
+    {
+        var file = SeedFile();
+
+        var history = await _service.GetExhibitHistoryAsync(file.Id);
+
+        history.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetExhibitHistory_Throws_WhenFileNotFound()
+    {
+        var act = async () => await _service.GetExhibitHistoryAsync(Guid.NewGuid());
+
+        await act.Should().ThrowAsync<KeyNotFoundException>();
+    }
+
     // ── Admin override ────────────────────────────────────────────────────
 
     [Fact]

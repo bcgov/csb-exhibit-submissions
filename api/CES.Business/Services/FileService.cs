@@ -124,6 +124,26 @@ namespace CES.Business.Services
             return ToSubmissionFile(file);
         }
 
+        public async Task<List<ExhibitHistoryEntryModel>> GetExhibitHistoryAsync(Guid fileId)
+        {
+            var fileExists = await _dataStore.StoredFiles.AnyAsync(f => f.Id == fileId);
+            if (!fileExists)
+                throw new KeyNotFoundException($"File {fileId} not found.");
+
+            return await _dataStore.SubmissionAuditLogs
+                .Where(l => l.FileId == fileId)
+                .OrderBy(l => l.ChangedAtUTC)
+                .Select(l => new ExhibitHistoryEntryModel
+                {
+                    FieldName = l.FieldName,
+                    OldValue = l.OldValue,
+                    NewValue = l.NewValue,
+                    ChangedBy = l.ChangedBy,
+                    ChangedAtUTC = l.ChangedAtUTC,
+                })
+                .ToListAsync();
+        }
+
         private static SubmissionFile ToSubmissionFile(StoredFiles f) => new()
         {
             Id = f.Id,
