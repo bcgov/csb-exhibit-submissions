@@ -8,10 +8,10 @@
 
   input[type="text"],
   select {
-    padding: 0.5rem;
-    font-size: 1rem;
-    border: 1px solid $color-border-medium;
-    border-radius: 4px;
+    padding: $padding-small;
+    font-size: $font-size-body;
+    border: $border-width-small solid $color-border-medium;
+    border-radius: $border-radius-default;
   }
 
   .autocomplete-wrapper {
@@ -26,7 +26,7 @@
 
     th,
     td {
-      border: 1px solid $color-border;
+      border: $border-width-small solid $color-border;
       padding: 0.75rem;
     }
 
@@ -60,7 +60,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.85rem 1.5rem;
+  padding: 0.85rem $padding-large;
   z-index: 100;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.25);
 
@@ -72,8 +72,8 @@
     background: white;
     color: $color-bg-dark-blue;
     border: none;
-    border-radius: 4px;
-    padding: 0.5rem 1.25rem;
+    border-radius: $border-radius-default;
+    padding: $padding-small 1.25rem;
     font-weight: 600;
     cursor: pointer;
     font-size: 0.95rem;
@@ -87,15 +87,15 @@
 // --- SubmissionForm ---
 
 .exhibit-page {
-  padding: 2rem;
+  padding: $padding-xlarge;
   max-width: 900px;
   margin: auto;
 
   .shared-fields {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
+    gap: $margin-medium;
+    margin-bottom: $margin-large;
   }
 
   .form-field {
@@ -103,21 +103,21 @@
     flex-direction: column;
 
     input {
-      padding: 0.5rem;
+      padding: $padding-small;
     }
   }
 
   .ticket-panel {
-    border: 1px solid $color-border;
-    border-radius: 6px;
-    margin-bottom: 1.5rem;
+    border: $border-width-small solid $color-border;
+    border-radius: $border-radius-large;
+    margin-bottom: $margin-large;
 
     .ticket-panel-header {
       padding: 0.6rem 1rem;
       background: $color-bg-light;
       font-weight: 600;
-      border-bottom: 1px solid $color-border;
-      border-radius: 6px 6px 0 0;
+      border-bottom: $border-width-small solid $color-border;
+      border-radius: $border-radius-large $border-radius-large 0 0;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -128,7 +128,7 @@
       background: $color-bg-light-blue;
       color: $color-text-link;
       border: none;
-      border-radius: 12px;
+      border-radius: $border-radius-circular;
       padding: 0.15rem 0.6rem;
       cursor: pointer;
       font-weight: 500;
@@ -164,9 +164,9 @@
 
     .remove-btn {
       background: none;
-      border: 1px solid $color-danger;
+      border: $border-width-small solid $color-danger;
       color: $color-danger;
-      border-radius: 4px;
+      border-radius: $border-radius-default;
       padding: 0.2rem 0.6rem;
       cursor: pointer;
       font-size: 0.8rem;
@@ -179,10 +179,10 @@
   }
 
   .prior-exhibits-section {
-    margin-bottom: 1.5rem;
+    margin-bottom: $margin-large;
 
     h4 {
-      margin-bottom: 0.5rem;
+      margin-bottom: $margin-small;
       font-size: 0.95rem;
     }
   }
@@ -199,18 +199,18 @@
   }
 
   .officer-field {
-    margin-bottom: 1.5rem;
+    margin-bottom: $margin-large;
     display: flex;
     flex-direction: column;
     max-width: 250px;
   }
 
   .dropzone {
-    margin-top: 1rem;
+    margin-top: $margin-medium;
   }
 
   .actions {
-    margin-top: 1.5rem;
+    margin-top: $margin-large;
     display: flex;
     gap: 0.75rem;
     align-items: center;
@@ -218,7 +218,7 @@
 
   .upload-progress {
     width: 100%;
-    margin-top: 1rem;
+    margin-top: $margin-medium;
   }
 }
 
@@ -244,28 +244,28 @@
 
 .history-dialog {
   background: white;
-  border-radius: 6px;
-  padding: 1.5rem;
+  border-radius: $border-radius-large;
+  padding: $padding-large;
   width: 90%;
   max-width: 750px;
   max-height: 80vh;
   overflow-y: auto;
 
   h3 {
-    margin: 0 0 1rem;
-    font-size: 1rem;
+    margin: 0 0 $margin-medium;
+    font-size: $font-size-body;
   }
 
   .history-search {
     display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
+    gap: $margin-small;
+    margin-bottom: $margin-medium;
 
     input {
       flex: 1;
       padding: 0.4rem 0.6rem;
-      border: 1px solid $color-border-medium;
-      border-radius: 4px;
+      border: $border-width-small solid $color-border-medium;
+      border-radius: $border-radius-default;
       font-size: 0.9rem;
     }
   }
@@ -277,7 +277,7 @@
 
     th,
     td {
-      border: 1px solid $color-border;
+      border: $border-width-small solid $color-border;
       padding: 0.4rem 0.6rem;
       text-align: left;
     }
@@ -288,7 +288,7 @@
   }
 
   .dialog-footer {
-    margin-top: 1rem;
+    margin-top: $margin-medium;
     text-align: right;
   }
 }

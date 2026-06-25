@@ -3,16 +3,16 @@
 // --- SubmissionListing ---
 
 .submission-list-page {
-  padding: 2rem;
+  padding: $padding-xlarge;
 
   .submission-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 1rem;
+    margin-bottom: $margin-medium;
 
     th,
     td {
-      border: 1px solid $color-border;
+      border: $border-width-small solid $color-border;
       padding: 0.75rem;
     }
 
@@ -29,14 +29,14 @@
   .pagination {
     display: flex;
     justify-content: center;
-    gap: 1rem;
+    gap: $margin-medium;
   }
 }
 
 // --- SubmissionReview ---
 
 .review-page {
-  padding: 2rem;
+  padding: $padding-xlarge;
   max-width: 960px;
   margin: auto;
 
@@ -50,11 +50,11 @@
   .ticket-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 1.5rem;
+    margin-bottom: $margin-large;
 
     th,
     td {
-      border: 1px solid $color-border;
+      border: $border-width-small solid $color-border;
       padding: 0.6rem 0.75rem;
       font-size: 0.9rem;
     }
@@ -65,7 +65,7 @@
   }
 
   .icon {
-    font-size: 22px;
+    font-size: $icon-size-large;
     width: 26px;
     text-align: center;
   }
@@ -93,14 +93,14 @@
   }
 
   .file-list {
-    border: 1px solid $color-border;
-    border-radius: 6px;
+    border: $border-width-small solid $color-border;
+    border-radius: $border-radius-large;
 
     .file-row {
       display: flex;
       align-items: center;
       padding: 10px 14px;
-      border-bottom: 1px solid $color-border;
+      border-bottom: $border-width-small solid $color-border;
       column-gap: 14px;
       flex-wrap: wrap;
 
@@ -123,7 +123,7 @@
 
     .file-size {
       white-space: nowrap;
-      font-size: 0.85rem;
+      font-size: $font-size-small-body;
       color: $color-text-secondary;
     }
 
@@ -137,7 +137,7 @@
     }
 
     .cl-field {
-      font-size: 0.78rem;
+      font-size: $font-size-label;
       color: $color-text-secondary;
       white-space: nowrap;
     }
@@ -156,15 +156,15 @@
 
       button {
         padding: 4px 10px;
-        font-size: 0.85rem;
+        font-size: $font-size-small-body;
       }
     }
 
     .remove-file-btn {
       background: none;
-      border: 1px solid $color-danger;
+      border: $border-width-small solid $color-danger;
       color: $color-danger;
-      border-radius: 3px;
+      border-radius: $border-radius-small;
       cursor: pointer;
 
       &:disabled {
@@ -188,7 +188,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
+    background: $color-overlay;
     display: flex;
     align-items: center;
     justify-content: center;

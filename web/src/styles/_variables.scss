@@ -38,3 +38,46 @@ $color-gray-20:          t.$theme-gray-20;                      // #F3F2F1
 $color-gray-30:          t.$theme-gray-30;                      // #ECEAE8
 $color-menus-hover:      t.$surface-color-menus-hover;          // #EDEBE9
 $color-border-dark:      t.$surface-color-border-dark;          // #353433
+
+// Shadows
+$shadow-none:            t.$surface-shadow-none;
+$shadow-small:           t.$surface-shadow-small;
+$shadow-large:           t.$surface-shadow-large;
+
+// Border radius (tokens are unitless; px suffix added here)
+$border-radius-small:    #{t.$layout-border-radius-small}px;     // 2px
+$border-radius-default:  #{t.$layout-border-radius-medium}px;    // 4px
+$border-radius-large:    #{t.$layout-border-radius-large}px;     // 6px
+$border-radius-circular: #{t.$layout-border-radius-circular}px;  // 9999px
+
+// Border width (tokens are unitless; px suffix added here)
+$border-width-small:     #{t.$layout-border-width-small}px;      // 1px
+$border-width-medium:    #{t.$layout-border-width-medium}px;     // 2px
+$border-width-large:     #{t.$layout-border-width-large}px;      // 4px
+
+// Padding
+$padding-xsmall:         t.$layout-padding-xsmall;    // 0.25rem
+$padding-small:          t.$layout-padding-small;     // 0.5rem
+$padding-medium:         t.$layout-padding-medium;    // 1rem
+$padding-large:          t.$layout-padding-large;     // 1.5rem
+$padding-xlarge:         t.$layout-padding-xlarge;    // 2rem
+
+// Margin
+$margin-xsmall:          t.$layout-margin-xsmall;     // 0.25rem
+$margin-small:           t.$layout-margin-small;      // 0.5rem
+$margin-medium:          t.$layout-margin-medium;     // 1rem
+$margin-large:           t.$layout-margin-large;      // 1.5rem
+$margin-xlarge:          t.$layout-margin-xlarge;     // 2rem
+
+// Typography — font sizes
+$font-size-label:        t.$typography-font-size-label;        // 0.75rem
+$font-size-small-body:   t.$typography-font-size-small-body;   // 0.875rem
+$font-size-body:         t.$typography-font-size-body;         // 1rem
+$font-size-large-body:   t.$typography-font-size-large-body;   // 1.125rem
+
+// Icon sizes (tokens are unitless; px suffix added here)
+$icon-size-xsmall:       #{t.$icons-size-xsmall}px;    // 14px
+$icon-size-small:        #{t.$icons-size-small}px;     // 16px
+$icon-size-medium:       #{t.$icons-size-medium}px;    // 20px
+$icon-size-large:        #{t.$icons-size-large}px;     // 24px
+$icon-size-xlarge:       #{t.$icons-size-xlarge}px;    // 32px

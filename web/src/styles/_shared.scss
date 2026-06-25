@@ -3,9 +3,9 @@
 // --- FileDropZone ---
 
 .dropzone {
-  margin-top: 2rem;
-  padding: 2rem;
-  border: 2px dashed $color-border-medium;
+  margin-top: $margin-xlarge;
+  padding: $padding-xlarge;
+  border: $border-width-medium dashed $color-border-medium;
   text-align: center;
   cursor: pointer;
 
@@ -47,10 +47,10 @@
 
   input,
   select {
-    padding: 0.5rem;
-    font-size: 1rem;
-    border: 1px solid $color-border-medium;
-    border-radius: 4px;
+    padding: $padding-small;
+    font-size: $font-size-body;
+    border: $border-width-small solid $color-border-medium;
+    border-radius: $border-radius-default;
   }
 
   .loading-text {
@@ -74,8 +74,8 @@
   padding: 0;
   list-style: none;
   z-index: 10;
-  border-radius: 0 0 4px 4px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 0 0 $border-radius-default $border-radius-default;
+  box-shadow: $shadow-small;
 }
 
 .dropdown-item {
@@ -102,19 +102,19 @@
 
 .modal-box {
   background: white;
-  border-radius: 8px;
-  padding: 1.5rem 2rem;
+  border-radius: $border-radius-large;
+  padding: $padding-large $padding-xlarge;
   max-width: 480px;
   width: 90%;
   box-shadow: $shadow-medium;
 
   .modal-title {
-    margin: 0 0 1rem;
-    font-size: 1.15rem;
+    margin: 0 0 $margin-medium;
+    font-size: $font-size-large-body;
   }
 
   .modal-body {
-    margin-bottom: 1.5rem;
+    margin-bottom: $margin-large;
     font-size: 0.95rem;
     line-height: 1.5;
   }
@@ -149,8 +149,8 @@
   .viewer {
     width: 100%;
     max-height: 600px;
-    border: 1px solid $color-border;
-    border-radius: 6px;
+    border: $border-width-small solid $color-border;
+    border-radius: $border-radius-large;
     object-fit: scale-down;
   }
 
@@ -172,7 +172,7 @@
     background: $color-primary;
     color: white;
     text-decoration: none;
-    border-radius: 4px;
+    border-radius: $border-radius-default;
 
     &:hover {
       background: $color-primary-hover;
@@ -191,8 +191,8 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  border: 1px solid $color-border;
-  border-radius: 4px;
+  border: $border-width-small solid $color-border;
+  border-radius: $border-radius-default;
 
   .prior-file-item {
     padding: 0.6rem 0.75rem;
@@ -243,7 +243,7 @@
   .prior-file-tickets {
     font-size: 0.8rem;
     padding: 0.1rem 0.45rem;
-    border-radius: 3px;
+    border-radius: $border-radius-small;
     background: $color-bg-light-blue;
     color: $color-text-link;
     white-space: nowrap;
@@ -279,7 +279,7 @@
       padding: 0.2rem 0.35rem;
       font-size: 0.8rem;
       border: 1px solid $color-border-medium;
-      border-radius: 3px;
+      border-radius: $border-radius-small;
       background: white;
       min-width: 70px;
 
@@ -308,7 +308,7 @@
       padding: 0.2rem 0.35rem;
       font-size: 0.8rem;
       border: 1px solid $color-border-medium;
-      border-radius: 3px;
+      border-radius: $border-radius-small;
       width: 100%;
       box-sizing: border-box;
 
@@ -366,7 +366,7 @@
     background: none;
     border: 1px solid $color-primary;
     color: $color-primary;
-    border-radius: 3px;
+    border-radius: $border-radius-small;
     padding: 0.15rem 0.5rem;
     font-size: 0.75rem;
     cursor: pointer;
@@ -381,7 +381,7 @@
     background: none;
     border: 1px solid $color-danger;
     color: $color-danger;
-    border-radius: 3px;
+    border-radius: $border-radius-small;
     padding: 0.15rem 0.5rem;
     font-size: 0.75rem;
     cursor: pointer;
