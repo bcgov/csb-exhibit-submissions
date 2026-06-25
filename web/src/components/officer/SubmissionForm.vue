@@ -269,7 +269,7 @@ const submitForm = async () => {
 
       <div class="actions">
         <button type="button" class="back-btn" @click="goBack">Back</button>
-        <button type="submit" :disabled="uploading">Upload Exhibit</button>
+        <button type="submit" class="submit-btn" :disabled="uploading">Attach Exhibit</button>
       </div>
     </form>
 

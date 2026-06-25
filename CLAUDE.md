@@ -125,6 +125,7 @@ Feature specifications live in [`/spec`](spec/). Read the relevant spec before i
 | [testing-implementation.md](spec/testing-implementation.md) | Initial testing strategy for backend (xUnit + Moq + WebApplicationFactory) and frontend (Vitest + MSW). Defines project structure, NuGet/npm packages, test cases, and CI integration. |
 | [exhibit-classification.md](spec/exhibit-classification.md) | Officers classify each uploaded exhibit as Marked (A–Z) and/or Entered (1–50) at direction of the JJ. Tracks classification timestamps, enforces a state machine, and supports ticket-number retrieval of exhibit history across court sessions. |
 | [admin-listing-update.md](spec/admin-listing-update.md) | Reworks the admin Submission Listing/Review: explicit `Pending`/`Accepted`/`Rejected` submission lifecycle (replaces `IsDeleted` overloading), historical view of all submissions, a search/filter panel, admin-editable exhibit classification, Accept gated on all-exhibits-final, and whole-submission Reject with a destructive warning. |
+| [documents/component-rules.md](spec/documents/component-rules.md) | Reference: BC Gov Design System component rules (Buttons, Text field, Text area, Select, Dialog, Tags/Chips, Date picker) adapted for CES's native-HTML-+-SCSS approach. Universal a11y rules (focus ring, target sizes, labels), per-component states/variants, and a mapping to existing SCSS tokens. Read before styling or building a control. |
 
 ---
 
