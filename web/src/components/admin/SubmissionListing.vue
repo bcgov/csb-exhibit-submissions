@@ -110,7 +110,7 @@ const statusChipClass = (status: SubmissionStatus | string): string => {
     </div>
 
     <!-- Filter panel -->
-    <div class="filter-panel">
+    <form class="filter-panel" @submit.prevent="applyFilter">
       <div class="filter-row">
         <label>
           Date from
@@ -139,10 +139,10 @@ const statusChipClass = (status: SubmissionStatus | string): string => {
         </label>
       </div>
       <div class="filter-actions">
-        <button class="btn btn--primary btn-apply" @click="applyFilter">Apply</button>
-        <button class="btn btn--secondary btn-clear" @click="clearFilter">Clear</button>
+        <button type="submit" class="btn btn--primary btn-apply">Apply</button>
+        <button type="button" class="btn btn--secondary btn-clear" @click="clearFilter">Clear</button>
       </div>
-    </div>
+    </form>
 
     <p v-if="loading" class="loading-text">Loading…</p>
 
