@@ -139,8 +139,8 @@ const statusChipClass = (status: SubmissionStatus | string): string => {
         </label>
       </div>
       <div class="filter-actions">
-        <button class="btn-apply" @click="applyFilter">Apply</button>
-        <button class="btn-clear" @click="clearFilter">Clear</button>
+        <button class="btn btn--primary btn-apply" @click="applyFilter">Apply</button>
+        <button class="btn btn--secondary btn-clear" @click="clearFilter">Clear</button>
       </div>
     </div>
 
@@ -180,9 +180,9 @@ const statusChipClass = (status: SubmissionStatus | string): string => {
       </table>
 
       <div class="pagination" v-if="totalPages > 1">
-        <button @click="goToPage(filter.page - 1)" :disabled="filter.page <= 1">Previous</button>
+        <button class="btn btn--secondary" @click="goToPage(filter.page - 1)" :disabled="filter.page <= 1">Previous</button>
         <span>Page {{ filter.page }} of {{ totalPages }} ({{ pagedResult.totalCount }} total)</span>
-        <button @click="goToPage(filter.page + 1)" :disabled="filter.page >= totalPages">Next</button>
+        <button class="btn btn--secondary" @click="goToPage(filter.page + 1)" :disabled="filter.page >= totalPages">Next</button>
       </div>
     </template>
   </div>

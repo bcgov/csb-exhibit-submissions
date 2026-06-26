@@ -229,7 +229,7 @@ const submitForm = async () => {
               &nbsp;@ {{ ticket.appearanceDateTime.split('T')[1]?.slice(0, 5) }}
             </span>
           </div>
-          <button v-if="tickets.length > 1" type="button" class="remove-btn" @click="removeTicket(ticket.appearanceId)">
+          <button v-if="tickets.length > 1" type="button" class="btn btn--sm btn--danger-outline remove-btn" @click="removeTicket(ticket.appearanceId)">
             Remove
           </button>
         </div>
@@ -268,15 +268,15 @@ const submitForm = async () => {
       <span v-if="errorMessage" class="error-text">{{ errorMessage }}</span>
 
       <div class="actions">
-        <button type="button" class="back-btn" @click="goBack">Back</button>
-        <button type="submit" class="submit-btn" :disabled="uploading">Attach Exhibit</button>
+        <button type="button" class="btn btn--secondary back-btn" @click="goBack">Back</button>
+        <button type="submit" class="btn btn--primary submit-btn" :disabled="uploading">Attach Exhibit</button>
       </div>
     </form>
 
     <!-- Officer view-only preview modal (no download offered) -->
     <div v-if="previewFile" class="preview-overlay" @click.self="closePreview">
       <div class="preview-dialog">
-        <button type="button" class="close-btn" @click="closePreview">✖</button>
+        <button type="button" class="btn btn--icon btn--tertiary close-btn" aria-label="Close preview" @click="closePreview">✖</button>
         <FileViewer :fileUrl="`/api/files/${previewFile.id}/view`" :mimeType="previewFile.contentType"
           :hideDownload="true" />
       </div>

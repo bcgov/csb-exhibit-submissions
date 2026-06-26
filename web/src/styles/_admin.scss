@@ -40,6 +40,11 @@
   max-width: 960px;
   margin: auto;
 
+  .back-button {
+    margin-bottom: $margin-medium;
+    padding-left: 0;
+  }
+
   .details-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(275px, 1fr));
@@ -80,16 +85,6 @@
     margin-top: 30px;
     display: flex;
     gap: 10px;
-  }
-
-  .accept {
-    background: $color-success;
-    color: white;
-  }
-
-  .remove {
-    background: $color-danger;
-    color: white;
   }
 
   .file-list {
@@ -153,25 +148,6 @@
     .file-actions {
       display: flex;
       gap: 6px;
-
-      button {
-        padding: 4px 10px;
-        font-size: $font-size-small-body;
-      }
-    }
-
-    .remove-file-btn {
-      background: none;
-      border: $border-width-small solid $color-danger;
-      color: $color-danger;
-      border-radius: $border-radius-small;
-      cursor: pointer;
-
-      &:disabled {
-        border-color: $color-border;
-        color: $color-text-disabled;
-        cursor: not-allowed;
-      }
     }
   }
 

@@ -126,20 +126,6 @@
   }
 }
 
-.btn-cancel {
-  background: $color-gray-20;
-  color: $color-text-primary;
-}
-
-.btn-confirm {
-  background: $color-success;
-  color: white;
-
-  &.danger {
-    background: $color-danger;
-  }
-}
-
 // --- FileViewer ---
 
 .evidence-viewer {
@@ -225,18 +211,8 @@
   }
 
   .history-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0;
     font-size: 0.95rem;
-    line-height: 1;
-    color: $color-text-secondary;
     flex: 0 0 auto;
-
-    &:hover {
-      color: $color-primary;
-    }
   }
 
   .prior-file-name {
@@ -377,34 +353,9 @@
   }
 
   .view-btn,
-  .dl-btn {
-    background: none;
-    border: 1px solid $color-primary;
-    color: $color-primary;
-    border-radius: $border-radius-small;
-    padding: 0.15rem 0.5rem;
-    font-size: 0.75rem;
-    cursor: pointer;
-    white-space: nowrap;
-
-    &:hover {
-      background: $color-bg-light-blue;
-    }
-  }
-
+  .dl-btn,
   .rm-btn {
-    background: none;
-    border: 1px solid $color-danger;
-    color: $color-danger;
-    border-radius: $border-radius-small;
-    padding: 0.15rem 0.5rem;
-    font-size: 0.75rem;
-    cursor: pointer;
     white-space: nowrap;
-
-    &:hover {
-      background: $color-danger-bg;
-    }
   }
 }
 

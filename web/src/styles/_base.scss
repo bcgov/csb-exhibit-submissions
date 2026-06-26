@@ -32,35 +32,11 @@
   margin-top: $margin-xsmall;
 }
 
-// --- Buttons ---
+// Buttons: see _buttons.scss for the shared .btn system.
+// .submit-btn keeps a small layout-only margin within its action rows.
 
 .submit-btn {
-  padding: 0.75rem $padding-large;
   margin: $margin-medium 0;
-  background-color: $color-primary;
-  color: white;
-  border: none;
-  border-radius: $border-radius-default;
-  cursor: pointer;
-  font-size: $font-size-body;
-
-  &:disabled {
-    background-color: $color-primary-disabled;
-    cursor: not-allowed;
-  }
-}
-
-.back-btn {
-  padding: $padding-small $padding-medium;
-  background: $color-gray-20;
-  color: $color-text-primary;
-  border: none;
-  border-radius: $border-radius-default;
-  cursor: pointer;
-
-  &:hover {
-    background: $color-gray-30;
-  }
 }
 
 // --- Classification status chips ---

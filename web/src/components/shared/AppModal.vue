@@ -20,10 +20,10 @@ const emit = defineEmits<{
         <slot />
       </div>
       <div class="modal-footer">
-        <button class="btn-cancel" @click="emit('cancel')">{{ cancelLabel ?? 'Cancel' }}</button>
+        <button class="btn btn--secondary btn-cancel" @click="emit('cancel')">{{ cancelLabel ?? 'Cancel' }}</button>
         <button
-          class="btn-confirm"
-          :class="{ danger: confirmDanger }"
+          class="btn btn-confirm"
+          :class="confirmDanger ? 'btn--danger' : 'btn--success'"
           @click="emit('confirm')"
         >{{ confirmLabel ?? 'Confirm' }}</button>
       </div>

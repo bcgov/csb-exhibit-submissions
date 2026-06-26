@@ -87,7 +87,7 @@ const getFileIcon = (file: File) => {
         {{ file.name }}
       </span>
 
-      <button type="button" @click="removeFile(index)">
+      <button type="button" class="btn btn--sm btn--danger-outline" @click="removeFile(index)">
         Remove
       </button>
 

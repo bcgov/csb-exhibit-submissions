@@ -96,12 +96,23 @@ Source: <https://www2.gov.bc.ca/gov/content/digital/design-system/components/but
 - Don't convey state with colour alone (WCAG 1.4.1); keep the shape/rounded corners.
 
 ### CES mapping
-- Existing: `.submit-btn` (primary) and `.back-btn` (secondary) in
-  [`_base.scss`](../../web/src/styles/_base.scss). These cover primary/secondary
-  only. **Gaps:** no shared `danger`, `tertiary`, or `link` variant; no size scale;
-  no focus-ring rule; no loading state. Consider a single `.btn` base class with
-  `--primary/--secondary/--danger/--tertiary` modifiers and size modifiers, driven
-  by `$color-primary*`, `$color-danger*`, and the `$padding-*` tokens.
+- **Shared `.btn` system** lives in
+  [`_buttons.scss`](../../web/src/styles/_buttons.scss): a `.btn` base (offset
+  focus ring, 32px min target, disabled handling) plus variants
+  `--primary` / `--secondary` / `--success` / `--danger` / `--danger-outline` /
+  `--primary-outline` / `--tertiary` / `--inverse`, a `--sm` size, and an `--icon`
+  shape. Use `class="btn btn--primary"` etc. Icon-only buttons add `--icon` **and**
+  an `aria-label`.
+- **`--success` (green) is a CES extension, not a BC Gov variant.** BC Gov has no
+  green button (green is a status colour) and ships no success-button hover token,
+  so we derive the hover shade in `_buttons.scss`. It's used for Accept/Confirm to
+  preserve the app's existing green semantic. For strict BC Gov compliance, those
+  could move to `--primary`.
+- **Still undefined:** a `loading` state for async submits, and a formal size scale
+  beyond `--sm` (BC Gov defines Large/Medium/Small/XS).
+- **Out of scope / known gap:** `LoginView.vue` still uses Bootstrap classes
+  (`btn btn-primary`, `form-control`, `spinner-border`) while Bootstrap CSS is not
+  imported — the whole view needs a separate migration onto the design system.
 
 ---
 

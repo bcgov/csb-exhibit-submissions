@@ -211,7 +211,7 @@ const onDescriptionBlur = async (file: SubmissionFile) => {
       <div class="prior-file-row1">
         <button
           type="button"
-          class="history-btn"
+          class="btn btn--icon btn--tertiary history-btn"
           title="View change history"
           aria-label="View change history"
           @click="openHistory(entry.file)"
@@ -242,19 +242,19 @@ const onDescriptionBlur = async (file: SubmissionFile) => {
             <button
               v-if="isViewable(entry.file.contentType)"
               type="button"
-              class="view-btn"
+              class="btn btn--sm btn--primary-outline view-btn"
               @click="emit('previewFile', entry.file)"
             >View</button>
             <button
               v-if="canDownload"
               type="button"
-              class="dl-btn"
+              class="btn btn--sm btn--primary-outline dl-btn"
               @click="emit('downloadFile', entry.file)"
             >Download</button>
             <button
               v-if="canRemove"
               type="button"
-              class="rm-btn"
+              class="btn btn--sm btn--danger-outline rm-btn"
               @click="emit('removeFile', entry.file)"
             >Remove</button>
           </div>
@@ -351,7 +351,7 @@ const onDescriptionBlur = async (file: SubmissionFile) => {
       <p v-else class="history-status">No changes have been recorded for this exhibit.</p>
 
       <div class="exhibit-history-footer">
-        <button type="button" @click="closeHistory">Close</button>
+        <button type="button" class="btn btn--secondary" @click="closeHistory">Close</button>
       </div>
     </div>
   </div>

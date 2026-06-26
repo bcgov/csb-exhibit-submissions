@@ -33,7 +33,7 @@
       </div>
 
       <div class="form-actions">
-        <button type="submit" :disabled="isSubmitDisabled" class="submit-btn">
+        <button type="submit" :disabled="isSubmitDisabled" class="btn btn--primary submit-btn">
           <span v-if="isSearching" class="spinner-border spinner-border-sm me-2"></span>
           Search
         </button>
@@ -45,7 +45,7 @@
   <div v-if="hasSearched" class="court-results px-4 pb-4">
     
   <div class="">
-    <button class="submit-btn" @click="proceedToUpload" :disabled="checkedFiles.length <= 0">
+    <button class="btn btn--primary submit-btn" @click="proceedToUpload" :disabled="checkedFiles.length <= 0">
       Upload Exhibit ({{ checkedFiles.length }} selected)
     </button>
   </div>
@@ -115,7 +115,7 @@
   <!-- Floating upload bar — visible only when at least one ticket is checked -->
   <div v-if="checkedFiles.length > 0" class="floating-upload-bar">
     <span class="selected-count">{{ checkedFiles.length }} ticket{{ checkedFiles.length === 1 ? '' : 's' }} selected</span>
-    <button class="upload-btn" @click="proceedToUpload">
+    <button class="btn btn--inverse upload-btn" @click="proceedToUpload">
       Upload Exhibit ({{ checkedFiles.length }} selected)
     </button>
   </div>

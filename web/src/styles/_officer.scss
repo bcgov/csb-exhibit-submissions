@@ -69,18 +69,7 @@
   }
 
   .upload-btn {
-    background: white;
-    color: $color-bg-dark-blue;
-    border: none;
-    border-radius: $border-radius-default;
-    padding: $padding-small 1.25rem;
     font-weight: 600;
-    cursor: pointer;
-    font-size: 0.95rem;
-
-    &:hover {
-      background: $color-bg-light-blue;
-    }
   }
 }
 
@@ -152,18 +141,7 @@
     }
 
     .remove-btn {
-      background: none;
-      border: $border-width-small solid $color-danger;
-      color: $color-danger;
-      border-radius: $border-radius-default;
-      padding: 0.2rem 0.6rem;
-      cursor: pointer;
-      font-size: 0.8rem;
       white-space: nowrap;
-
-      &:hover {
-        background: $color-danger-bg;
-      }
     }
   }
 

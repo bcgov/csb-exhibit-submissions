@@ -13,6 +13,7 @@
 
         <button
           v-if="tool.action"
+          class="btn btn--primary"
           @click="tool.action"
           :disabled="loading"
         >

@@ -135,6 +135,8 @@ const removeExhibit = async (file: SubmissionFile) => {
 
 <template>
   <div class="review-page">
+    <button class="btn btn--tertiary back-button" @click="router.push('/admin/list')">← Back to Submissions</button>
+
     <h1>Submission Review</h1>
 
     <div v-if="submission">
@@ -195,12 +197,12 @@ const removeExhibit = async (file: SubmissionFile) => {
       <template v-if="!isTerminal">
         <div class="actions-main">
           <button
-            class="accept"
+            class="btn btn--success accept"
             :disabled="!acceptReadiness.ready"
             :title="acceptReadiness.ready ? 'Accept this submission' : `${acceptReadiness.blockingNames.length} exhibit(s) not yet Entered or Removed`"
             @click="doAcceptSubmission"
           >Accept</button>
-          <button class="remove" @click="showRejectModal = true">Reject Submission</button>
+          <button class="btn btn--danger remove" @click="showRejectModal = true">Reject Submission</button>
         </div>
         <p v-if="acceptError" class="accept-error">{{ acceptError }}</p>
       </template>
@@ -220,7 +222,7 @@ const removeExhibit = async (file: SubmissionFile) => {
 
     <div v-if="previewFile" class="preview-modal">
       <div class="modal-content">
-        <button class="close" @click="closePreview">✖</button>
+        <button class="btn btn--icon btn--tertiary close" aria-label="Close preview" @click="closePreview">✖</button>
         <FileViewer :fileUrl="previewFile.viewUrl" :download-url="previewFile.downloadUrl"
           :mimeType="previewFile.contentType" />
       </div>
