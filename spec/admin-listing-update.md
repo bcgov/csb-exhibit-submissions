@@ -233,8 +233,7 @@ Replaces the per-exhibit `AcceptAsync` ([LocalFileStorage.cs:64-152](../api/CES.
 
 - One zip named per submission (e.g. `{shortDate}_{submissionId}.zip`) written under `AcceptedPath`.
 - Contains every **retained** exhibit (skip `Removed` files — their bytes are already gone), each under its `OriginalFileName` (de-duplicate names if two originals collide).
-- A single combined `metadata.json` describing the submission (location, room, officer, tickets) plus an `exhibits[]` array — one entry per included file with its classification, timestamps, description, and `SHA256` (reusing `CryptographyService.ComputeSHA256Async`).
-- A combined `sha256.txt` listing each file's hash.
+- A single combined `metadata.json` describing the submission (location, room, officer, tickets) plus an `exhibits[]` array — one entry per included file with its classification, timestamps, description, and `SHA256` (reusing `CryptographyService.ComputeSHA256Async`). Each exhibit's hash lives on its `metadata.json` entry; there is no separate hash file.
 
 > Keep the existing `ZipArchive` dispose-ordering discipline from `AcceptAsync` (Central Directory written before the stream is flushed). Removed exhibits are recorded in the manifest as metadata only (status `Removed`, deletion timestamp), with no file bytes.
 
@@ -359,7 +358,7 @@ Per project rules, all new/changed behaviour needs tests; both suites must pass 
 - **Filters**: date range, file number, accused-name contains, and status each narrow the result correctly, and combine.
 - **Paging**: `TotalCount` reflects the filtered set (not the page); `pageSize` is clamped to `MaxPageSize`; out-of-range `page` yields an empty page, not an error.
 - **Accept readiness**: rejects when any exhibit is Unclassified or Marked-only; succeeds when all are Entered/Removed; sets `Accepted` + `StatusChangedDateUTC`; does **not** set `IsDeleted`; accepted exhibits keep `Entered` status (not `Removed`).
-- **Accept packaging**: produces exactly **one** zip per submission containing every retained exhibit plus one combined `metadata.json` (+ `sha256.txt`); Removed exhibits appear as metadata-only entries (no bytes).
+- **Accept packaging**: produces exactly **one** zip per submission containing every retained exhibit plus one combined `metadata.json` (which carries each exhibit's `SHA256`); Removed exhibits appear as metadata-only entries (no bytes).
 - **Reject**: deletes all files, sets each `IsDeleted` + `DeletedAtUTC`, sets submission `Rejected`, does not set submission `IsDeleted`.
 - **RemoveFile**: sets `DeletedAtUTC`; **succeeds on an `Entered` exhibit** when the submission is `Pending`; **rejected** when the submission is `Accepted`/`Rejected`.
 - **Admin override**: mark/enter/description succeed on an already-`Entered` exhibit when `isAdminOverride` is true, and still write an audit entry; value-range validation still enforced.

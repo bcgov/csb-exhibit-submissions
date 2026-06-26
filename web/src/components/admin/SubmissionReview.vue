@@ -17,6 +17,7 @@ const {
   retrieveSubmission,
   acceptSubmission,
   rejectSubmission,
+  downloadAcceptedPackage,
   removeFile,
   markExhibit,
   enterExhibit,
@@ -25,6 +26,7 @@ const {
 
 const submission = ref<SubmissionReviewModel | undefined>(undefined);
 const acceptError = ref<string | null>(null);
+const packageError = ref<string | null>(null);
 const showRejectModal = ref(false);
 const removeError = ref<string | null>(null);
 const previewFile = ref<SubmissionFile | null>(null);
@@ -109,6 +111,14 @@ const doAcceptSubmission = async () => {
   }
 };
 
+const doDownloadPackage = async () => {
+  packageError.value = null;
+  const ok = await downloadAcceptedPackage(submissionId);
+  if (!ok) {
+    packageError.value = 'Could not download the package. Please try again.';
+  }
+};
+
 const doRejectSubmission = async () => {
   const payload: SubmissionActionModel = { submissionId };
   await rejectSubmission(payload);
@@ -147,11 +157,17 @@ const removeExhibit = async (file: SubmissionFile) => {
         <div><strong>Room:</strong> {{ submission.room }}</div>
         <div><strong>Submission Date:</strong> {{ submission.submissionDate ?
           formatDateTime(convertUtcToLocal(submission.submissionDate), true) : '' }}</div>
-        <div>
+        <div class="status-cell">
           <strong>Status:</strong>
           <span :class="`status-chip status-${submission.status.toLowerCase()}`">{{ submission.status }}</span>
+          <button
+            v-if="submission.status === 'Accepted'"
+            class="btn btn--secondary download-package"
+            @click="doDownloadPackage"
+          >Download Package</button>
         </div>
       </div>
+      <p v-if="packageError" class="package-error">{{ packageError }}</p>
 
       <!-- Tickets section -->
       <h3>Tickets ({{ submission.tickets?.length ?? 0 }})</h3>

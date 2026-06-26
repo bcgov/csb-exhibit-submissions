@@ -65,7 +65,9 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
 
             services.AddScoped<ICESDataStore>(sp => sp.GetRequiredService<CESDataStore>());
 
-            services.AddScoped<IFileStorage, InMemoryFileStorage>();
+            // Singleton so in-memory file/package state persists across HTTP
+            // requests within a single test (e.g. accept then download package).
+            services.AddSingleton<IFileStorage, InMemoryFileStorage>();
         });
     }
 }

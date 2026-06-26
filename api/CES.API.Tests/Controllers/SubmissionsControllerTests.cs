@@ -264,6 +264,44 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
     }
 
     [Fact]
+    public async Task DownloadPackage_AfterAccept_Returns200WithZip()
+    {
+        var submissionId = await SubmitAndGetId();
+        var fileId = await GetFirstFileId(submissionId);
+
+        WithAuth(JwtTokenHelper.AdminToken());
+        await _client.PostAsJsonAsync($"/api/files/{fileId}/enter", new { enteredValue = "1" });
+        await _client.PostAsJsonAsync("/api/submissions/accept", new { submissionId });
+
+        var response = await _client.GetAsync($"/api/submissions/{submissionId}/package");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("application/zip");
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        bytes.Length.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task DownloadPackage_WhenPending_Returns422()
+    {
+        var submissionId = await SubmitAndGetId();
+
+        WithAuth(JwtTokenHelper.AdminToken());
+        var response = await _client.GetAsync($"/api/submissions/{submissionId}/package");
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    [Fact]
+    public async Task DownloadPackage_WhenSubmissionMissing_Returns404()
+    {
+        WithAuth(JwtTokenHelper.AdminToken());
+        var response = await _client.GetAsync("/api/submissions/99999/package");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task GetByFileNumber_WithUserRole_Returns200WithResults()
     {
         WithAuth(JwtTokenHelper.UserToken());

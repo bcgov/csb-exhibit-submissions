@@ -12,7 +12,7 @@ export interface CourtFileList {
   roomText: string;
   accusedName: string;
   accusedDOB: string;
-  appearanceDetails: [AppearanceDetails]
+  appearanceDetails: AppearanceDetails[]
 }
 
 export interface AppearanceDetails {

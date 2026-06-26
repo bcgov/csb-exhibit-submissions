@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { http, HttpResponse } from 'msw';
 import { server } from '@/test/setup';
+import api from '@/services/apiClient';
 import useSubmissionService from '@/services/SubmissionService';
 import type { ExhibitSubmissionModel } from '@/models/ExhibitSubmissionModel';
 import type { SubmissionFile, SubmissionActionModel, PagedResult, SubmissionReviewModel } from '@/models/SubmissionReviewModel';
@@ -158,6 +159,48 @@ describe('SubmissionService', () => {
 
     expect(result).toBe(true);
     expect(capturedBody).toMatchObject({ submissionId: 7 });
+  });
+
+  // These spy on the axios instance directly rather than going through MSW:
+  // axios uses its XHR adapter under jsdom, and MSW's XHR interceptor cannot
+  // build a `responseType: 'blob'` response in this environment.
+  it('downloadAcceptedPackage requests the package as a blob and triggers a download', async () => {
+    const getSpy = vi
+      .spyOn(api, 'get')
+      .mockResolvedValue({ data: new Blob(['zip-bytes'], { type: 'application/zip' }) });
+
+    // Assign onto URL directly (rather than replacing the global) so the URL
+    // constructor that other tests rely on keeps working.
+    const createObjectURL = vi.fn(() => 'blob:mock');
+    const revokeObjectURL = vi.fn();
+    const urlObj = URL as unknown as Record<string, unknown>;
+    urlObj.createObjectURL = createObjectURL;
+    urlObj.revokeObjectURL = revokeObjectURL;
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    const { downloadAcceptedPackage } = useSubmissionService();
+    const result = await downloadAcceptedPackage(42);
+
+    expect(result).toBe(true);
+    expect(getSpy).toHaveBeenCalledWith('/submissions/42/package', { responseType: 'blob' });
+    expect(createObjectURL).toHaveBeenCalledOnce();
+    expect(clickSpy).toHaveBeenCalledOnce();
+    expect(revokeObjectURL).toHaveBeenCalledOnce();
+
+    getSpy.mockRestore();
+    clickSpy.mockRestore();
+    delete urlObj.createObjectURL;
+    delete urlObj.revokeObjectURL;
+  });
+
+  it('downloadAcceptedPackage returns false on API error', async () => {
+    const getSpy = vi.spyOn(api, 'get').mockRejectedValue(new Error('422'));
+
+    const { downloadAcceptedPackage } = useSubmissionService();
+    const result = await downloadAcceptedPackage(99);
+
+    expect(result).toBe(false);
+    getSpy.mockRestore();
   });
 
   it('getSubmissionsByFileNumber fetches GET /api/submissions/by-file-number', async () => {

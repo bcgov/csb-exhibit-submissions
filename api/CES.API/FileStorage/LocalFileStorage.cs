@@ -61,14 +61,34 @@ namespace CES.API.FileStorage
             return Task.CompletedTask;
         }
 
-        public async Task AcceptSubmissionAsync(Submission submission)
+        // Deterministic name/path for a submission's accepted package, so it can be
+        // both written on Accept and retrieved later for download.
+        private static string GetPackageName(Submission submission)
         {
             var shortDate = submission.UploadDate.HasValue
                 ? submission.UploadDate.Value.ToString("yyyyMMdd")
                 : "unknown";
 
-            var zipName = $"{shortDate}_{submission.Id}.zip";
-            var zipPath = Path.Combine(_options.AcceptedPath, zipName);
+            return $"{shortDate}_{submission.Id}.zip";
+        }
+
+        private string GetPackagePath(Submission submission)
+            => Path.Combine(_options.AcceptedPath, GetPackageName(submission));
+
+        public Task<Stream> GetAcceptedPackageAsync(Submission submission)
+        {
+            var zipPath = GetPackagePath(submission);
+
+            if (!File.Exists(zipPath))
+                throw new FileNotFoundException($"Accepted package for submission {submission.Id} not found", zipPath);
+
+            Stream stream = new FileStream(zipPath, FileMode.Open, FileAccess.Read);
+            return Task.FromResult(stream);
+        }
+
+        public async Task AcceptSubmissionAsync(Submission submission)
+        {
+            var zipPath = GetPackagePath(submission);
 
             Directory.CreateDirectory(_options.AcceptedPath);
 
@@ -161,20 +181,6 @@ namespace CES.API.FileStorage
                     {
                         WriteIndented = true
                     });
-                }
-
-                // Combined sha256.txt
-                var hashEntry = archive.CreateEntry("sha256.txt");
-                await using (var writer = new StreamWriter(hashEntry.Open()))
-                {
-                    foreach (var (entryName, hash, file) in fileHashes)
-                    {
-                        await writer.WriteLineAsync($"File: {entryName}");
-                        await writer.WriteLineAsync($"SHA256: {hash}");
-                        await writer.WriteLineAsync($"Marked: {file.MarkedValue ?? "—"}");
-                        await writer.WriteLineAsync($"Entered: {file.EnteredValue ?? "—"}");
-                        await writer.WriteLineAsync();
-                    }
                 }
             } // ZipArchive.Dispose() writes Central Directory + EOCD to zipStream here
 

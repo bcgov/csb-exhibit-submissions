@@ -115,6 +115,22 @@ namespace CES.API.Controllers
             return Ok("Submission rejected");
         }
 
+        [HttpGet]
+        [Route("api/submissions/{submissionId:int}/package")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DownloadPackage(int submissionId)
+        {
+            var (stream, fileName, error) = await _submissionService.GetAcceptedPackageAsync(submissionId);
+            if (stream == null)
+            {
+                if (error != null && error.Contains("not found"))
+                    return NotFound(error);
+                return UnprocessableEntity(error);
+            }
+
+            return File(stream, "application/zip", fileName);
+        }
+
         [HttpDelete]
         [Route("api/submissions/files/{fileId:guid}")]
         [Authorize(Roles = "Admin")]

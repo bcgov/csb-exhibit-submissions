@@ -10,5 +10,6 @@ namespace CES.Business.Interfaces
         Task<Stream> GetAsync(StoredFiles storedFile);
         Task DeleteAsync(StoredFiles storedFile);
         Task AcceptSubmissionAsync(Submission submission);
+        Task<Stream> GetAcceptedPackageAsync(Submission submission);
     }
 }

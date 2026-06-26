@@ -11,5 +11,6 @@ namespace CES.Business.Interfaces
         Task<(bool success, string? error)> RejectSubmissions(SubmissionActionModel model);
         Task<List<PriorSubmissionModel>> GetSubmissionsByFileNumberAsync(string fileNumberText);
         Task<bool> RemoveFileAsync(Guid fileId);
+        Task<(Stream? stream, string? fileName, string? error)> GetAcceptedPackageAsync(int submissionId);
     }
 }

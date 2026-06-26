@@ -156,6 +156,24 @@
     margin-bottom: 30px;
   }
 
+  .status-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+
+    .download-package {
+      padding-top: 0.25rem;
+      padding-bottom: 0.25rem;
+    }
+  }
+
+  .package-error {
+    margin-bottom: 30px;
+    color: $color-danger;
+    font-size: 0.9rem;
+  }
+
   .ticket-table {
     width: 100%;
     border-collapse: collapse;

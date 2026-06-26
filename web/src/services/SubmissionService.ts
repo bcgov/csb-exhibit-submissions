@@ -106,6 +106,28 @@ export default function useSubmissionService() {
     }
   }
 
+  const downloadAcceptedPackage = async (submissionId: number): Promise<boolean> => {
+    try {
+      const response = await api.get(`/submissions/${submissionId}/package`, {
+        responseType: 'blob',
+      })
+
+      const fileName = `submission-${submissionId}-package.zip`
+      const url = window.URL.createObjectURL(response.data as Blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = fileName
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+      return true
+    } catch (err) {
+      console.error('Package download error:', err)
+      return false
+    }
+  }
+
   const getSubmissionsByFileNumber = async (fileNumberText: string): Promise<PriorSubmissionModel[]> => {
     const url = `/submissions/by-file-number`
     const apiReturn = await api.get<PriorSubmissionModel[]>(url, {
@@ -152,6 +174,7 @@ export default function useSubmissionService() {
     retrieveSubmissionListing,
     acceptSubmission,
     rejectSubmission,
+    downloadAcceptedPackage,
     getSubmissionsByFileNumber,
     removeFile,
     markExhibit,

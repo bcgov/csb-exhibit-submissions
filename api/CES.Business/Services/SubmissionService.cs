@@ -164,6 +164,29 @@ namespace CES.Business.Services
             return (true, null);
         }
 
+        public async Task<(Stream? stream, string? fileName, string? error)> GetAcceptedPackageAsync(int submissionId)
+        {
+            var submission = await _datastore.Submissions
+                .FirstOrDefaultAsync(s => s.Id == submissionId);
+
+            if (submission == null)
+                return (null, null, "Submission not found.");
+
+            if (submission.Status != SubmissionStatus.Accepted)
+                return (null, null, "Only Accepted submissions have a downloadable package.");
+
+            try
+            {
+                var stream = await _fileStorage.GetAcceptedPackageAsync(submission);
+                var fileName = $"submission-{submission.Id}-package.zip";
+                return (stream, fileName, null);
+            }
+            catch (FileNotFoundException)
+            {
+                return (null, null, "Package not found for this submission.");
+            }
+        }
+
         public async Task<bool> RemoveFileAsync(Guid fileId)
         {
             var file = await _datastore.StoredFiles

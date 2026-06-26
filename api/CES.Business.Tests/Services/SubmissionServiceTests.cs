@@ -651,4 +651,73 @@ public class SubmissionServiceTests : IDisposable
         resultFile.Description.Should().Be("test exhibit");
         resultFile.Status.Should().Be("Entered");
     }
+
+    // ── GetAcceptedPackage ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetAcceptedPackage_ReturnsStream_WhenSubmissionAccepted()
+    {
+        var submission = BuildSubmission();
+        submission.Status = SubmissionStatus.Accepted;
+        _db.Submissions.Add(submission);
+        await _db.SaveChangesAsync();
+
+        using var packageStream = new MemoryStream(new byte[] { 0x50, 0x4B });
+        _fileStorageMock
+            .Setup(s => s.GetAcceptedPackageAsync(It.IsAny<Submission>()))
+            .ReturnsAsync(packageStream);
+
+        var (stream, fileName, error) = await _service.GetAcceptedPackageAsync(submission.Id);
+
+        stream.Should().NotBeNull();
+        fileName.Should().Be($"submission-{submission.Id}-package.zip");
+        error.Should().BeNull();
+        _fileStorageMock.Verify(s => s.GetAcceptedPackageAsync(It.Is<Submission>(x => x.Id == submission.Id)), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAcceptedPackage_ReturnsError_WhenSubmissionNotFound()
+    {
+        var (stream, fileName, error) = await _service.GetAcceptedPackageAsync(99999);
+
+        stream.Should().BeNull();
+        fileName.Should().BeNull();
+        error.Should().Contain("not found");
+        _fileStorageMock.Verify(s => s.GetAcceptedPackageAsync(It.IsAny<Submission>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(SubmissionStatus.Pending)]
+    [InlineData(SubmissionStatus.Rejected)]
+    public async Task GetAcceptedPackage_ReturnsError_WhenNotAccepted(SubmissionStatus status)
+    {
+        var submission = BuildSubmission();
+        submission.Status = status;
+        _db.Submissions.Add(submission);
+        await _db.SaveChangesAsync();
+
+        var (stream, _, error) = await _service.GetAcceptedPackageAsync(submission.Id);
+
+        stream.Should().BeNull();
+        error.Should().Contain("Accepted");
+        _fileStorageMock.Verify(s => s.GetAcceptedPackageAsync(It.IsAny<Submission>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetAcceptedPackage_ReturnsError_WhenPackageMissingOnDisk()
+    {
+        var submission = BuildSubmission();
+        submission.Status = SubmissionStatus.Accepted;
+        _db.Submissions.Add(submission);
+        await _db.SaveChangesAsync();
+
+        _fileStorageMock
+            .Setup(s => s.GetAcceptedPackageAsync(It.IsAny<Submission>()))
+            .ThrowsAsync(new FileNotFoundException());
+
+        var (stream, _, error) = await _service.GetAcceptedPackageAsync(submission.Id);
+
+        stream.Should().BeNull();
+        error.Should().Contain("not found");
+    }
 }

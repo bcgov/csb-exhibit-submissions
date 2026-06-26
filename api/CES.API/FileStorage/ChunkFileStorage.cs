@@ -33,5 +33,10 @@ namespace CES.API.FileStorage
         {
             throw new NotImplementedException();
         }
+
+        public Task<Stream> GetAcceptedPackageAsync(Submission submission)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
