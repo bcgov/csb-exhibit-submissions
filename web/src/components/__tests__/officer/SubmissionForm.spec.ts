@@ -36,11 +36,17 @@ const mockTicket: CourtFileList = {
   ],
 };
 
-function mountWithTickets() {
+const secondTicket: CourtFileList = {
+  ...mockTicket,
+  appearanceId: 'APP002',
+  fileNumberText: 'FILE002',
+};
+
+function mountWithTickets(tickets: CourtFileList[] = [mockTicket]) {
   const pinia = createPinia();
   setActivePinia(pinia);
   const store = useCourtFileSelectionStore();
-  store.setSelectedFiles([mockTicket]);
+  store.setSelectedFiles(tickets);
   mockGetSubmissionsByFileNumber.mockResolvedValue([]);
   return mount(SubmissionForm, { global: { plugins: [pinia] } });
 }
@@ -64,7 +70,7 @@ describe('SubmissionForm', () => {
   });
 
   it('stays on screen and shows success message after successful upload', async () => {
-    mockSubmitExhibits.mockResolvedValue(true);
+    mockSubmitExhibits.mockResolvedValue(7);
     const wrapper = mountWithTickets();
     await flushPromises();
 
@@ -79,7 +85,7 @@ describe('SubmissionForm', () => {
   });
 
   it('refreshes prior exhibits after successful upload', async () => {
-    mockSubmitExhibits.mockResolvedValue(true);
+    mockSubmitExhibits.mockResolvedValue(7);
     const wrapper = mountWithTickets();
     await flushPromises();
 
@@ -92,7 +98,7 @@ describe('SubmissionForm', () => {
   });
 
   it('clears the progress bar after successful upload', async () => {
-    mockSubmitExhibits.mockResolvedValue(true);
+    mockSubmitExhibits.mockResolvedValue(7);
     const wrapper = mountWithTickets();
     await flushPromises();
 
@@ -104,7 +110,7 @@ describe('SubmissionForm', () => {
   });
 
   it('shows error message and stays on screen when upload fails', async () => {
-    mockSubmitExhibits.mockResolvedValue(false);
+    mockSubmitExhibits.mockResolvedValue(null);
     const wrapper = mountWithTickets();
     await flushPromises();
 
@@ -130,5 +136,36 @@ describe('SubmissionForm', () => {
     expect(mockPush).not.toHaveBeenCalled();
     expect(wrapper.find('.error-text').exists()).toBe(true);
     expect(wrapper.find('.error-text').text()).toContain('Failed to upload');
+  });
+
+  it('passes the active submission id to submitExhibits on subsequent uploads', async () => {
+    mockSubmitExhibits.mockResolvedValue(7);
+    const wrapper = mountWithTickets();
+    await flushPromises();
+
+    // First upload: no active submission yet.
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(mockSubmitExhibits.mock.calls[0][3]).toBeNull();
+
+    // Second upload: attaches to the submission returned by the first.
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(mockSubmitExhibits.mock.calls[1][3]).toBe(7);
+  });
+
+  it('hides the remove-ticket buttons once a submission is active', async () => {
+    mockSubmitExhibits.mockResolvedValue(7);
+    const wrapper = mountWithTickets([mockTicket, secondTicket]);
+    await flushPromises();
+
+    // Two tickets → remove buttons are shown before the first upload.
+    expect(wrapper.findAll('.remove-btn').length).toBe(2);
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    // After the first upload the ticket set is locked.
+    expect(wrapper.findAll('.remove-btn').length).toBe(0);
   });
 });

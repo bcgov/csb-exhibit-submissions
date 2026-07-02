@@ -68,6 +68,7 @@ public class SubmissionServiceTests : IDisposable
 
     private static Submission BuildSubmission(string fileNumber = "FILE001", string appearanceId = "APP001") => new()
     {
+        ShortDate = "2026-01-01",
         LocationId = "LOC001",
         LocationNameText = "Test Court",
         RoomCode = "ROOM1",
@@ -140,8 +141,137 @@ public class SubmissionServiceTests : IDisposable
 
         var result = await _service.SubmitEvidence(model);
 
-        result.Should().BeFalse();
+        result.Should().BeNull();
         _db.Submissions.Count().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task SubmitEvidence_ReturnsSubmissionId()
+    {
+        var model = BuildModel(fileCount: 1);
+        _fileStorageMock
+            .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
+            .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
+
+        var result = await _service.SubmitEvidence(model);
+
+        result.Should().NotBeNull();
+        result.Should().Be(_db.Submissions.First().Id);
+    }
+
+    [Fact]
+    public async Task SubmitEvidence_PersistsShortDateAndAppearanceDateTime()
+    {
+        var model = BuildModel(fileCount: 1);
+        model.AppearanceDateTime = "2026-01-01T09:00:00";
+        _fileStorageMock
+            .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
+            .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
+
+        await _service.SubmitEvidence(model);
+
+        var submission = _db.Submissions.First();
+        submission.ShortDate.Should().Be("2026-01-01");
+        submission.AppearanceDateTime.Should().Be("2026-01-01T09:00:00");
+    }
+
+    [Fact]
+    public async Task SubmitEvidence_AppendsToExistingSubmission_WhenValidSubmissionIdProvided()
+    {
+        // Seed an existing Pending submission with one file.
+        var existing = BuildSubmission("FILE000", "APP000");
+        existing.Files.Add(BuildStoredFile());
+        _db.Submissions.Add(existing);
+        await _db.SaveChangesAsync();
+
+        var model = BuildModel(fileCount: 2, ticketCount: 1);
+        model.SubmissionId = existing.Id;
+        _fileStorageMock
+            .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
+            .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
+
+        var result = await _service.SubmitEvidence(model);
+
+        result.Should().Be(existing.Id);
+        // No new submission and no duplicate tickets — only files were appended.
+        _db.Submissions.Count().Should().Be(1);
+        _db.SubmissionTickets.Count().Should().Be(1);
+        _db.StoredFiles.Count(f => f.SubmissionId == existing.Id).Should().Be(3);
+    }
+
+    [Fact]
+    public async Task SubmitEvidence_AppendUsesExistingSubmissionStoragePath()
+    {
+        var existing = BuildSubmission();
+        _db.Submissions.Add(existing);
+        await _db.SaveChangesAsync();
+
+        var model = BuildModel(fileCount: 1);
+        model.SubmissionId = existing.Id;
+        string? capturedPath = null;
+        _fileStorageMock
+            .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
+            .Callback<FileUpload, string>((_, path) => capturedPath = path)
+            .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
+
+        await _service.SubmitEvidence(model);
+
+        capturedPath.Should().Be(Path.Combine("LOC001", "2026-01-01", "ROOM1", existing.Id.ToString()));
+    }
+
+    [Fact]
+    public async Task SubmitEvidence_FallsBackToNew_WhenSubmissionNotPending()
+    {
+        var existing = BuildSubmission();
+        existing.Status = SubmissionStatus.Accepted;
+        _db.Submissions.Add(existing);
+        await _db.SaveChangesAsync();
+
+        var model = BuildModel(fileCount: 1);
+        model.SubmissionId = existing.Id;
+        _fileStorageMock
+            .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
+            .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
+
+        var result = await _service.SubmitEvidence(model);
+
+        result.Should().NotBe(existing.Id);
+        _db.Submissions.Count().Should().Be(2);
+    }
+
+    [Fact]
+    public async Task SubmitEvidence_FallsBackToNew_WhenLocationMismatch()
+    {
+        var existing = BuildSubmission();
+        existing.LocationId = "OTHER";
+        _db.Submissions.Add(existing);
+        await _db.SaveChangesAsync();
+
+        var model = BuildModel(fileCount: 1); // LocationId = LOC001
+        model.SubmissionId = existing.Id;
+        _fileStorageMock
+            .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
+            .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
+
+        var result = await _service.SubmitEvidence(model);
+
+        result.Should().NotBe(existing.Id);
+        _db.Submissions.Count().Should().Be(2);
+    }
+
+    [Fact]
+    public async Task SubmitEvidence_FallsBackToNew_WhenSubmissionIdNotFound()
+    {
+        var model = BuildModel(fileCount: 1);
+        model.SubmissionId = 99999;
+        _fileStorageMock
+            .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
+            .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
+
+        var result = await _service.SubmitEvidence(model);
+
+        result.Should().NotBeNull();
+        _db.Submissions.Count().Should().Be(1);
     }
 
     [Fact]

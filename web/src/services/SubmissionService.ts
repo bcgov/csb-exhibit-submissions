@@ -18,19 +18,26 @@ export default function useSubmissionService() {
     model: ExhibitSubmissionModel,
     files: File[],
     progressCallback?: (percent: number) => void,
-  ): Promise<boolean> => {
+    submissionId?: number | null,
+  ): Promise<number | null> => {
     const url = `/submissions/submit/`;
-    let retVal = false;
+    let retVal: number | null = null;
 
     try {
       const formData = new FormData();
 
       formData.append('shortDate', model.shortDate);
+      formData.append('appearanceDateTime', model.appearanceDateTime);
       formData.append('locationId', model.locationId);
       formData.append('locationNameText', model.locationNameText);
       formData.append('roomCode', model.roomCode);
       formData.append('roomText', model.roomText);
       formData.append('officerNumber', model.officerNumber);
+
+      // Append to the same submission when the officer stays on the page after a first upload.
+      if (submissionId != null) {
+        formData.append('submissionId', String(submissionId));
+      }
 
       model.tickets.forEach((ticket, i) => {
         formData.append(`tickets[${i}].appearanceId`, ticket.appearanceId);
@@ -47,7 +54,7 @@ export default function useSubmissionService() {
         formData.append('files', file);
       });
 
-      const apiReturn = await api.post(url, formData, {
+      const apiReturn = await api.post<{ submissionId: number }>(url, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 0,
         onUploadProgress: (event) => {
@@ -56,7 +63,7 @@ export default function useSubmissionService() {
         },
       });
 
-      retVal = apiReturn.data ?? false;
+      retVal = apiReturn.data?.submissionId ?? null;
     } catch (err) {
       console.error(err);
     }

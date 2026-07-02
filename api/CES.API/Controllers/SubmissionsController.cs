@@ -41,7 +41,7 @@ namespace CES.API.Controllers
                 return BadRequest("No files uploaded.");
 
             var result = await _submissionService.SubmitEvidence(model);
-            return result ? Ok("Submission accepted") : BadRequest("Something failed");
+            return result.HasValue ? Ok(new { submissionId = result.Value }) : BadRequest("Something failed");
         }
 
         [HttpGet]

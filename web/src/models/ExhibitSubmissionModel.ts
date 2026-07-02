@@ -12,6 +12,7 @@ export interface SubmissionTicketModel {
 export interface ExhibitSubmissionModel {
   tickets: SubmissionTicketModel[];
   shortDate: string;
+  appearanceDateTime: string;
   locationId: string;
   locationNameText: string;
   roomCode: string;

@@ -1,0 +1,2 @@
+# SCSS is intentionally excluded from formatting/linting for now
+*.scss

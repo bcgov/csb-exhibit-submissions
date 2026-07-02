@@ -99,6 +99,45 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
     }
 
     [Fact]
+    public async Task Submit_Returns200WithSubmissionId()
+    {
+        WithAuth(JwtTokenHelper.UserToken());
+
+        var response = await _client.PostAsync("/api/submissions/submit", BuildSubmitForm());
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<SubmitResult>();
+        body!.SubmissionId.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task Submit_WithSubmissionId_AppendsToSameSubmission()
+    {
+        WithAuth(JwtTokenHelper.UserToken());
+
+        // First upload creates the submission.
+        var first = await _client.PostAsync("/api/submissions/submit", BuildSubmitForm());
+        var firstBody = await first.Content.ReadFromJsonAsync<SubmitResult>();
+        var submissionId = firstBody!.SubmissionId;
+
+        // Second upload carries the id and should append rather than create a new submission.
+        var secondForm = BuildSubmitForm();
+        secondForm.Add(new StringContent(submissionId.ToString()), "submissionId");
+        var second = await _client.PostAsync("/api/submissions/submit", secondForm);
+        var secondBody = await second.Content.ReadFromJsonAsync<SubmitResult>();
+
+        secondBody!.SubmissionId.Should().Be(submissionId);
+
+        WithAuth(JwtTokenHelper.AdminToken());
+        var detailResponse = await _client.GetAsync($"/api/submissions/retrieve?fileId={submissionId}");
+        var detail = await detailResponse.Content.ReadFromJsonAsync<SubmissionDetail>();
+
+        // Two files across the two uploads, tickets not duplicated.
+        detail!.Files.Should().HaveCount(2);
+        detail.Tickets.Should().HaveCount(1);
+    }
+
+    [Fact]
     public async Task Submit_WithoutTickets_Returns400()
     {
         WithAuth(JwtTokenHelper.UserToken());
@@ -407,6 +446,7 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
+    private record SubmitResult(int SubmissionId);
     private record PagedResult(List<SubmissionListItem> Items, int TotalCount, int Page, int PageSize);
     private record SubmissionListItem(int Id, string Status, int ExhibitCount);
     private record SubmissionDetail(int Id, List<SubmissionTicketItem> Tickets, List<SubmissionFileItem> Files);
