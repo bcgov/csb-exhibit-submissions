@@ -4,7 +4,12 @@ import { server } from '@/test/setup';
 import api from '@/services/apiClient';
 import useSubmissionService from '@/services/SubmissionService';
 import type { ExhibitSubmissionModel } from '@/models/ExhibitSubmissionModel';
-import type { SubmissionFile, SubmissionActionModel, PagedResult, SubmissionReviewModel } from '@/models/SubmissionReviewModel';
+import type {
+  SubmissionFile,
+  SubmissionActionModel,
+  PagedResult,
+  SubmissionReviewModel,
+} from '@/models/SubmissionReviewModel';
 
 vi.mock('@/router', () => ({
   default: {
@@ -77,9 +82,7 @@ describe('SubmissionService', () => {
 
   it('retrieveSubmission fetches GET /api/submissions/retrieve', async () => {
     const mockSubmission = { id: 1, status: 'Pending', exhibitCount: 0, tickets: [], files: [] };
-    server.use(
-      http.get('/api/submissions/retrieve/', () => HttpResponse.json(mockSubmission)),
-    );
+    server.use(http.get('/api/submissions/retrieve/', () => HttpResponse.json(mockSubmission)));
 
     const { retrieveSubmission } = useSubmissionService();
     const result = await retrieveSubmission(1);
@@ -88,9 +91,7 @@ describe('SubmissionService', () => {
   });
 
   it('retrieveSubmissionListing fetches GET /api/submissions/listing and returns PagedResult', async () => {
-    server.use(
-      http.get('/api/submissions/listing/', () => HttpResponse.json(mockPagedResult)),
-    );
+    server.use(http.get('/api/submissions/listing/', () => HttpResponse.json(mockPagedResult)));
 
     const { retrieveSubmissionListing } = useSubmissionService();
     const result = await retrieveSubmissionListing();
@@ -205,9 +206,7 @@ describe('SubmissionService', () => {
 
   it('getSubmissionsByFileNumber fetches GET /api/submissions/by-file-number', async () => {
     const mockPrior = [{ submissionId: 1, location: 'Test Court', room: 'ROOM1', files: [] }];
-    server.use(
-      http.get('/api/submissions/by-file-number', () => HttpResponse.json(mockPrior)),
-    );
+    server.use(http.get('/api/submissions/by-file-number', () => HttpResponse.json(mockPrior)));
 
     const { getSubmissionsByFileNumber } = useSubmissionService();
     const result = await getSubmissionsByFileNumber('FILE001');
@@ -236,7 +235,10 @@ describe('SubmissionService', () => {
   it('removeFile returns false on API error', async () => {
     const fileId = '550e8400-e29b-41d4-a716-446655440001';
     server.use(
-      http.delete(`/api/submissions/files/${fileId}`, () => new HttpResponse(null, { status: 409 })),
+      http.delete(
+        `/api/submissions/files/${fileId}`,
+        () => new HttpResponse(null, { status: 409 }),
+      ),
     );
 
     const { removeFile } = useSubmissionService();

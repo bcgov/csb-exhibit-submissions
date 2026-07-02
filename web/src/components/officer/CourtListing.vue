@@ -3,26 +3,40 @@
     <h2>Court Search</h2>
 
     <form @submit.prevent="onSubmit" class="search-form">
-
       <div class="form-group">
         <label for="appearanceDate">Appearance Date <span class="required">*</span></label>
         <input id="appearanceDate" type="date" v-model="appearanceDate" required />
       </div>
 
       <div class="form-group">
-        <AutocompleteSelect v-model="selectedLocation" id="locationSearch" label="Location" :items="locations"
-          :loading="isLoadingLocations" :disabled="isLoadingLocations" :error="isLocationError"
-          :errorText="locationErrorText" placeholder="Start typing to search locations..." required
-          :getLabel="(loc: LocationInfo) => loc.name" :getKey="(loc: LocationInfo) => loc.code" :filterFn="(loc: LocationInfo, q: string) =>
-            loc.name.toLowerCase().includes(q) ||
-            loc.code.toLowerCase().includes(q)
-            " />
+        <AutocompleteSelect
+          v-model="selectedLocation"
+          id="locationSearch"
+          label="Location"
+          :items="locations"
+          :loading="isLoadingLocations"
+          :disabled="isLoadingLocations"
+          :error="isLocationError"
+          :errorText="locationErrorText"
+          placeholder="Start typing to search locations..."
+          required
+          :getLabel="(loc: LocationInfo) => loc.name"
+          :getKey="(loc: LocationInfo) => loc.code"
+          :filterFn="
+            (loc: LocationInfo, q: string) =>
+              loc.name.toLowerCase().includes(q) || loc.code.toLowerCase().includes(q)
+          "
+        />
       </div>
 
       <div class="form-group">
         <label for="roomSelect">Room <span class="required">*</span></label>
-        <select id="roomSelect" v-model="selectedRoom" :disabled="!selectedLocation || availableRooms.length === 0"
-          required>
+        <select
+          id="roomSelect"
+          v-model="selectedRoom"
+          :disabled="!selectedLocation || availableRooms.length === 0"
+          required
+        >
           <option :value="null" disabled>
             {{ selectedLocation ? 'Select a room' : 'Select a location first' }}
           </option>
@@ -38,17 +52,19 @@
           Search
         </button>
       </div>
-
     </form>
   </div>
 
   <div v-if="hasSearched" class="court-results px-4 pb-4">
-    
-  <div class="">
-    <button class="btn btn--primary submit-btn" @click="proceedToUpload" :disabled="checkedFiles.length <= 0">
-      Upload Exhibit ({{ checkedFiles.length }} selected)
-    </button>
-  </div>
+    <div class="">
+      <button
+        class="btn btn--primary submit-btn"
+        @click="proceedToUpload"
+        :disabled="checkedFiles.length <= 0"
+      >
+        Upload Exhibit ({{ checkedFiles.length }} selected)
+      </button>
+    </div>
     <div class="card shadow-sm">
       <div class="card-body p-0">
         <div v-if="searchResults.length > 0" class="table-responsive">
@@ -76,7 +92,11 @@
                     type="checkbox"
                     :checked="isChecked(file)"
                     :disabled="!isSelectable(file)"
-                    :title="!isSelectable(file) ? 'This ticket is from a different location, room, or date.' : undefined"
+                    :title="
+                      !isSelectable(file)
+                        ? 'This ticket is from a different location, room, or date.'
+                        : undefined
+                    "
                     @change="toggleCheck(file)"
                   />
                 </td>
@@ -95,7 +115,8 @@
                         :key="index"
                         class="lh-sm mb-1 offence-list"
                       >
-                        {{ appearance.countPrintSequenceNumber }}: {{ appearance.statuteDescription }}
+                        {{ appearance.countPrintSequenceNumber }}:
+                        {{ appearance.statuteDescription }}
                       </div>
                     </div>
                   </div>
@@ -114,7 +135,9 @@
 
   <!-- Floating upload bar — visible only when at least one ticket is checked -->
   <div v-if="checkedFiles.length > 0" class="floating-upload-bar">
-    <span class="selected-count">{{ checkedFiles.length }} ticket{{ checkedFiles.length === 1 ? '' : 's' }} selected</span>
+    <span class="selected-count"
+      >{{ checkedFiles.length }} ticket{{ checkedFiles.length === 1 ? '' : 's' }} selected</span
+    >
     <button class="btn btn--inverse upload-btn" @click="proceedToUpload">
       Upload Exhibit ({{ checkedFiles.length }} selected)
     </button>
@@ -153,8 +176,13 @@ const checkedFiles = ref<CourtFileList[]>([]);
 
 const availableRooms = computed<CourtRoomsInfo[]>(() => selectedLocation.value?.courtRooms || []);
 
-const isSubmitDisabled = computed(() =>
-  isLoadingLocations.value || isSearching.value || !appearanceDate.value || !selectedLocation.value || !selectedRoom.value
+const isSubmitDisabled = computed(
+  () =>
+    isLoadingLocations.value ||
+    isSearching.value ||
+    !appearanceDate.value ||
+    !selectedLocation.value ||
+    !selectedRoom.value,
 );
 
 // A row is selectable only if it shares location, room, and date with the first checked ticket.
@@ -169,11 +197,11 @@ const isSelectable = (file: CourtFileList): boolean => {
 };
 
 const isChecked = (file: CourtFileList): boolean =>
-  checkedFiles.value.some(f => f.appearanceId === file.appearanceId);
+  checkedFiles.value.some((f) => f.appearanceId === file.appearanceId);
 
 const toggleCheck = (file: CourtFileList) => {
   if (isChecked(file)) {
-    checkedFiles.value = checkedFiles.value.filter(f => f.appearanceId !== file.appearanceId);
+    checkedFiles.value = checkedFiles.value.filter((f) => f.appearanceId !== file.appearanceId);
   } else if (isSelectable(file)) {
     checkedFiles.value = [...checkedFiles.value, file];
   }
@@ -228,7 +256,7 @@ const onSubmit = async () => {
 
     searchResults.value = await getCourtList(agencyId, roomCode, appearanceDate.value);
 
-    searchResults.value.forEach(s => {
+    searchResults.value.forEach((s) => {
       s.locationId = selectedLocation.value?.locationId ?? 'N/A';
       s.locationNameText = selectedLocation.value?.name ?? 'N/A';
       s.roomCode = selectedRoom.value?.code ?? '';
@@ -247,4 +275,3 @@ onMounted(() => {
   fetchLocations();
 });
 </script>
-

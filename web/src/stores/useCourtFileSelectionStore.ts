@@ -15,7 +15,7 @@ export const useCourtFileSelectionStore = defineStore('courtSelection', {
     },
     removeFile(appearanceId: string) {
       if (this.selectedFiles.length <= 1) return;
-      this.selectedFiles = this.selectedFiles.filter(f => f.appearanceId !== appearanceId);
+      this.selectedFiles = this.selectedFiles.filter((f) => f.appearanceId !== appearanceId);
     },
     clear() {
       this.selectedFiles = [];

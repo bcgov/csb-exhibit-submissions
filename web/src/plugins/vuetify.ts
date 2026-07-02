@@ -7,8 +7,8 @@ import { VDateInput } from 'vuetify/labs/VDateInput';
 import 'vuetify/styles';
 
 // BC Gov design token values for Vuetify component overrides.
-const FORM_FIELD_BG = '#D8EAFD';           // BC Gov theme-blue-20: light blue tint for VSelect / VDateInput backgrounds
-const TERTIARY_BTN_COLOR = '#013366';      // BC Gov primary blue for VBtnTertiary
+const FORM_FIELD_BG = '#D8EAFD'; // BC Gov theme-blue-20: light blue tint for VSelect / VDateInput backgrounds
+const TERTIARY_BTN_COLOR = '#013366'; // BC Gov primary blue for VBtnTertiary
 
 // https://vuetifyjs.com/en/introduction/why-vuetify/#feature-guides
 

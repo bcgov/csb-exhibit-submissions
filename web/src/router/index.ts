@@ -1,7 +1,6 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import DevDashboard from '@/views/DevDashboardView.vue'
+import { createRouter, createWebHistory } from 'vue-router';
+import DevDashboard from '@/views/DevDashboardView.vue';
 import { useAuthStore } from '@/stores/authStore';
-
 
 //TODO: Future auth guard when using keycloak
 //Copied from project: bcgov-jasper
@@ -48,44 +47,44 @@ const router = createRouter({
     {
       path: '/',
       name: 'DevDashboard',
-      component: DevDashboard
+      component: DevDashboard,
     },
-  {
-    path: '/dev',
-    name: 'DevDashboard',
-    component: DevDashboard
-  },
-  {
-    path: '/officer/court-list',
-    name: 'OfficerCourtList',
-    component: () => import('@/views/officer/CourtListView.vue'),
-    meta: { requiresAuth: true, roles: ['User'] }
-  },
-  {
-    path: '/officer/submission/',
-    name: 'OfficerSubmissions',
-    component: () => import('@/views/officer/SubmissionsView.vue'),
-    meta: { requiresAuth: true, roles: ['User'] }
-  },
-  {
-    path: '/admin/list',
-    name: 'AdminSubmissionList',
-    component: () => import('@/views/admin/ListingView.vue'),
-    meta: { requiresAuth: true, roles: ['Admin'] }
-  },
-  {
-    path: '/admin/view/:id',
-    name: 'AdminViewSubmission',
-    component: () => import('@/views/admin/SubmissionReviewView.vue'),
-    meta: { requiresAuth: true, roles: ['Admin'] }
-  },
-  {
-    path: '/login',
-    name: 'Login',
-    component: () => import('@/views/LoginView.vue')
-  }
+    {
+      path: '/dev',
+      name: 'DevDashboard',
+      component: DevDashboard,
+    },
+    {
+      path: '/officer/court-list',
+      name: 'OfficerCourtList',
+      component: () => import('@/views/officer/CourtListView.vue'),
+      meta: { requiresAuth: true, roles: ['User'] },
+    },
+    {
+      path: '/officer/submission/',
+      name: 'OfficerSubmissions',
+      component: () => import('@/views/officer/SubmissionsView.vue'),
+      meta: { requiresAuth: true, roles: ['User'] },
+    },
+    {
+      path: '/admin/list',
+      name: 'AdminSubmissionList',
+      component: () => import('@/views/admin/ListingView.vue'),
+      meta: { requiresAuth: true, roles: ['Admin'] },
+    },
+    {
+      path: '/admin/view/:id',
+      name: 'AdminViewSubmission',
+      component: () => import('@/views/admin/SubmissionReviewView.vue'),
+      meta: { requiresAuth: true, roles: ['Admin'] },
+    },
+    {
+      path: '/login',
+      name: 'Login',
+      component: () => import('@/views/LoginView.vue'),
+    },
   ],
-})
+});
 
 // router.beforeEach((to, from, next) => {
 //   const authStore = useAuthStore();
@@ -111,9 +110,7 @@ router.beforeEach((to, from, next) => {
 
   // Logged in but missing role
   if (requiredRoles && requiredRoles.length > 0) {
-    const hasRole = requiredRoles.some(role =>
-      authStore.roles.includes(role)
-    );
+    const hasRole = requiredRoles.some((role) => authStore.roles.includes(role));
 
     if (!hasRole) {
       return next({ name: 'Forbidden' }); // create this route
@@ -122,4 +119,4 @@ router.beforeEach((to, from, next) => {
 
   next();
 });
-export default router
+export default router;

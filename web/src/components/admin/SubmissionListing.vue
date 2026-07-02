@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { SUBMISSION_LIST_PAGE_SIZE } from '@/constants/submission';
 import { formatDateTime, splitDateTimeForDisplay } from '@/helpers/formatters';
-import type { PagedResult, SubmissionListFilter, SubmissionReviewModel, SubmissionStatus } from '@/models/SubmissionReviewModel';
+import type {
+  PagedResult,
+  SubmissionListFilter,
+  SubmissionReviewModel,
+  SubmissionStatus,
+} from '@/models/SubmissionReviewModel';
 import useSubmissionService from '@/services/SubmissionService';
 import type { AxiosError } from 'axios';
 import { computed, onMounted, reactive, ref } from 'vue';
@@ -93,14 +98,15 @@ const accusedDisplay = (item: SubmissionReviewModel): string => {
 
 const statusChipClass = (status: SubmissionStatus | string): string => {
   switch (status) {
-    case 'Accepted': return 'status-chip status-accepted';
-    case 'Rejected': return 'status-chip status-rejected';
-    default: return 'status-chip status-pending';
+    case 'Accepted':
+      return 'status-chip status-accepted';
+    case 'Rejected':
+      return 'status-chip status-rejected';
+    default:
+      return 'status-chip status-pending';
   }
 };
 </script>
-
-
 
 <template>
   <div class="submission-list-page">
@@ -140,7 +146,9 @@ const statusChipClass = (status: SubmissionStatus | string): string => {
       </div>
       <div class="filter-actions">
         <button type="submit" class="btn btn--primary btn-apply">Apply</button>
-        <button type="button" class="btn btn--secondary btn-clear" @click="clearFilter">Clear</button>
+        <button type="button" class="btn btn--secondary btn-clear" @click="clearFilter">
+          Clear
+        </button>
       </div>
     </form>
 
@@ -163,26 +171,49 @@ const statusChipClass = (status: SubmissionStatus | string): string => {
         </thead>
 
         <tbody>
-          <tr v-for="item in pagedResult.items" :key="item.id"
-            :class="{ selected: selectedId === item.id, 'row-rejected': item.status === 'Rejected' }"
-            @click="selectRow(item.id)" @dblclick="openReview(item.id)">
+          <tr
+            v-for="item in pagedResult.items"
+            :key="item.id"
+            :class="{
+              selected: selectedId === item.id,
+              'row-rejected': item.status === 'Rejected',
+            }"
+            @click="selectRow(item.id)"
+            @dblclick="openReview(item.id)"
+          >
             <td>{{ formatDateTime(item.submissionDate ?? '', true) }}</td>
             <td>{{ splitDateTimeForDisplay(item.courtDateTime).date }}</td>
             <td>{{ splitDateTimeForDisplay(item.courtDateTime).time }}</td>
             <td>{{ accusedDisplay(item) }}</td>
-            <td :title="item.tickets?.map(t => t.fileNumberText).join(', ')">{{ fileNumberDisplay(item) }}</td>
+            <td :title="item.tickets?.map((t) => t.fileNumberText).join(', ')">
+              {{ fileNumberDisplay(item) }}
+            </td>
             <td>{{ item.location }}</td>
             <td>{{ item.room }}</td>
             <td>{{ item.exhibitCount }}</td>
-            <td><span :class="statusChipClass(item.status)">{{ item.status }}</span></td>
+            <td>
+              <span :class="statusChipClass(item.status)">{{ item.status }}</span>
+            </td>
           </tr>
         </tbody>
       </table>
 
       <div class="pagination" v-if="totalPages > 1">
-        <button class="btn btn--secondary" @click="goToPage(filter.page - 1)" :disabled="filter.page <= 1">Previous</button>
+        <button
+          class="btn btn--secondary"
+          @click="goToPage(filter.page - 1)"
+          :disabled="filter.page <= 1"
+        >
+          Previous
+        </button>
         <span>Page {{ filter.page }} of {{ totalPages }} ({{ pagedResult.totalCount }} total)</span>
-        <button class="btn btn--secondary" @click="goToPage(filter.page + 1)" :disabled="filter.page >= totalPages">Next</button>
+        <button
+          class="btn btn--secondary"
+          @click="goToPage(filter.page + 1)"
+          :disabled="filter.page >= totalPages"
+        >
+          Next
+        </button>
       </div>
     </template>
   </div>

@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { convertUtcToLocal, formatDateTime, splitDateTimeForDisplay } from '@/helpers/formatters';
-import type { SubmissionActionModel, SubmissionFile, SubmissionReviewModel } from '@/models/SubmissionReviewModel';
+import type {
+  SubmissionActionModel,
+  SubmissionFile,
+  SubmissionReviewModel,
+} from '@/models/SubmissionReviewModel';
 import useSubmissionService from '@/services/SubmissionService';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -31,19 +35,22 @@ const showRejectModal = ref(false);
 const removeError = ref<string | null>(null);
 const previewFile = ref<SubmissionFile | null>(null);
 
-const getFileUrl = (fileId: string, action: 'view' | 'download') => `/api/files/${fileId}/${action}`;
+const getFileUrl = (fileId: string, action: 'view' | 'download') =>
+  `/api/files/${fileId}/${action}`;
 
 const exhibitEntries = computed(() =>
-  (submission.value?.files ?? []).map(f => ({ file: f, fileNumbers: [] as string[] })),
+  (submission.value?.files ?? []).map((f) => ({ file: f, fileNumbers: [] as string[] })),
 );
 
-const isTerminal = computed(() => submission.value?.status === 'Accepted' || submission.value?.status === 'Rejected');
+const isTerminal = computed(
+  () => submission.value?.status === 'Accepted' || submission.value?.status === 'Rejected',
+);
 
 const acceptReadiness = computed((): { ready: boolean; blockingNames: string[] } => {
   if (!submission.value) return { ready: false, blockingNames: [] };
   const blocking = submission.value.files
-    .filter(f => !f.deletedAt && f.enteredValue == null)
-    .map(f => f.originalFileName);
+    .filter((f) => !f.deletedAt && f.enteredValue == null)
+    .map((f) => f.originalFileName);
   return { ready: blocking.length === 0, blockingNames: blocking };
 });
 
@@ -90,8 +97,10 @@ const updateFileInSubmission = (updated: SubmissionFile) => {
   if (!submission.value) return;
   submission.value = {
     ...submission.value,
-    files: submission.value.files.map(f =>
-      f.id === updated.id ? { ...f, ...updated, viewUrl: f.viewUrl, downloadUrl: f.downloadUrl } : f,
+    files: submission.value.files.map((f) =>
+      f.id === updated.id
+        ? { ...f, ...updated, viewUrl: f.viewUrl, downloadUrl: f.downloadUrl }
+        : f,
     ),
   };
 };
@@ -132,7 +141,7 @@ const removeExhibit = async (file: SubmissionFile) => {
     // Mark as removed in place (keep in list, greyed out)
     submission.value = {
       ...submission.value,
-      files: submission.value.files.map(f =>
+      files: submission.value.files.map((f) =>
         f.id === file.id ? { ...f, status: 'Removed', deletedAt: new Date().toISOString() } : f,
       ),
     };
@@ -140,31 +149,46 @@ const removeExhibit = async (file: SubmissionFile) => {
     removeError.value = 'Could not remove exhibit.';
   }
 };
-
 </script>
 
 <template>
   <div class="review-page">
-    <button class="btn btn--tertiary back-button" @click="router.push('/admin/list')">← Back to Submissions</button>
+    <button class="btn btn--tertiary back-button" @click="router.push('/admin/list')">
+      ← Back to Submissions
+    </button>
 
     <h1>Submission Review</h1>
 
     <div v-if="submission">
       <div class="details-grid">
-        <div><strong>Court Date:</strong> {{ splitDateTimeForDisplay(submission.courtDateTime).date }}</div>
-        <div><strong>Court Time:</strong> {{ splitDateTimeForDisplay(submission.courtDateTime).time }}</div>
+        <div>
+          <strong>Court Date:</strong> {{ splitDateTimeForDisplay(submission.courtDateTime).date }}
+        </div>
+        <div>
+          <strong>Court Time:</strong> {{ splitDateTimeForDisplay(submission.courtDateTime).time }}
+        </div>
         <div><strong>Location:</strong> {{ submission.location }}</div>
         <div><strong>Room:</strong> {{ submission.room }}</div>
-        <div><strong>Submission Date:</strong> {{ submission.submissionDate ?
-          formatDateTime(convertUtcToLocal(submission.submissionDate), true) : '' }}</div>
+        <div>
+          <strong>Submission Date:</strong>
+          {{
+            submission.submissionDate
+              ? formatDateTime(convertUtcToLocal(submission.submissionDate), true)
+              : ''
+          }}
+        </div>
         <div class="status-cell">
           <strong>Status:</strong>
-          <span :class="`status-chip status-${submission.status.toLowerCase()}`">{{ submission.status }}</span>
+          <span :class="`status-chip status-${submission.status.toLowerCase()}`">{{
+            submission.status
+          }}</span>
           <button
             v-if="submission.status === 'Accepted'"
-            class="btn btn--secondary download-package"
+            class="btn btn--primary download-package"
             @click="doDownloadPackage"
-          >Download Package</button>
+          >
+            Download Package
+          </button>
         </div>
       </div>
       <p v-if="packageError" class="package-error">{{ packageError }}</p>
@@ -200,7 +224,9 @@ const removeExhibit = async (file: SubmissionFile) => {
         :can-remove="!isTerminal"
         :mark-fn="(id: string, v: string) => markExhibit(id, { markedValue: v })"
         :enter-fn="(id: string, v: string) => enterExhibit(id, { enteredValue: v })"
-        :description-fn="(id: string, d: string) => updateExhibitDescription(id, { description: d })"
+        :description-fn="
+          (id: string, d: string) => updateExhibitDescription(id, { description: d })
+        "
         @file-updated="updateFileInSubmission"
         @preview-file="openPreview"
         @download-file="downloadFile"
@@ -215,10 +241,18 @@ const removeExhibit = async (file: SubmissionFile) => {
           <button
             class="btn btn--success accept"
             :disabled="!acceptReadiness.ready"
-            :title="acceptReadiness.ready ? 'Accept this submission' : `${acceptReadiness.blockingNames.length} exhibit(s) not yet Entered or Removed`"
+            :title="
+              acceptReadiness.ready
+                ? 'Accept this submission'
+                : `${acceptReadiness.blockingNames.length} exhibit(s) not yet Entered or Removed`
+            "
             @click="doAcceptSubmission"
-          >Accept</button>
-          <button class="btn btn--danger remove" @click="showRejectModal = true">Reject Submission</button>
+          >
+            Accept
+          </button>
+          <button class="btn btn--danger remove" @click="showRejectModal = true">
+            Reject Submission
+          </button>
         </div>
         <p v-if="acceptError" class="accept-error">{{ acceptError }}</p>
       </template>
@@ -230,17 +264,30 @@ const removeExhibit = async (file: SubmissionFile) => {
       title="Reject Submission"
       confirm-label="Reject Submission"
       :confirm-danger="true"
-      @confirm="showRejectModal = false; doRejectSubmission()"
+      @confirm="
+        showRejectModal = false;
+        doRejectSubmission();
+      "
       @cancel="showRejectModal = false"
     >
-      Rejecting this submission permanently deletes <strong>all</strong> associated files. This cannot be undone and the files are unretrievable.
+      Rejecting this submission permanently deletes <strong>all</strong> associated files. This
+      cannot be undone and the files are unretrievable.
     </AppModal>
 
     <div v-if="previewFile" class="preview-modal">
       <div class="modal-content">
-        <button class="btn btn--icon btn--tertiary close" aria-label="Close preview" @click="closePreview">✖</button>
-        <FileViewer :fileUrl="previewFile.viewUrl" :download-url="previewFile.downloadUrl"
-          :mimeType="previewFile.contentType" />
+        <button
+          class="btn btn--icon btn--tertiary close"
+          aria-label="Close preview"
+          @click="closePreview"
+        >
+          ✖
+        </button>
+        <FileViewer
+          :fileUrl="previewFile.viewUrl"
+          :download-url="previewFile.downloadUrl"
+          :mimeType="previewFile.contentType"
+        />
       </div>
     </div>
   </div>

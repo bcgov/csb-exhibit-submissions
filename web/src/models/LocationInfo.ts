@@ -1,4 +1,3 @@
-
 export interface LocationInfo {
   name: string;
   shortName: string;
@@ -10,7 +9,6 @@ export interface LocationInfo {
   infoLink: string;
   regionCd: string;
 }
-
 
 export interface CourtRoomsInfo {
   name: string;

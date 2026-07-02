@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
- import { mdiAccountCircle, mdiLogout } from '@mdi/js';
+import { RouterLink, RouterView } from 'vue-router';
+import { mdiAccountCircle, mdiLogout } from '@mdi/js';
 import { ref } from 'vue';
-import logo from './assets/bc-logo.svg?url'
+import logo from './assets/bc-logo.svg?url';
 import useAuthService from './services/AuthService';
 import { useAuthStore } from './stores/authStore';
 
-const selectedTab = ref('/officer/court-list')
-const {logout} = useAuthService();
+const selectedTab = ref('/officer/court-list');
+const { logout } = useAuthService();
 const handleLogout = () => {
-  console.log('Logging out...')
-  logout()  
-}
-  const authStore = useAuthStore();
+  console.log('Logging out...');
+  logout();
+};
+const authStore = useAuthStore();
 </script>
 
 <template>
@@ -25,19 +25,18 @@ const handleLogout = () => {
           </router-link>
         </v-app-bar-title>
         <v-tabs align-tabs="start" v-model="selectedTab">
-          <v-tab value="admin-list" to="/admin/list" v-if="authStore.hasRole('Admin')">Admin Listing</v-tab>
-          <v-tab value="court-list" to="/officer/court-list" v-if="authStore.hasRole('User')">Court list</v-tab>
-          
+          <v-tab value="admin-list" to="/admin/list" v-if="authStore.hasRole('Admin')"
+            >Admin Listing</v-tab
+          >
+          <v-tab value="court-list" to="/officer/court-list" v-if="authStore.hasRole('User')"
+            >Court list</v-tab
+          >
+
           <v-spacer></v-spacer>
           <div class="d-flex align-center mr-4">
             <v-menu min-width="200px" rounded>
               <template v-slot:activator="{ props }">
-                <v-btn
-                  v-bind="props"
-                  size="x-large"
-                  class="text-subtitle-1"
-                  variant="text"
-                >
+                <v-btn v-bind="props" size="x-large" class="text-subtitle-1" variant="text">
                   <span class="mr-2">{{ authStore.user?.id }}</span>
                   <v-icon :icon="mdiAccountCircle" size="32" />
                 </v-btn>
@@ -55,12 +54,10 @@ const handleLogout = () => {
           </div>
         </v-tabs>
       </v-app-bar>
-      
+
       <v-main>
         <router-view />
       </v-main>
-      </v-app>
-      </v-theme-provider>
-
+    </v-app>
+  </v-theme-provider>
 </template>
-

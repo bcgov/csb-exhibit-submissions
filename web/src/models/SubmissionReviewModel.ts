@@ -1,6 +1,6 @@
 import type { SubmissionTicketModel } from './ExhibitSubmissionModel';
 
-export type SubmissionStatus = 'Pending' | 'Accepted' | 'Rejected'
+export type SubmissionStatus = 'Pending' | 'Accepted' | 'Rejected';
 
 export interface SubmissionFile {
   id: string;

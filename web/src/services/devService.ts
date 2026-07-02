@@ -1,9 +1,9 @@
-import api from './apiClient'
+import api from './apiClient';
 
 export interface HealthResponse {
-  status: string
-  timestamp: string
-  version?: string
+  status: string;
+  timestamp: string;
+  version?: string;
 }
 
 export async function getHealth(): Promise<boolean> {

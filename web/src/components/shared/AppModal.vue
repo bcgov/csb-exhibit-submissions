@@ -1,14 +1,14 @@
 <script setup lang="ts">
 defineProps<{
-  title?: string
-  confirmLabel?: string
-  cancelLabel?: string
-  confirmDanger?: boolean
+  title?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  confirmDanger?: boolean;
 }>();
 
 const emit = defineEmits<{
-  confirm: []
-  cancel: []
+  confirm: [];
+  cancel: [];
 }>();
 </script>
 
@@ -20,14 +20,17 @@ const emit = defineEmits<{
         <slot />
       </div>
       <div class="modal-footer">
-        <button class="btn btn--secondary btn-cancel" @click="emit('cancel')">{{ cancelLabel ?? 'Cancel' }}</button>
+        <button class="btn btn--secondary btn-cancel" @click="emit('cancel')">
+          {{ cancelLabel ?? 'Cancel' }}
+        </button>
         <button
           class="btn btn-confirm"
           :class="confirmDanger ? 'btn--danger' : 'btn--success'"
           @click="emit('confirm')"
-        >{{ confirmLabel ?? 'Confirm' }}</button>
+        >
+          {{ confirmLabel ?? 'Confirm' }}
+        </button>
       </div>
     </div>
   </div>
 </template>
-

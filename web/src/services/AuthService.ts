@@ -1,10 +1,10 @@
-import router from '@/router'
-import { useAuthStore } from '@/stores/authStore'
-import api from './apiClient'
+import router from '@/router';
+import { useAuthStore } from '@/stores/authStore';
+import api from './apiClient';
 
 export default function useAuthService() {
   interface LoginResponse {
-    token: string
+    token: string;
   }
 
   const login = async (username: string, password: string) => {
@@ -12,30 +12,30 @@ export default function useAuthService() {
       const response = await api.post<LoginResponse>('/auth/login', {
         username,
         password,
-      })
+      });
 
-      const authStore = useAuthStore()
-      authStore.setToken(response.data.token)
+      const authStore = useAuthStore();
+      authStore.setToken(response.data.token);
     } catch (error) {
-      console.error('Authentication failed', error)
-      throw error
+      console.error('Authentication failed', error);
+      throw error;
     }
-  }
+  };
 
   const logout = () => {
-    const authStore = useAuthStore()
-    authStore.clearAuth()
-    router.push({ name: 'Login' })
-  }
+    const authStore = useAuthStore();
+    authStore.clearAuth();
+    router.push({ name: 'Login' });
+  };
 
   const handleUnauthorized = (currentPath?: string) => {
-    const authStore = useAuthStore()
+    const authStore = useAuthStore();
 
-    authStore.clearAuth()
+    authStore.clearAuth();
 
-    const query = currentPath && currentPath !== '/' ? { redirect: currentPath } : {}
+    const query = currentPath && currentPath !== '/' ? { redirect: currentPath } : {};
 
-    router.push({ name: 'Login', query })
+    router.push({ name: 'Login', query });
 
     /* FUTURE KEYCLOAK IMPLEMENTATION:
       When switch to Keycloak, delete the router.push() above
@@ -43,11 +43,11 @@ export default function useAuthService() {
 
       userManager.signinRedirect({ state: { redirectUrl: currentPath } });
     */
-  }
+  };
 
   return {
     login,
     logout,
     handleUnauthorized,
-  }
+  };
 }

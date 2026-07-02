@@ -60,65 +60,59 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import useAuthService from '@/services/AuthService'
-import axios from 'axios'
-import { useAuthStore } from '@/stores/authStore'
+import { ref } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import useAuthService from '@/services/AuthService';
+import axios from 'axios';
+import { useAuthStore } from '@/stores/authStore';
 
-const router = useRouter()
-const route = useRoute()
-const { login } = useAuthService()
+const router = useRouter();
+const route = useRoute();
+const { login } = useAuthService();
 
 // State
-const email = ref('')
-const password = ref('')
-const isLoading = ref(false)
-const errorMessage = ref<string | null>(null)
+const email = ref('');
+const password = ref('');
+const isLoading = ref(false);
+const errorMessage = ref<string | null>(null);
 
 // Actions
 const handleLogin = async () => {
   // Reset state before attempt
-  isLoading.value = true
-  errorMessage.value = null
+  isLoading.value = true;
+  errorMessage.value = null;
 
   try {
     // We only care if this succeeds or throws. The service handles the JWT.
-    await login(email.value, password.value)
+    await login(email.value, password.value);
 
     // Redirect to the originally requested route, or default to home/dashboard
-    const redirectPath = (route.query.redirect as string)
+    const redirectPath = route.query.redirect as string;
 
     //if no redirectPath send to determined base route for role
-    if(!redirectPath)
-    {
+    if (!redirectPath) {
       const authStore = useAuthStore();
-      if(authStore.hasRole("Admin"))
-        await router.push({name: 'AdminSubmissionList'});
-      else if(authStore.hasRole("User"))
-        await router.push({name: 'OfficerCourtList'});
-
-    }
-    else
-      await router.push(redirectPath)
+      if (authStore.hasRole('Admin')) await router.push({ name: 'AdminSubmissionList' });
+      else if (authStore.hasRole('User')) await router.push({ name: 'OfficerCourtList' });
+    } else await router.push(redirectPath);
   } catch (error) {
     // Strictly typed error handling
     if (axios.isAxiosError(error)) {
       // Check if the .NET API returned a specific ProblemDetails response
       if (error.response?.status === 401) {
-        errorMessage.value = 'Invalid email or password.'
+        errorMessage.value = 'Invalid email or password.';
       } else {
-        errorMessage.value = error.response?.data?.title || 'A server error occurred during login.'
+        errorMessage.value = error.response?.data?.title || 'A server error occurred during login.';
       }
     } else {
       // Fallback for network failures or non-Axios errors
-      errorMessage.value = 'Unable to connect to the authentication server.'
+      errorMessage.value = 'Unable to connect to the authentication server.';
     }
 
     // Clear the password field on failure for security
-    password.value = ''
+    password.value = '';
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
-}
+};
 </script>
