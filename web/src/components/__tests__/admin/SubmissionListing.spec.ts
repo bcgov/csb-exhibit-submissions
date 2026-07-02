@@ -175,7 +175,7 @@ describe('SubmissionListing', () => {
     await flushPromises();
     mockRetrieveSubmissionListing.mockClear();
 
-    await wrapper.find('.btn-apply').trigger('click');
+    await wrapper.find('.filter-panel').trigger('submit');
     await flushPromises();
 
     expect(mockRetrieveSubmissionListing).toHaveBeenCalledTimes(1);
@@ -210,7 +210,7 @@ describe('SubmissionListing', () => {
 
     const statusSelect = wrapper.find('select');
     await statusSelect.setValue('Accepted');
-    await wrapper.find('.btn-apply').trigger('click');
+    await wrapper.find('.filter-panel').trigger('submit');
     await flushPromises();
 
     expect(mockRetrieveSubmissionListing).toHaveBeenCalledWith(

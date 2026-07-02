@@ -37,6 +37,7 @@ const mockModel: ExhibitSubmissionModel = {
     },
   ],
   shortDate: '2026-01-01',
+  appearanceDateTime: '2026-01-01T09:00:00',
   locationId: 'LOC001',
   locationNameText: 'Test Court',
   roomCode: 'ROOM1',
@@ -64,20 +65,55 @@ const mockPagedResult: PagedResult<SubmissionReviewModel> = {
 };
 
 describe('SubmissionService', () => {
-  it('submitExhibits sends multipart POST to /api/submissions/submit', async () => {
+  it('submitExhibits sends multipart POST to /api/submissions/submit and returns the submission id', async () => {
     let contentType = '';
     server.use(
       http.post('/api/submissions/submit/', async ({ request }) => {
         contentType = request.headers.get('content-type') ?? '';
-        return HttpResponse.json({ success: true });
+        return HttpResponse.json({ submissionId: 7 });
       }),
     );
 
     const { submitExhibits } = useSubmissionService();
     const file = new File(['video content'], 'test.mp4', { type: 'video/mp4' });
-    await submitExhibits(mockModel, [file]);
+    const result = await submitExhibits(mockModel, [file]);
 
     expect(contentType).toContain('multipart/form-data');
+    expect(result).toBe(7);
+  });
+
+  it('submitExhibits includes submissionId in the form when appending to an existing submission', async () => {
+    let sentSubmissionId: FormDataEntryValue | null = null;
+    server.use(
+      http.post('/api/submissions/submit/', async ({ request }) => {
+        const form = await request.formData();
+        sentSubmissionId = form.get('submissionId');
+        return HttpResponse.json({ submissionId: 7 });
+      }),
+    );
+
+    const { submitExhibits } = useSubmissionService();
+    const file = new File(['video content'], 'test.mp4', { type: 'video/mp4' });
+    await submitExhibits(mockModel, [file], undefined, 7);
+
+    expect(sentSubmissionId).toBe('7');
+  });
+
+  it('submitExhibits omits submissionId on the first upload', async () => {
+    let hasSubmissionId = true;
+    server.use(
+      http.post('/api/submissions/submit/', async ({ request }) => {
+        const form = await request.formData();
+        hasSubmissionId = form.has('submissionId');
+        return HttpResponse.json({ submissionId: 7 });
+      }),
+    );
+
+    const { submitExhibits } = useSubmissionService();
+    const file = new File(['video content'], 'test.mp4', { type: 'video/mp4' });
+    await submitExhibits(mockModel, [file], undefined, null);
+
+    expect(hasSubmissionId).toBe(false);
   });
 
   it('retrieveSubmission fetches GET /api/submissions/retrieve', async () => {

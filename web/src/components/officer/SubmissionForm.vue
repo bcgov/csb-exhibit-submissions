@@ -31,6 +31,10 @@ const uploadProgress = ref<number>(0);
 const officerNumber = ref('');
 const dropZoneRef = ref<InstanceType<typeof FileDropZone> | null>(null);
 
+// Active submission for this page session. Set after the first successful upload so that
+// subsequent uploads append to the same submission. Reset on reload/search/Back (component state).
+const currentSubmissionId = ref<number | null>(null);
+
 const priorExhibits = ref<Map<string, PriorSubmissionModel[]>>(new Map());
 const priorExhibitsError = ref(false);
 
@@ -61,6 +65,8 @@ const updateProgress = (percent: number) => {
 };
 
 const removeTicket = (appearanceId: string) => {
+  // Tickets are locked once a submission is active for this session.
+  if (currentSubmissionId.value !== null) return;
   if (tickets.value.length <= 1) return;
   tickets.value = tickets.value.filter((t) => t.appearanceId !== appearanceId);
 };
@@ -172,6 +178,7 @@ const submitForm = async () => {
   const submission: ExhibitSubmissionModel = {
     tickets: tickets.value,
     shortDate: sharedDate.value,
+    appearanceDateTime: selectionStore.selectedFiles[0]?.appearanceDateTime ?? '',
     locationId: selectionStore.selectedFiles[0]?.locationId ?? '',
     locationNameText: selectionStore.selectedFiles[0]?.locationNameText ?? '',
     roomCode: selectionStore.selectedFiles[0]?.roomCode ?? '',
@@ -179,15 +186,22 @@ const submitForm = async () => {
     officerNumber: officerNumber.value,
   };
 
-  let success = false;
+  let submissionId: number | null = null;
   try {
-    success = await submitExhibits(submission, files.value, updateProgress);
+    submissionId = await submitExhibits(
+      submission,
+      files.value,
+      updateProgress,
+      currentSubmissionId.value,
+    );
   } catch (error) {
     console.error('Upload failed', error);
     errorMessage.value = 'Failed to upload exhibit. Please try again.';
   } finally {
     uploading.value = false;
-    if (success) {
+    if (submissionId !== null) {
+      // Retain the id so further uploads on this page attach to the same submission.
+      currentSubmissionId.value = submissionId;
       uploadProgress.value = 0;
       files.value = [];
       dropZoneRef.value?.reset();
@@ -241,7 +255,7 @@ const submitForm = async () => {
             </span>
           </div>
           <button
-            v-if="tickets.length > 1"
+            v-if="tickets.length > 1 && currentSubmissionId === null"
             type="button"
             class="btn btn--sm btn--danger-outline remove-btn"
             @click="removeTicket(ticket.appearanceId)"

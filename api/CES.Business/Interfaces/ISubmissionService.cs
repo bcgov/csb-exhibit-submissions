@@ -4,7 +4,7 @@ namespace CES.Business.Interfaces
 {
     public interface ISubmissionService
     {
-        Task<bool> SubmitEvidence(EvidenceSubmissionModel model);
+        Task<int?> SubmitEvidence(EvidenceSubmissionModel model);
         Task<SubmissionReviewModel?> RetrieveSubmission(int submissionId);
         Task<PagedResult<SubmissionReviewModel>> RetrieveSubmissionListing(SubmissionListFilter filter);
         Task<(bool success, string? error)> AcceptSubmissions(SubmissionActionModel model);

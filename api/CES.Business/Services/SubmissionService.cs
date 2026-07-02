@@ -2,6 +2,7 @@ using CES.Business.Constants;
 using CES.Business.Extensions.Entities;
 using CES.Business.Interfaces;
 using CES.Business.Models;
+using CES.Entities;
 using CES.Entities.Enums;
 using CES.Entities.Infrastructure;
 using CES.Entities.Interfaces;
@@ -20,18 +21,26 @@ namespace CES.Business.Services
             _fileStorage = fileStorage;
         }
 
-        public async Task<bool> SubmitEvidence(EvidenceSubmissionModel model)
+        public async Task<int?> SubmitEvidence(EvidenceSubmissionModel model)
         {
             if (model.Tickets == null || model.Tickets.Count == 0)
-                return false;
+                return null;
 
-            var entity = model.ToEntity();
-            await _datastore.Submissions.AddAsync(entity);
+            // Try to append to an existing Pending submission when a valid, matching id is supplied.
+            var entity = await ResolveAppendTargetAsync(model);
 
-            // Flush now so entity.Id is populated; files are stored under the submission ID.
-            await _datastore.SaveChangesAsync();
+            if (entity == null)
+            {
+                // Create a new submission (first upload, or fallback for an invalid append target).
+                entity = model.ToEntity();
+                await _datastore.Submissions.AddAsync(entity);
 
-            var storagePath = Path.Combine(model.LocationId, model.ShortDate, model.RoomCode, entity.Id.ToString());
+                // Flush now so entity.Id is populated; files are stored under the submission ID.
+                await _datastore.SaveChangesAsync();
+            }
+
+            // ShortDate is persisted on the submission, so appended files reuse the original folder.
+            var storagePath = Path.Combine(entity.LocationId, entity.ShortDate, entity.RoomCode, entity.Id.ToString());
 
             foreach (var file in model.fileUploads)
             {
@@ -41,7 +50,32 @@ namespace CES.Business.Services
             }
 
             await _datastore.SaveChangesAsync();
-            return true;
+            return entity.Id;
+        }
+
+        // Returns the existing submission to append to, or null to create a new one.
+        // Appends only when the id refers to a Pending, non-deleted submission whose court
+        // context (location + room) matches the current form; otherwise falls back to new.
+        private async Task<Submission?> ResolveAppendTargetAsync(EvidenceSubmissionModel model)
+        {
+            if (!model.SubmissionId.HasValue)
+                return null;
+
+            var existing = await _datastore.Submissions
+                .Include(s => s.Files)
+                .Include(s => s.Tickets)
+                .FirstOrDefaultAsync(s => s.Id == model.SubmissionId.Value);
+
+            if (existing == null
+                || existing.IsDeleted
+                || existing.Status != SubmissionStatus.Pending
+                || existing.LocationId != model.LocationId
+                || existing.RoomCode != model.RoomCode)
+            {
+                return null;
+            }
+
+            return existing;
         }
 
         public async Task<SubmissionReviewModel?> RetrieveSubmission(int submissionId)

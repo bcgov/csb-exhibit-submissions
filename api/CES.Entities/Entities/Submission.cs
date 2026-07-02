@@ -6,6 +6,10 @@ namespace CES.Entities
     public class Submission : BaseEntity
     {
         public DateTime? UploadDate { get; set; }
+        // Court appearance date (yyyymmdd) — also used as the storage-path date segment.
+        public string ShortDate { get; set; } = string.Empty;
+        // Full court appearance date-time (carries the appearance time) from the court-search context.
+        public string? AppearanceDateTime { get; set; }
         public string LocationId { get; set; } = string.Empty;
         public string? LocationNameText { get; set; } = string.Empty;
         public string RoomCode { get; set; } = string.Empty;

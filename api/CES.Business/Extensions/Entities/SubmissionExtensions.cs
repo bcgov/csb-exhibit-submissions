@@ -9,6 +9,8 @@ namespace CES.Business.Extensions.Entities
         {
             var entity = new Submission
             {
+                ShortDate = model.ShortDate,
+                AppearanceDateTime = model.AppearanceDateTime,
                 LocationId = model.LocationId,
                 LocationNameText = model.LocationNameText,
                 RoomCode = model.RoomCode,
