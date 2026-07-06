@@ -30,6 +30,18 @@ namespace CES.Entities
         public DateTime? EnteredAt { get; set; }
         public string? Description { get; set; }
 
+        // Per-file acceptance / canonical storage (added for CES-39).
+        // The DB is the source of truth; metadata.json is a derived export.
+        public bool IsAccepted { get; set; } = false;
+        public DateTime? AcceptedAtUTC { get; set; }
+        // Path relative to StorageOptions.AcceptedPath, e.g.
+        // {locationId}/{roomCode}/{shortDate}/{submissionId}/{exhibitId}{ext}.
+        public string? CanonicalPath { get; set; }
+        // SHA256 hex captured once at acceptance — the immutability proof.
+        public string? Sha256 { get; set; }
+        // The {exhibitId}{ext} leaf under the submission folder.
+        public string? AcceptedFileName { get; set; }
+
         public StoredFiles()
         {
             CreatedDateUTC = SystemDate.UtcNow();

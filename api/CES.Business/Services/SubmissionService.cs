@@ -49,6 +49,11 @@ namespace CES.Business.Services
                 await _datastore.StoredFiles.AddAsync(newFile);
             }
 
+            // A new, un-accepted file makes the submission Pending again — an
+            // already-Accepted submission that gains a same-session upload reopens
+            // until that file is classified/accepted (CES-39, Phase 5).
+            entity.RecalculateStatus();
+
             await _datastore.SaveChangesAsync();
             return entity.Id;
         }
@@ -141,36 +146,6 @@ namespace CES.Business.Services
             };
         }
 
-        public async Task<(bool success, string? error)> AcceptSubmissions(SubmissionActionModel model)
-        {
-            var submission = await _datastore.Submissions
-                .Include(s => s.Files)
-                .Include(s => s.Tickets)
-                .FirstOrDefaultAsync(s => s.Id == model.SubmissionId);
-
-            if (submission == null)
-                return (false, "Submission not found.");
-
-            if (submission.Status != SubmissionStatus.Pending)
-                return (false, "Only Pending submissions can be accepted.");
-
-            var unreadyFiles = submission.Files
-                .Where(f => !f.IsDeleted && f.EnteredValue == null)
-                .Select(f => f.OriginalFileName)
-                .ToList();
-
-            if (unreadyFiles.Count > 0)
-                return (false, $"All exhibits must be Entered or Removed before accepting. Unready: {string.Join(", ", unreadyFiles)}");
-
-            await _fileStorage.AcceptSubmissionAsync(submission);
-
-            submission.Status = SubmissionStatus.Accepted;
-            submission.StatusChangedDateUTC = SystemDate.UtcNow();
-
-            await _datastore.SaveChangesAsync();
-            return (true, null);
-        }
-
         public async Task<(bool success, string? error)> RejectSubmissions(SubmissionActionModel model)
         {
             var submission = await _datastore.Submissions
@@ -180,11 +155,13 @@ namespace CES.Business.Services
             if (submission == null)
                 return (false, "Submission not found.");
 
-            if (submission.Status != SubmissionStatus.Pending)
-                return (false, "Only Pending submissions can be rejected.");
+            if (submission.Status == SubmissionStatus.Rejected)
+                return (false, "Submission is already rejected.");
 
             var now = SystemDate.UtcNow();
-            foreach (var file in submission.Files.Where(f => !f.IsDeleted))
+            // Accepted files are never removed (CES-39, Q6) — only delete non-accepted
+            // retained files. Accepted bytes stay put even on a whole-submission Reject.
+            foreach (var file in submission.Files.Where(f => !f.IsDeleted && !f.IsAccepted))
             {
                 await _fileStorage.DeleteAsync(file);
                 file.IsDeleted = true;
@@ -198,29 +175,6 @@ namespace CES.Business.Services
             return (true, null);
         }
 
-        public async Task<(Stream? stream, string? fileName, string? error)> GetAcceptedPackageAsync(int submissionId)
-        {
-            var submission = await _datastore.Submissions
-                .FirstOrDefaultAsync(s => s.Id == submissionId);
-
-            if (submission == null)
-                return (null, null, "Submission not found.");
-
-            if (submission.Status != SubmissionStatus.Accepted)
-                return (null, null, "Only Accepted submissions have a downloadable package.");
-
-            try
-            {
-                var stream = await _fileStorage.GetAcceptedPackageAsync(submission);
-                var fileName = $"submission-{submission.Id}-package.zip";
-                return (stream, fileName, null);
-            }
-            catch (FileNotFoundException)
-            {
-                return (null, null, "Package not found for this submission.");
-            }
-        }
-
         public async Task<bool> RemoveFileAsync(Guid fileId)
         {
             var file = await _datastore.StoredFiles
@@ -230,8 +184,13 @@ namespace CES.Business.Services
             if (file == null)
                 return false;
 
-            if (file.Submission.Status != SubmissionStatus.Pending)
-                throw new InvalidOperationException("Exhibits can only be removed from Pending submissions.");
+            // An accepted file can never be removed (CES-39, Q6). This preserves
+            // current behaviour and sidesteps reference counting.
+            if (file.IsAccepted)
+                throw new InvalidOperationException("Accepted exhibits cannot be removed.");
+
+            if (file.Submission.Status == SubmissionStatus.Rejected)
+                throw new InvalidOperationException("Exhibits cannot be removed from a rejected submission.");
 
             await _fileStorage.DeleteAsync(file);
             file.IsDeleted = true;

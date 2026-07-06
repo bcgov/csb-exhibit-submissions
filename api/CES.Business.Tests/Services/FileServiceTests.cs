@@ -1,7 +1,10 @@
 using CES.Business.Extensions.Entities;
+using CES.Business.Interfaces;
+using CES.Business.Models;
 using CES.Business.Services;
 using CES.EF;
 using CES.Entities;
+using CES.Entities.Enums;
 using CES.Entities.Infrastructure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +14,7 @@ namespace CES.Business.Tests.Services;
 public class FileServiceTests : IDisposable
 {
     private readonly CESDataStore _db;
+    private readonly Mock<IFileStorage> _fileStorageMock;
     private readonly FileService _service;
 
     public FileServiceTests()
@@ -19,7 +23,22 @@ public class FileServiceTests : IDisposable
             .UseInMemoryDatabase($"FileServiceTests_{Guid.NewGuid()}")
             .Options;
         _db = new CESDataStore(options);
-        _service = new FileService(_db);
+
+        _fileStorageMock = new Mock<IFileStorage>();
+        // Auto-accept promotion returns a canonical result derived from the ids.
+        _fileStorageMock
+            .Setup(s => s.PromoteToAcceptedAsync(It.IsAny<Submission>(), It.IsAny<StoredFiles>()))
+            .ReturnsAsync((Submission sub, StoredFiles f) => new AcceptedFileResult
+            {
+                CanonicalPath = $"loc001/room1/20260101/{sub.Id}/{f.Id}{Path.GetExtension(f.OriginalFileName)}",
+                AcceptedFileName = $"{f.Id}{Path.GetExtension(f.OriginalFileName)}",
+                Sha256 = "DEADBEEF",
+            });
+        _fileStorageMock
+            .Setup(s => s.WriteMetadataAsync(It.IsAny<Submission>(), It.IsAny<IReadOnlyList<SubmissionAuditLog>>()))
+            .Returns(Task.CompletedTask);
+
+        _service = new FileService(_db, _fileStorageMock.Object);
     }
 
     public void Dispose() => _db.Dispose();
@@ -28,8 +47,21 @@ public class FileServiceTests : IDisposable
         Guid? id = null,
         string? markedValue = null,
         string? enteredValue = null,
-        DateTime? enteredAt = null)
+        DateTime? enteredAt = null,
+        bool isAccepted = false)
     {
+        // Classification now auto-accepts, which needs the parent submission (with
+        // its tickets and files) loaded — so every seeded file hangs off a submission.
+        var submission = new Submission
+        {
+            ShortDate = "20260101",
+            LocationId = "LOC001",
+            RoomCode = "ROOM1",
+            Tickets = new List<SubmissionTicket>
+            {
+                new() { AppearanceId = "APP001", FileNumberText = "FILE001", AccusedName = "Smith, John" },
+            },
+        };
         var file = new StoredFiles
         {
             Id = id ?? Guid.NewGuid(),
@@ -42,8 +74,11 @@ public class FileServiceTests : IDisposable
             MarkedValue = markedValue,
             EnteredValue = enteredValue,
             EnteredAt = enteredAt,
+            IsAccepted = isAccepted,
+            CanonicalPath = isAccepted ? "loc001/room1/20260101/1/canonical.mp4" : null,
         };
-        _db.StoredFiles.Add(file);
+        submission.Files.Add(file);
+        _db.Submissions.Add(submission);
         _db.SaveChanges();
         return file;
     }

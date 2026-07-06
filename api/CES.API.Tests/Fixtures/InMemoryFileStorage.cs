@@ -41,20 +41,39 @@ public class InMemoryFileStorage : IFileStorage
         return Task.CompletedTask;
     }
 
-    private readonly Dictionary<int, byte[]> _packages = new();
+    private readonly Dictionary<Guid, byte[]> _accepted = new();
 
-    public Task AcceptSubmissionAsync(Submission submission)
+    public Task<AcceptedFileResult> PromoteToAcceptedAsync(Submission submission, StoredFiles file)
     {
-        // Simulate package creation so it can be retrieved later.
-        _packages[submission.Id] = System.Text.Encoding.UTF8.GetBytes($"package:{submission.Id}");
+        var ext = Path.GetExtension(file.OriginalFileName);
+        var relativePath = $"{submission.LocationId}/{submission.RoomCode}/{submission.ShortDate}/{submission.Id}/{file.Id}{ext}";
+
+        // Idempotent: copy the pending bytes into the accepted store only once.
+        if (!_accepted.ContainsKey(file.Id))
+            _accepted[file.Id] = _store.TryGetValue(file.Id, out var bytes) ? bytes : Array.Empty<byte>();
+
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        var hash = Convert.ToHexString(sha.ComputeHash(_accepted[file.Id]));
+
+        return Task.FromResult(new AcceptedFileResult
+        {
+            CanonicalPath = relativePath,
+            AcceptedFileName = $"{file.Id}{ext}",
+            Sha256 = hash,
+        });
+    }
+
+    public Task WriteMetadataAsync(Submission submission, IReadOnlyList<SubmissionAuditLog> auditLogs)
+    {
+        // No-op for the in-memory store; metadata is a derived export.
         return Task.CompletedTask;
     }
 
-    public Task<Stream> GetAcceptedPackageAsync(Submission submission)
+    public Task<Stream> GetAcceptedExhibitAsync(StoredFiles file)
     {
-        if (_packages.TryGetValue(submission.Id, out var bytes))
-            return Task.FromResult<Stream>(new MemoryStream(bytes));
+        if (!file.IsAccepted || !_accepted.TryGetValue(file.Id, out var bytes))
+            throw new FileNotFoundException($"Accepted exhibit {file.OriginalFileName} not found");
 
-        throw new FileNotFoundException($"Accepted package for submission {submission.Id} not found");
+        return Task.FromResult<Stream>(new MemoryStream(bytes));
     }
 }

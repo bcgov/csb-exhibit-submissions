@@ -8,12 +8,10 @@ namespace CES.API.Controllers
 {
     public class FilesController : Controller
     {
-        private readonly IFileStorage _fileStorage;
         private readonly IFileService _fileService;
 
-        public FilesController(IFileStorage fileStorage, IFileService fileService)
+        public FilesController(IFileService fileService)
         {
-            _fileStorage = fileStorage;
             _fileService = fileService;
         }
 
@@ -70,38 +68,35 @@ namespace CES.API.Controllers
 
         [HttpGet]
         [Route("api/files/{fileId}/view")]
-        // [Authorize(Roles = "Admin")]
+        // NOTE: intentionally left open — the frontend loads previews via a raw
+        // <video>/<img>/<iframe> src that cannot carry the JWT Bearer token. Re-enable
+        // [Authorize(Roles = "User,Admin")] once authenticated blob or signed-URL
+        // streaming is wired up on the client (CES-39, deferred).
+        // [Authorize(Roles = "User,Admin")]
         public async Task<IActionResult> View(Guid fileId)
         {
-            var file = await _fileService.RetrieveFileMetaData(fileId);
+            var (stream, _, contentType, error) = await _fileService.GetExhibitContentAsync(fileId);
 
-            if (file == null)
-                return NotFound();
+            if (stream == null)
+                return NotFound(error);
 
-            if (file.IsDeleted)
-                return NotFound();
-
-            var stream = await _fileStorage.GetAsync(file);
-
-            return new FileStreamResult(stream, file.ContentType) { EnableRangeProcessing = true };
+            return new FileStreamResult(stream, contentType ?? "application/octet-stream") { EnableRangeProcessing = true };
         }
 
         [HttpGet]
         [Route("api/files/{fileId}/download")]
-        // [Authorize(Roles = "Admin")]
+        // NOTE: intentionally left open — see the View endpoint above. The admin
+        // download uses a bare fetch() without the Bearer token. Re-enable
+        // [Authorize(Roles = "User,Admin")] alongside the client-side auth fix.
+        // [Authorize(Roles = "User,Admin")]
         public async Task<IActionResult> Download(Guid fileId)
         {
-            var file = await _fileService.RetrieveFileMetaData(fileId);
+            var (stream, fileName, contentType, error) = await _fileService.GetExhibitContentAsync(fileId);
 
-            if (file == null)
-                return NotFound();
+            if (stream == null)
+                return NotFound(error);
 
-            if (file.IsDeleted)
-                return NotFound();
-
-            var stream = await _fileStorage.GetAsync(file);
-
-            return File(stream, file.ContentType, file.OriginalFileName);
+            return File(stream, contentType ?? "application/octet-stream", fileName);
         }
     }
 }

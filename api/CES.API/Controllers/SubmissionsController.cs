@@ -78,25 +78,6 @@ namespace CES.API.Controllers
         }
 
         [HttpPost]
-        [Route("api/submissions/accept")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> AcceptSubmissions([FromBody] SubmissionActionModel model)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            var (success, error) = await _submissionService.AcceptSubmissions(model);
-            if (!success)
-            {
-                if (error != null && error.Contains("not found"))
-                    return NotFound(error);
-                return UnprocessableEntity(error);
-            }
-
-            return Ok("Submission accepted");
-        }
-
-        [HttpPost]
         [Route("api/submissions/reject")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RejectSubmissions([FromBody] SubmissionActionModel model)
@@ -113,22 +94,6 @@ namespace CES.API.Controllers
             }
 
             return Ok("Submission rejected");
-        }
-
-        [HttpGet]
-        [Route("api/submissions/{submissionId:int}/package")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> DownloadPackage(int submissionId)
-        {
-            var (stream, fileName, error) = await _submissionService.GetAcceptedPackageAsync(submissionId);
-            if (stream == null)
-            {
-                if (error != null && error.Contains("not found"))
-                    return NotFound(error);
-                return UnprocessableEntity(error);
-            }
-
-            return File(stream, "application/zip", fileName);
         }
 
         [HttpDelete]
