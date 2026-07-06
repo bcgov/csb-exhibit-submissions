@@ -17,6 +17,7 @@ This spec explores changing that behaviour so that on Accept:
 2. A **metadata file** is created alongside the files, and is **created/updated/maintained** whenever exhibit information changes (e.g. classification edits) — even after acceptance.
 3. Once an exhibit is accepted it is **immutable and cannot be removed**. Only its metadata may change.
 4. An exhibit associated with **multiple ticket numbers** is stored **exactly once** on disk but is discoverable from each associated ticket's location — **without duplicating the bytes**. This is critical because exhibits can be large video files; physically copying them per ticket is unacceptable for storage.
+5. Acceptance becomes **per-file**, not whole-submission: for traffic court a file **auto-accepts once it is classified Marked or Entered**, and only just-uploaded files stay in the temporary local store. Because acceptance can fire on Marked (which is still editable), the metadata file must be maintainable **after** acceptance until the exhibit is Entered (see [Decision #13](#decisions--discovery)).
 
 This document began as a draft for discussion. The open questions it surfaced have now been answered by the product owner; the resolved decisions are recorded in [Decisions & Discovery](#decisions--discovery) and are reflected throughout the body below.
 
@@ -79,30 +80,41 @@ Retained files are physically deleted from `{LocalPath}` and marked `IsDeleted`.
 3. Guarantee **single-instance** storage of an exhibit's bytes even when it is associated with N ticket numbers.
 4. Make an accepted exhibit **immutable** (no delete, no content change); only metadata may change.
 
-### Directory layout — decided: Option A
+### Directory layout — logical `where → when → who → what` path
 
-The core tension: exhibits are conceptually organized **per ticket** (`FileNumberText`), but the bytes must exist **once**. Three candidate layouts were considered; **Option A is the chosen layout** (see [Decision #2](#decisions--discovery)). Options B and C are retained below only for context.
+The core tension: exhibits are conceptually organized **per ticket** (`FileNumberText`), but the bytes must exist **once**. The accepted store uses a **logically ordered path** so a human (or downstream records system) can navigate it by court context (see [Decision #2](#decisions--discovery)):
 
-#### Option A — Canonical content store + per-ticket pointer directories (chosen)
+```
+{AcceptedPath}/{locationId}/{roomCode}/{shortDate}/{fileNumberText}/
+              └── where ──┘ └where┘ └─ when ─┘ └──── who ─────┘
+```
 
-Store the actual bytes once in an **id-addressed** "canonical" directory (see [Decision #3](#decisions--discovery) — canonical key is `{exhibitId}`, not `{sha256}`), then give each ticket its own directory containing **metadata pointers** (not copies, not symlinks).
+- **where** — `{locationId}` (court location) then `{roomCode}` (court room)
+- **when** — `{shortDate}` (appearance date)
+- **who** — `{fileNumberText}` (ticket/court-file number)
+- **what** — the exhibit files themselves, placed inside that leaf folder
+
+All files for a submission are written **together** into the leaf folder for the submission's ticket, alongside a `metadata.json` describing them. Files are named by their **id-addressed** exhibit key (`{exhibitId}{ext}`, not `{sha256}` — see [Decision #3](#decisions--discovery)).
 
 ```
 {AcceptedPath}/
-  _exhibits/                                  # canonical, single instance of each file
-    {exhibitId}{ext}                          # id-addressed canonical key
-  tickets/
-    {FileNumberText}/
-      metadata.json                           # ticket-scoped view + metadata pointers
+  {locationId}/                         # where — court location
+    {roomCode}/                           # where — court room
+      {shortDate}/                      # when  — appearance date
+        {fileNumberText}/               # who   — ticket; holds the actual bytes for its submission
+          metadata.json                 # what  — describes + hashes the files in this folder
+          {exhibitId}{ext}              #         exhibit bytes, stored ONCE
+        {otherFileNumberText}/          # another ticket on the SAME submission
+          metadata.json                 # points back to ../{fileNumberText}/{exhibitId}{ext}
 ```
 
-- **Pointer mechanism** is resolved: the ticket `metadata.json` records the canonical path and the app resolves it. No symlinks (see [Decision #1](#decisions--discovery) and the section below).
-- Pro: bytes stored once; each ticket directory is a complete logical view via its metadata.
-- Con: requires the pointer-resolution layer to be reliable — but this is pure application logic, no filesystem link dependency.
+**Single-instance across multiple tickets.** A submission with N ticket numbers writes its bytes into **one** ticket's leaf folder (the submission's canonical folder — chosen deterministically, e.g. the first associated `fileNumberText`). Every **other** ticket folder for that submission gets only a `metadata.json` whose exhibit entries point at the canonical folder's files (a **metadata pointer**, never a copy and never a symlink — see [Decision #1](#decisions--discovery)). Browsing the raw folder for a non-canonical ticket shows just `metadata.json`; the app resolves the pointer to serve the real bytes.
 
-**other options removed for brevity**
+- **Path sanitizing is mandatory.** `locationId`, `roomCode`, `shortDate`, and especially `fileNumberText` flow into directory names, so each segment must be validated/sanitized (whitelist charset, reject `..`, path separators, absolute paths, empty/overlong) before use — see [Security](#security).
+- Pro: navigable by court context; bytes stored once; each ticket folder is a complete logical view via its metadata.
+- Con: resolution of cross-ticket pointers is application logic and must fail safe if a canonical file is missing (see [Security](#security)).
 
-> **Decision:** Option A (canonical store + per-ticket pointer dirs), with the pointer mechanism resolved through the **metadata file** — never filesystem symlinks (see next section). This keeps de-duplication explicit and backup-safe while still presenting a per-ticket view, and ports cleanly to object storage.
+> **Decision:** Logical `where → when → who → what` path with the submission's files co-located in its canonical ticket folder, and other associated tickets carrying a pointer-only `metadata.json` — never filesystem symlinks (see next section). This keeps de-duplication explicit and backup-safe while presenting a per-ticket, court-navigable view that ports cleanly to object storage (the path becomes the object-key prefix).
 
 ### De-duplication: metadata pointer (symlinks ruled out)
 
@@ -135,14 +147,18 @@ Proposed shape (per submission, and/or per ticket view):
     {
       "exhibitId": "guid",
       "originalFileName": "bodycam.mp4",
-      "canonicalPath": "_exhibits/guid.mp4", // single physical location
+      // single physical location, relative to {AcceptedPath}; the same value
+      // appears in every associated ticket's metadata.json (pointer, not a copy)
+      "canonicalPath": "{locationId}/{roomCode}/{shortDate}/FILE-001/guid.mp4",
       "contentType": "video/mp4",
       "fileSize": 734003200,
       "sha256": "…", // integrity / immutability proof
+      "isAccepted": true, // per-file acceptance (see Auto-accept section)
+      "acceptedAtUTC": "…",
       "markedValue": "A",
       "markedAt": "…",
       "enteredValue": "12",
-      "enteredAt": "…",
+      "enteredAt": "…", // once Entered, classification is locked (no further metadata edits)
       "description": "…",
       "associatedTickets": ["FILE-001", "FILE-002"], // de-dup: one file, many tickets
     },
@@ -162,11 +178,25 @@ Proposed shape (per submission, and/or per ticket view):
 - **`revisions`** gives an append-only audit trail so post-acceptance metadata edits are traceable.
 - Metadata writes must be **atomic** (write temp + rename) to avoid a half-written file if the process dies mid-update.
 
+### Per-file acceptance & auto-accept
+
+Acceptance is moving from a **whole-submission** action to a **per-file** state (see [Decision #13](#decisions--discovery)). Each `StoredFiles` row carries an **`IsAccepted`** flag (plus `AcceptedAtUTC`):
+
+- **Only just-uploaded files stay in the temporary/pending local store.** A file that is not yet accepted lives under the pending path (`{LocalPath}/…/{submissionId}/{guid}{ext}`) exactly as today.
+- **A file is auto-accepted the moment it is classified as either Marked _or_ Entered.** For traffic court (everything in scope today, though not universal) this happens without an explicit whole-submission Accept: on the first classification the file is written into the accepted store at its logical path and `IsAccepted` is set.
+- Because acceptance can fire on **Marked** alone, an accepted file's classification **can still change afterward** — Marked→re-Marked, or Marked→Entered. **Only the `Entered` state locks classification** against further edits.
+- **Submission-level status is now derived, not set by a button.** With the whole-submission Accept action retired, a submission reads as `Accepted` once **all** its non-deleted files are accepted, and flips back to `Pending` if a **new** un-accepted file is later added to the same `submissionId` (files uploaded in the same session share one submission). The exact transition rule is finalized during development — see the dev plan.
+
+This means the accepted store is **not write-once at the metadata level**: a metadata edit on an already-accepted (Marked-but-not-Entered) file must **re-write that file's `metadata.json`** in place (and in every associated ticket folder). See the rule below.
+
 ### Immutability rules
 
-- After Accept: exhibit **bytes** are read-only; no delete (`RemoveFileAsync` already forbids removal on non-Pending submissions — extend/keep this).
-- Metadata **may** change (classification, description) and each change bumps `lastUpdatedUTC` and appends to `revisions`.
-- A change to metadata must **never** alter the canonical file or its recorded `sha256`.
+- Once a file `IsAccepted`, its **bytes** are read-only and it cannot be deleted (`RemoveFileAsync` already forbids removal on non-Pending submissions — extend this to the per-file accepted flag).
+- **Bytes are always immutable on accept; metadata is not — until `Entered`.** While a file is accepted-as-Marked (no `EnteredValue`), its classification/description **may** still change. Each such change:
+  - bumps `lastUpdatedUTC`, appends to `revisions`, and
+  - **re-writes `metadata.json`** in the canonical ticket folder **and every associated ticket folder** (atomic temp+rename), keeping all pointer copies consistent.
+- Once a file is **`Entered`**, classification is locked; only fields explicitly allowed by the post-accept edit scope may still change.
+- A metadata change must **never** alter the canonical file bytes or its recorded `sha256`.
 - **Who may edit, and the exact editable field set, is owned by a forthcoming spec** ([Decision #7](#decisions--discovery)) that introduces a new role with an exhibit-focused search page (exhibits, not submissions). This development targets that new role/path; the existing admin submission listing remains valid for future changes.
 
 ### Download
@@ -182,14 +212,15 @@ Proposed shape (per submission, and/or per ticket view):
 
 | Area                                        | Change                                                                                                                                                   |
 | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `LocalFileStorage.AcceptSubmissionAsync`    | Stop writing a ZIP; write canonical files + metadata file(s); compute and persist SHA256 per exhibit                                                     |
-| `IFileStorage`                              | New methods: write/update metadata, resolve exhibit by id, enumerate by ticket; possibly `GetAcceptedExhibitAsync`                                       |
-| `LocalFileStorage.GetAcceptedPackageAsync`  | Rebuild as zip-on-the-fly (or add per-file getter)                                                                                                       |
-| `SubmissionService.AcceptSubmissions`       | Unchanged gate logic; new storage call shape                                                                                                             |
-| Post-accept metadata edits (classification) | New code path to update the metadata file when `StoredFiles` classification changes on an Accepted submission                                            |
-| `StorageOptions`                            | Possibly add `CanonicalPath` / `TicketIndexPath`; clarify `AcceptedPath` semantics                                                                       |
-| DB                                          | Optionally persist `canonicalPath` / accepted SHA256 on `StoredFiles` so resolution doesn't depend solely on the metadata file                           |
-| Tests                                       | Update `LocalFileStorage`/`SubmissionService` accept tests; new tests for de-dup (one file, multiple tickets), metadata update, immutability enforcement |
+| `LocalFileStorage.AcceptSubmissionAsync`    | Stop writing a ZIP; write files to the logical `where→when→who→what` path; write pointer `metadata.json` into every associated ticket folder; compute and persist SHA256 per exhibit |
+| Classification code path (Marked/Entered)   | **Auto-accept trigger:** on first Marked/Entered, promote the file from pending to the accepted store and set `IsAccepted`/`AcceptedAtUTC` ([Decision #13](#decisions--discovery))    |
+| `IFileStorage`                              | New methods: promote/accept a single file, write/update metadata, resolve exhibit by id, enumerate by ticket; possibly `GetAcceptedExhibitAsync`         |
+| `LocalFileStorage.GetAcceptedPackageAsync`  | Rebuild as per-file getter now; zip-on-the-fly deferred ([Decision #6](#decisions--discovery))                                                           |
+| `SubmissionService.AcceptSubmissions`       | Whole-submission gate logic still valid; new per-file storage call shape                                                                                 |
+| Post-accept metadata edits (classification) | New code path: when a **Marked-but-not-Entered** accepted file's classification/description changes, re-write `metadata.json` in the canonical folder **and every associated ticket folder** (atomic) |
+| `StorageOptions`                            | Clarify `AcceptedPath` as the root of the logical path (`{locationId}/{roomCode}/{shortDate}/{fileNumberText}/`); path-segment sanitization helper          |
+| DB (`StoredFiles`)                          | Add per-file **`IsAccepted`** + `AcceptedAtUTC`; persist accepted `CanonicalPath` / SHA256 so resolution doesn't depend solely on the metadata file      |
+| Tests                                       | Accept/auto-accept tests; de-dup (one file, multiple tickets → one physical file); Marked-edit re-writes all ticket metadata; Entered locks classification; path-sanitization; immutability enforcement |
 
 ---
 
@@ -197,7 +228,7 @@ Proposed shape (per submission, and/or per ticket view):
 
 ### Security
 
-- **Path traversal / injection:** `FileNumberText`, `LocationId`, `RoomCode` flow into directory names. These must be **sanitized/validated** (whitelist charset, reject `..`, path separators, absolute paths) before being used as path segments. The current GUID-based pending naming avoids this; ticket-named directories reintroduce the risk.
+- **Path traversal / injection:** every segment of the logical path — `locationId`, `roomCode`, `shortDate`, and especially `fileNumberText` — flows into directory names. Each must be **sanitized/validated** (whitelist charset, reject `..`, path separators, absolute paths, empty/overlong values) before being used as a path segment, and the fully-resolved path must be confirmed to stay **within** `{AcceptedPath}`. The current GUID-based pending naming avoids this; the logical `where→when→who→what` directories reintroduce the risk, `fileNumberText` most of all since it is externally-sourced ticket data.
 - **Symlink attacks:** if symlinks are used, a malicious or buggy link could point outside the storage root (link traversal). Any symlink must be validated to resolve **within** the accepted root. This is a strong argument for the metadata-pointer approach.
 - **Integrity / tamper evidence:** the stored `sha256` lets us detect post-acceptance tampering. Consider a periodic integrity sweep that re-hashes canonical files and flags drift. For stronger non-repudiation, consider signing the metadata file.
 - **Access control:** individual-file download must enforce the same authorization as the current package download (Accepted-only, admin-gated). Don't expose canonical paths directly to clients — resolve server-side.
@@ -222,7 +253,23 @@ The questions below were resolved by the product owner on 2026-07-02. Each recor
    **Decision:** Commit to **metadata-pointer resolution**. No requirement for browsable-on-disk per-ticket folders; no symlinks.
 
 2. **Directory layout** — _Option A vs. B vs. C; does any downstream system expect a specific on-disk structure?_
-   **Decision:** **Option A** — canonical id-addressed content store + per-ticket pointer directories.
+   **Decision:** A **logical `where → when → who → what` path**: `{AcceptedPath}/{locationId}/{roomCode}/{shortDate}/{fileNumberText}/`. A submission's files (and a `metadata.json`) live together in its canonical ticket folder; each other associated ticket folder holds a pointer-only `metadata.json` (id-addressed `{exhibitId}` files, single instance, no symlinks). Path segments must be sanitized. This supersedes the earlier `_exhibits/` + `tickets/` sketch while keeping the same single-instance + metadata-pointer principle.
+
+   > **Proposed revision (2026-07-02 — pending sign-off): submission-leaf, not ticket-leaf.**
+   > Change the leaf from `{fileNumberText}` to `{submissionId}`:
+   > `{AcceptedPath}/{locationId}/{roomCode}/{shortDate}/{submissionId}/`. Rationale: exhibit↔ticket
+   > association is per-**submission** (files carry no ticket FK), so a submission's files already
+   > belong together and a multi-ticket exhibit is stored **once** by construction — the
+   > canonical-folder selection and per-ticket pointer `metadata.json` copies are no longer needed
+   > (single-instance becomes structural, one `metadata.json` per submission). Ticket lookup stays a
+   > DB query (`SubmissionTicket.FileNumberText → SubmissionId → path`), consistent with Decision #5
+   > (DB is source of truth) and Decision #1 (access is app-mediated; non-canonical ticket folders were
+   > already byte-empty). It also removes the biggest injection surface — the externally-sourced
+   > `fileNumberText` no longer appears in a directory name (see [Security](#security)). `where/when`
+   > navigability (the `location/room/date` prefix) is retained; the metadata `associatedTickets[]`
+   > still records the full ticket mapping. **Only open confirmation:** does any downstream/records
+   > system expect to browse the raw store organized by ticket number? If not, adopt the revision.
+   > Full write-up in [accepted-file-storage-dev-plan.md](accepted-file-storage-dev-plan.md#proposed-revision-to-decision-2).
 
 3. **Canonical key** — _content-addressed (`{sha256}`) vs. id-addressed (`{exhibitId}`)?_
    **Decision:** **Id-addressed (`{exhibitId}`)** — most manageable; ownership and retention stay simple. (Cross-submission byte de-dup is explicitly not a goal — see #4.)
@@ -253,6 +300,9 @@ The questions below were resolved by the product owner on 2026-07-02. Each recor
 
 12. **Filesystem support matrix** — _what filesystems/volumes will production run on; are symlinks viable?_
     **Decision:** **Symlinks are not required** (reinforces #1). Production is expected to be an **S3-style object store**, which the metadata-pointer model maps to directly. _Follow-up:_ confirm the storage target if any design detail turns out to depend on it.
+
+13. **Per-file acceptance & auto-accept** — _is acceptance a whole-submission action, or per-file? Do files need an `IsAccepted` bit?_
+    **Decision:** **Yes — acceptance is per-file, with an `IsAccepted` flag (plus `AcceptedAtUTC`) on `StoredFiles`.** For traffic court (current scope, not universal) files will **auto-accept once classified Marked _or_ Entered**; only just-uploaded, unclassified files remain in the temporary/pending local store. Because acceptance can fire on **Marked** alone and only **Entered** locks classification, an accepted file's metadata can still change afterward — so a classification edit on a Marked-but-not-Entered accepted file must **re-write its `metadata.json`** (in the canonical folder and every associated ticket folder) after the fact. Bytes remain immutable from the moment of acceptance regardless. See [Per-file acceptance & auto-accept](#per-file-acceptance--auto-accept). Related: [exhibit-classification.md](exhibit-classification.md).
 
 ---
 
