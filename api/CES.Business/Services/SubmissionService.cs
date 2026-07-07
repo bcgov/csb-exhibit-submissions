@@ -59,8 +59,11 @@ namespace CES.Business.Services
         }
 
         // Returns the existing submission to append to, or null to create a new one.
-        // Appends only when the id refers to a Pending, non-deleted submission whose court
-        // context (location + room) matches the current form; otherwise falls back to new.
+        // Appends when the id refers to a non-deleted, non-Rejected submission whose
+        // court context (location + room) matches the current form; otherwise falls
+        // back to new. An already-Accepted submission may be appended to — the new
+        // un-accepted file reopens it to Pending via RecalculateStatus (CES-39, Q6).
+        // Rejected is terminal and never re-opened.
         private async Task<Submission?> ResolveAppendTargetAsync(EvidenceSubmissionModel model)
         {
             if (!model.SubmissionId.HasValue)
@@ -73,7 +76,7 @@ namespace CES.Business.Services
 
             if (existing == null
                 || existing.IsDeleted
-                || existing.Status != SubmissionStatus.Pending
+                || existing.Status == SubmissionStatus.Rejected
                 || existing.LocationId != model.LocationId
                 || existing.RoomCode != model.RoomCode)
             {

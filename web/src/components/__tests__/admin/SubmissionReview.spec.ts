@@ -10,7 +10,6 @@ vi.mock('vue-router', () => ({
 }));
 
 const mockRetrieveSubmission = vi.hoisted(() => vi.fn());
-const mockAcceptSubmission = vi.hoisted(() => vi.fn());
 const mockRejectSubmission = vi.hoisted(() => vi.fn());
 const mockRemoveFile = vi.hoisted(() => vi.fn());
 const mockMarkExhibit = vi.hoisted(() => vi.fn());
@@ -20,7 +19,6 @@ const mockUpdateExhibitDescription = vi.hoisted(() => vi.fn());
 vi.mock('@/services/SubmissionService', () => ({
   default: () => ({
     retrieveSubmission: mockRetrieveSubmission,
-    acceptSubmission: mockAcceptSubmission,
     rejectSubmission: mockRejectSubmission,
     removeFile: mockRemoveFile,
     markExhibit: mockMarkExhibit,
@@ -78,7 +76,6 @@ beforeEach(() => {
   setActivePinia(createPinia());
   mockPush.mockClear();
   mockRetrieveSubmission.mockReset();
-  mockAcceptSubmission.mockReset();
   mockRejectSubmission.mockReset();
   mockRemoveFile.mockReset();
   mockMarkExhibit.mockReset();
@@ -195,11 +192,11 @@ describe('SubmissionReview', () => {
     });
   });
 
-  describe('terminal submissions (Accepted/Rejected)', () => {
-    it('disables classification controls when submission is Accepted', async () => {
+  describe('terminal submission (Rejected)', () => {
+    it('disables classification controls when submission is Rejected', async () => {
       mockRetrieveSubmission.mockResolvedValue(
         makeSubmission({
-          status: 'Accepted',
+          status: 'Rejected',
           files: [makeFile({ status: 'Entered', enteredValue: '1' })],
         }),
       );
@@ -211,18 +208,18 @@ describe('SubmissionReview', () => {
       expect(row2.find('select').attributes('disabled')).toBeDefined();
     });
 
-    it('hides Accept/Reject buttons when submission is Accepted', async () => {
-      mockRetrieveSubmission.mockResolvedValue(makeSubmission({ status: 'Accepted', files: [] }));
+    it('hides the Reject action when submission is Rejected', async () => {
+      mockRetrieveSubmission.mockResolvedValue(makeSubmission({ status: 'Rejected', files: [] }));
       const wrapper = mountReview();
       await flushPromises();
 
       expect(wrapper.find('.actions-main').exists()).toBe(false);
     });
 
-    it('shows View/Download for retained files on terminal submission', async () => {
+    it('shows View/Download for retained files on a terminal submission', async () => {
       mockRetrieveSubmission.mockResolvedValue(
         makeSubmission({
-          status: 'Accepted',
+          status: 'Rejected',
           files: [makeFile({ status: 'Entered', enteredValue: '1', contentType: 'video/mp4' })],
         }),
       );
@@ -235,88 +232,33 @@ describe('SubmissionReview', () => {
     });
   });
 
-  describe('Accept button', () => {
-    it('is disabled when a file is not Entered or Removed', async () => {
+  describe('derived Accepted status (whole-submission Accept retired)', () => {
+    it('does not render a whole-submission Accept button', async () => {
       mockRetrieveSubmission.mockResolvedValue(
-        makeSubmission({ files: [makeFile({ status: 'Unclassified' })] }),
+        makeSubmission({ files: [makeFile({ status: 'Entered', enteredValue: '1' })] }),
       );
       const wrapper = mountReview();
       await flushPromises();
 
-      const acceptBtn = wrapper.find('button.accept');
-      expect(acceptBtn.attributes('disabled')).toBeDefined();
+      expect(wrapper.find('button.accept').exists()).toBe(false);
     });
 
-    it('is enabled when all files are Entered', async () => {
+    it('keeps the review editable and rejectable while Accepted', async () => {
+      // Accepted is a derived, reversible state — controls stay enabled and Reject
+      // remains available (only Rejected is terminal).
       mockRetrieveSubmission.mockResolvedValue(
         makeSubmission({
-          files: [makeFile({ status: 'Entered', enteredValue: '1' })],
+          status: 'Accepted',
+          files: [makeFile({ status: 'Marked', markedValue: 'A' })],
         }),
       );
       const wrapper = mountReview();
       await flushPromises();
 
-      const acceptBtn = wrapper.find('button.accept');
-      expect(acceptBtn.attributes('disabled')).toBeUndefined();
-    });
-
-    it('is enabled when all files are Removed', async () => {
-      mockRetrieveSubmission.mockResolvedValue(
-        makeSubmission({
-          files: [makeFile({ status: 'Removed', deletedAt: '2026-06-01T12:00:00Z' })],
-        }),
-      );
-      const wrapper = mountReview();
-      await flushPromises();
-
-      const acceptBtn = wrapper.find('button.accept');
-      expect(acceptBtn.attributes('disabled')).toBeUndefined();
-    });
-
-    it('is enabled when files mix Entered and Removed', async () => {
-      mockRetrieveSubmission.mockResolvedValue(
-        makeSubmission({
-          files: [
-            makeFile({ id: 'f1', status: 'Entered', enteredValue: '1' }),
-            makeFile({ id: 'f2', status: 'Removed', deletedAt: '2026-06-01T12:00:00Z' }),
-          ],
-        }),
-      );
-      const wrapper = mountReview();
-      await flushPromises();
-
-      const acceptBtn = wrapper.find('button.accept');
-      expect(acceptBtn.attributes('disabled')).toBeUndefined();
-    });
-
-    it('calls acceptSubmission and redirects on success', async () => {
-      mockRetrieveSubmission.mockResolvedValue(
-        makeSubmission({ files: [makeFile({ status: 'Entered', enteredValue: '2' })] }),
-      );
-      mockAcceptSubmission.mockResolvedValue(true);
-      const wrapper = mountReview();
-      await flushPromises();
-
-      await wrapper.find('button.accept').trigger('click');
-      await flushPromises();
-
-      expect(mockAcceptSubmission).toHaveBeenCalledWith({ submissionId: 1 });
-      expect(mockPush).toHaveBeenCalledWith('/admin/list');
-    });
-
-    it('shows error message when acceptSubmission returns false', async () => {
-      mockRetrieveSubmission.mockResolvedValue(
-        makeSubmission({ files: [makeFile({ status: 'Entered', enteredValue: '2' })] }),
-      );
-      mockAcceptSubmission.mockResolvedValue(false);
-      const wrapper = mountReview();
-      await flushPromises();
-
-      await wrapper.find('button.accept').trigger('click');
-      await flushPromises();
-
-      expect(wrapper.find('.accept-error').exists()).toBe(true);
-      expect(mockPush).not.toHaveBeenCalled();
+      const row2 = wrapper.find('.prior-file-row2');
+      expect(row2.exists()).toBe(true);
+      expect(row2.find('select').attributes('disabled')).toBeUndefined();
+      expect(wrapper.find('button.remove').exists()).toBe(true);
     });
   });
 
