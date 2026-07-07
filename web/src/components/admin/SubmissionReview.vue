@@ -19,9 +19,7 @@ const submissionId = Number(route.params.id);
 
 const {
   retrieveSubmission,
-  acceptSubmission,
   rejectSubmission,
-  downloadAcceptedPackage,
   removeFile,
   markExhibit,
   enterExhibit,
@@ -29,8 +27,6 @@ const {
 } = useSubmissionService();
 
 const submission = ref<SubmissionReviewModel | undefined>(undefined);
-const acceptError = ref<string | null>(null);
-const packageError = ref<string | null>(null);
 const showRejectModal = ref(false);
 const removeError = ref<string | null>(null);
 const previewFile = ref<SubmissionFile | null>(null);
@@ -42,17 +38,10 @@ const exhibitEntries = computed(() =>
   (submission.value?.files ?? []).map((f) => ({ file: f, fileNumbers: [] as string[] })),
 );
 
-const isTerminal = computed(
-  () => submission.value?.status === 'Accepted' || submission.value?.status === 'Rejected',
-);
-
-const acceptReadiness = computed((): { ready: boolean; blockingNames: string[] } => {
-  if (!submission.value) return { ready: false, blockingNames: [] };
-  const blocking = submission.value.files
-    .filter((f) => !f.deletedAt && f.enteredValue == null)
-    .map((f) => f.originalFileName);
-  return { ready: blocking.length === 0, blockingNames: blocking };
-});
+// Only Rejected is truly terminal. Accepted is now a derived, reversible state
+// (adding a file reopens it, and per-file Entered-locking guards immutability),
+// so the review stays editable/rejectable while Accepted (CES-39).
+const isTerminal = computed(() => submission.value?.status === 'Rejected');
 
 onMounted(async () => {
   const data = await retrieveSubmission(submissionId);
@@ -103,29 +92,6 @@ const updateFileInSubmission = (updated: SubmissionFile) => {
         : f,
     ),
   };
-};
-
-const doAcceptSubmission = async () => {
-  if (!acceptReadiness.value.ready) {
-    acceptError.value = `${acceptReadiness.value.blockingNames.length} exhibit(s) not yet Entered or Removed.`;
-    return;
-  }
-  acceptError.value = null;
-  const payload: SubmissionActionModel = { submissionId };
-  const ok = await acceptSubmission(payload);
-  if (ok) {
-    router.push('/admin/list');
-  } else {
-    acceptError.value = 'Accept failed. Ensure all exhibits are Entered or Removed.';
-  }
-};
-
-const doDownloadPackage = async () => {
-  packageError.value = null;
-  const ok = await downloadAcceptedPackage(submissionId);
-  if (!ok) {
-    packageError.value = 'Could not download the package. Please try again.';
-  }
 };
 
 const doRejectSubmission = async () => {
@@ -182,16 +148,8 @@ const removeExhibit = async (file: SubmissionFile) => {
           <span :class="`status-chip status-${submission.status.toLowerCase()}`">{{
             submission.status
           }}</span>
-          <button
-            v-if="submission.status === 'Accepted'"
-            class="btn btn--primary download-package"
-            @click="doDownloadPackage"
-          >
-            Download Package
-          </button>
         </div>
       </div>
-      <p v-if="packageError" class="package-error">{{ packageError }}</p>
 
       <!-- Tickets section -->
       <h3>Tickets ({{ submission.tickets?.length ?? 0 }})</h3>
@@ -235,26 +193,14 @@ const removeExhibit = async (file: SubmissionFile) => {
 
       <p v-if="removeError" class="remove-error">{{ removeError }}</p>
 
-      <!-- Actions: only shown for Pending -->
+      <!-- Actions: reject is available until the submission is terminally Rejected.
+           Whole-submission Accept is retired — status derives from per-file acceptance. -->
       <template v-if="!isTerminal">
         <div class="actions-main">
-          <button
-            class="btn btn--success accept"
-            :disabled="!acceptReadiness.ready"
-            :title="
-              acceptReadiness.ready
-                ? 'Accept this submission'
-                : `${acceptReadiness.blockingNames.length} exhibit(s) not yet Entered or Removed`
-            "
-            @click="doAcceptSubmission"
-          >
-            Accept
-          </button>
           <button class="btn btn--danger remove" @click="showRejectModal = true">
             Reject Submission
           </button>
         </div>
-        <p v-if="acceptError" class="accept-error">{{ acceptError }}</p>
       </template>
     </div>
 

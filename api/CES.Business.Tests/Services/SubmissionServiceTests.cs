@@ -220,10 +220,13 @@ public class SubmissionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SubmitEvidence_FallsBackToNew_WhenSubmissionNotPending()
+    public async Task SubmitEvidence_FallsBackToNew_WhenSubmissionRejected()
     {
+        // Rejected is terminal — a new upload with that id starts a fresh submission
+        // rather than re-opening the rejected one (CES-39). Accepted submissions, by
+        // contrast, are appendable and reopen to Pending (covered separately).
         var existing = BuildSubmission();
-        existing.Status = SubmissionStatus.Accepted;
+        existing.Status = SubmissionStatus.Rejected;
         _db.Submissions.Add(existing);
         await _db.SaveChangesAsync();
 
@@ -481,123 +484,69 @@ public class SubmissionServiceTests : IDisposable
         result.Items[0].ExhibitCount.Should().Be(1);
     }
 
-    // ── AcceptSubmissions ─────────────────────────────────────────────────────
+    // ── Derived submission status (CES-39) ─────────────────────────────────────
 
     [Fact]
-    public async Task AcceptSubmissions_SetsStatusAccepted_WhenAllExhibitsReady()
+    public async Task SubmitEvidence_NewSubmissionWithUnacceptedFiles_StaysPending()
     {
-        var submission = BuildSubmission();
-        var file = BuildStoredFile();
-        file.EnteredValue = "3";
-        submission.Files.Add(file);
-        _db.Submissions.Add(submission);
-        await _db.SaveChangesAsync();
+        _fileStorageMock
+            .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
+            .ReturnsAsync((FileUpload f, string _) => new StoredFiles
+            {
+                Id = Guid.NewGuid(),
+                OriginalFileName = f.FileName,
+                StoredFileName = $"{Guid.NewGuid()}.mp4",
+                StoredPath = "p",
+                ContentType = f.ContentType,
+                FileSize = f.Length,
+                StorageProvider = "Mock",
+            });
 
-        _fileStorageMock.Setup(s => s.AcceptSubmissionAsync(It.IsAny<Submission>())).Returns(Task.CompletedTask);
+        var id = await _service.SubmitEvidence(BuildModel());
 
-        var (success, error) = await _service.AcceptSubmissions(new SubmissionActionModel { SubmissionId = submission.Id });
-
-        success.Should().BeTrue();
-        error.Should().BeNull();
-        _db.Submissions.Find(submission.Id)!.Status.Should().Be(SubmissionStatus.Accepted);
-        _db.Submissions.Find(submission.Id)!.StatusChangedDateUTC.Should().NotBeNull();
+        id.Should().NotBeNull();
+        _db.Submissions.Find(id!.Value)!.Status.Should().Be(SubmissionStatus.Pending);
     }
 
     [Fact]
-    public async Task AcceptSubmissions_DoesNotSetIsDeleted_OnSubmissionOrFiles()
+    public async Task SubmitEvidence_AddingFileToAcceptedSubmission_FlipsBackToPending()
     {
-        var submission = BuildSubmission();
-        var file = BuildStoredFile();
-        file.EnteredValue = "3";
-        submission.Files.Add(file);
-        _db.Submissions.Add(submission);
-        await _db.SaveChangesAsync();
-
-        _fileStorageMock.Setup(s => s.AcceptSubmissionAsync(It.IsAny<Submission>())).Returns(Task.CompletedTask);
-
-        await _service.AcceptSubmissions(new SubmissionActionModel { SubmissionId = submission.Id });
-
-        _db.Submissions.Find(submission.Id)!.IsDeleted.Should().BeFalse();
-        _db.StoredFiles.Where(f => f.SubmissionId == submission.Id).All(f => !f.IsDeleted).Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task AcceptSubmissions_AcceptsRemovedExhibits_AsReady()
-    {
-        var submission = BuildSubmission();
-        var entered = BuildStoredFile();
-        entered.EnteredValue = "1";
-        var removed = BuildStoredFile();
-        removed.IsDeleted = true;
-        submission.Files.Add(entered);
-        submission.Files.Add(removed);
-        _db.Submissions.Add(submission);
-        await _db.SaveChangesAsync();
-
-        _fileStorageMock.Setup(s => s.AcceptSubmissionAsync(It.IsAny<Submission>())).Returns(Task.CompletedTask);
-
-        var (success, _) = await _service.AcceptSubmissions(new SubmissionActionModel { SubmissionId = submission.Id });
-
-        success.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task AcceptSubmissions_RejectsWhenExhibitIsUnclassified()
-    {
-        var submission = BuildSubmission();
-        submission.Files.Add(BuildStoredFile()); // unclassified
-        _db.Submissions.Add(submission);
-        await _db.SaveChangesAsync();
-
-        var (success, error) = await _service.AcceptSubmissions(new SubmissionActionModel { SubmissionId = submission.Id });
-
-        success.Should().BeFalse();
-        error.Should().Contain("Unready");
-    }
-
-    [Fact]
-    public async Task AcceptSubmissions_RejectsWhenExhibitIsMarkedOnly()
-    {
-        var submission = BuildSubmission();
-        var file = BuildStoredFile();
-        file.MarkedValue = "A";
-        submission.Files.Add(file);
-        _db.Submissions.Add(submission);
-        await _db.SaveChangesAsync();
-
-        var (success, error) = await _service.AcceptSubmissions(new SubmissionActionModel { SubmissionId = submission.Id });
-
-        success.Should().BeFalse();
-        error.Should().NotBeNullOrEmpty();
-    }
-
-    [Fact]
-    public async Task AcceptSubmissions_RejectsTerminalSubmission()
-    {
+        // An already-Accepted submission (all existing files accepted) gains a new
+        // same-session upload — it should reopen to Pending until that file is accepted.
         var submission = BuildSubmission();
         submission.Status = SubmissionStatus.Accepted;
+        var accepted = BuildStoredFile();
+        accepted.IsAccepted = true;
+        submission.Files.Add(accepted);
         _db.Submissions.Add(submission);
         await _db.SaveChangesAsync();
 
-        var (success, error) = await _service.AcceptSubmissions(new SubmissionActionModel { SubmissionId = submission.Id });
+        _fileStorageMock
+            .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
+            .ReturnsAsync((FileUpload f, string _) => new StoredFiles
+            {
+                Id = Guid.NewGuid(),
+                OriginalFileName = f.FileName,
+                StoredFileName = $"{Guid.NewGuid()}.mp4",
+                StoredPath = "p",
+                ContentType = f.ContentType,
+                FileSize = f.Length,
+                StorageProvider = "Mock",
+            });
 
-        success.Should().BeFalse();
-        error.Should().Contain("Pending");
-    }
+        var model = BuildModel(fileCount: 1);
+        model.SubmissionId = submission.Id;
+        model.ShortDate = submission.ShortDate;
 
-    [Fact]
-    public async Task AcceptSubmissions_ReturnsFailure_WhenNotFound()
-    {
-        var (success, error) = await _service.AcceptSubmissions(new SubmissionActionModel { SubmissionId = 99999 });
+        await _service.SubmitEvidence(model);
 
-        success.Should().BeFalse();
-        error.Should().Contain("not found");
+        _db.Submissions.Find(submission.Id)!.Status.Should().Be(SubmissionStatus.Pending);
     }
 
     // ── RejectSubmissions ─────────────────────────────────────────────────────
 
     [Fact]
-    public async Task RejectSubmissions_SetsStatusRejected_AndDeletesFiles()
+    public async Task RejectSubmissions_SetsStatusRejected_AndDeletesUnacceptedFiles()
     {
         var submission = BuildSubmission();
         submission.Files.Add(BuildStoredFile());
@@ -619,7 +568,31 @@ public class SubmissionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task RejectSubmissions_RejectsTerminalSubmission()
+    public async Task RejectSubmissions_LeavesAcceptedFiles_ButDeletesUnaccepted()
+    {
+        var submission = BuildSubmission();
+        var accepted = BuildStoredFile();
+        accepted.IsAccepted = true;
+        var pending = BuildStoredFile();
+        submission.Files.Add(accepted);
+        submission.Files.Add(pending);
+        _db.Submissions.Add(submission);
+        await _db.SaveChangesAsync();
+
+        _fileStorageMock.Setup(s => s.DeleteAsync(It.IsAny<StoredFiles>())).Returns(Task.CompletedTask);
+
+        var (success, _) = await _service.RejectSubmissions(new SubmissionActionModel { SubmissionId = submission.Id });
+
+        success.Should().BeTrue();
+        _db.StoredFiles.Find(accepted.Id)!.IsDeleted.Should().BeFalse();
+        _db.StoredFiles.Find(pending.Id)!.IsDeleted.Should().BeTrue();
+        // Only the non-accepted file's bytes are deleted from storage.
+        _fileStorageMock.Verify(s => s.DeleteAsync(It.Is<StoredFiles>(f => f.Id == pending.Id)), Times.Once);
+        _fileStorageMock.Verify(s => s.DeleteAsync(It.Is<StoredFiles>(f => f.Id == accepted.Id)), Times.Never);
+    }
+
+    [Fact]
+    public async Task RejectSubmissions_RejectsAlreadyRejectedSubmission()
     {
         var submission = BuildSubmission();
         submission.Status = SubmissionStatus.Rejected;
@@ -629,7 +602,7 @@ public class SubmissionServiceTests : IDisposable
         var (success, error) = await _service.RejectSubmissions(new SubmissionActionModel { SubmissionId = submission.Id });
 
         success.Should().BeFalse();
-        error.Should().Contain("Pending");
+        error.Should().Contain("already rejected");
     }
 
     // ── RemoveFile ────────────────────────────────────────────────────────────
@@ -674,10 +647,30 @@ public class SubmissionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task RemoveFile_RejectsWhenSubmissionIsAccepted()
+    public async Task RemoveFile_RejectsWhenFileIsAccepted()
+    {
+        // Per-file accept means a Pending submission can hold accepted files; an
+        // accepted file can never be removed (CES-39, Q6).
+        var submission = BuildSubmission();
+        var file = BuildStoredFile();
+        file.IsAccepted = true;
+        submission.Files.Add(file);
+        _db.Submissions.Add(submission);
+        await _db.SaveChangesAsync();
+
+        _fileStorageMock.Setup(s => s.DeleteAsync(It.IsAny<StoredFiles>())).Returns(Task.CompletedTask);
+
+        var act = async () => await _service.RemoveFileAsync(file.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Accepted*");
+        _fileStorageMock.Verify(s => s.DeleteAsync(It.IsAny<StoredFiles>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RemoveFile_RejectsWhenSubmissionIsRejected()
     {
         var submission = BuildSubmission();
-        submission.Status = SubmissionStatus.Accepted;
+        submission.Status = SubmissionStatus.Rejected;
         var file = BuildStoredFile();
         submission.Files.Add(file);
         _db.Submissions.Add(submission);
@@ -687,7 +680,7 @@ public class SubmissionServiceTests : IDisposable
 
         var act = async () => await _service.RemoveFileAsync(file.Id);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Pending*");
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*rejected*");
         _fileStorageMock.Verify(s => s.DeleteAsync(It.IsAny<StoredFiles>()), Times.Never);
     }
 
@@ -782,72 +775,7 @@ public class SubmissionServiceTests : IDisposable
         resultFile.Status.Should().Be("Entered");
     }
 
-    // ── GetAcceptedPackage ─────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task GetAcceptedPackage_ReturnsStream_WhenSubmissionAccepted()
-    {
-        var submission = BuildSubmission();
-        submission.Status = SubmissionStatus.Accepted;
-        _db.Submissions.Add(submission);
-        await _db.SaveChangesAsync();
-
-        using var packageStream = new MemoryStream(new byte[] { 0x50, 0x4B });
-        _fileStorageMock
-            .Setup(s => s.GetAcceptedPackageAsync(It.IsAny<Submission>()))
-            .ReturnsAsync(packageStream);
-
-        var (stream, fileName, error) = await _service.GetAcceptedPackageAsync(submission.Id);
-
-        stream.Should().NotBeNull();
-        fileName.Should().Be($"submission-{submission.Id}-package.zip");
-        error.Should().BeNull();
-        _fileStorageMock.Verify(s => s.GetAcceptedPackageAsync(It.Is<Submission>(x => x.Id == submission.Id)), Times.Once);
-    }
-
-    [Fact]
-    public async Task GetAcceptedPackage_ReturnsError_WhenSubmissionNotFound()
-    {
-        var (stream, fileName, error) = await _service.GetAcceptedPackageAsync(99999);
-
-        stream.Should().BeNull();
-        fileName.Should().BeNull();
-        error.Should().Contain("not found");
-        _fileStorageMock.Verify(s => s.GetAcceptedPackageAsync(It.IsAny<Submission>()), Times.Never);
-    }
-
-    [Theory]
-    [InlineData(SubmissionStatus.Pending)]
-    [InlineData(SubmissionStatus.Rejected)]
-    public async Task GetAcceptedPackage_ReturnsError_WhenNotAccepted(SubmissionStatus status)
-    {
-        var submission = BuildSubmission();
-        submission.Status = status;
-        _db.Submissions.Add(submission);
-        await _db.SaveChangesAsync();
-
-        var (stream, _, error) = await _service.GetAcceptedPackageAsync(submission.Id);
-
-        stream.Should().BeNull();
-        error.Should().Contain("Accepted");
-        _fileStorageMock.Verify(s => s.GetAcceptedPackageAsync(It.IsAny<Submission>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task GetAcceptedPackage_ReturnsError_WhenPackageMissingOnDisk()
-    {
-        var submission = BuildSubmission();
-        submission.Status = SubmissionStatus.Accepted;
-        _db.Submissions.Add(submission);
-        await _db.SaveChangesAsync();
-
-        _fileStorageMock
-            .Setup(s => s.GetAcceptedPackageAsync(It.IsAny<Submission>()))
-            .ThrowsAsync(new FileNotFoundException());
-
-        var (stream, _, error) = await _service.GetAcceptedPackageAsync(submission.Id);
-
-        stream.Should().BeNull();
-        error.Should().Contain("not found");
-    }
+    // Per-file download is covered in FileServiceTests (GetExhibitContentAsync) and
+    // the controller integration tests. The whole-submission ZIP package is retired
+    // (CES-39, Phase 6).
 }

@@ -95,42 +95,13 @@ export default function useSubmissionService() {
     return apiReturn?.data;
   };
 
-  const acceptSubmission = async (model: SubmissionActionModel): Promise<boolean> => {
-    try {
-      await api.post(`/submissions/accept/`, model);
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
+  // Whole-submission Accept is retired (CES-39): a submission's Accepted status is
+  // now derived from its files auto-accepting on classification, not set by a button.
   const rejectSubmission = async (model: SubmissionActionModel): Promise<boolean> => {
     try {
       await api.post(`/submissions/reject/`, model);
       return true;
     } catch {
-      return false;
-    }
-  };
-
-  const downloadAcceptedPackage = async (submissionId: number): Promise<boolean> => {
-    try {
-      const response = await api.get(`/submissions/${submissionId}/package`, {
-        responseType: 'blob',
-      });
-
-      const fileName = `submission-${submissionId}-package.zip`;
-      const url = window.URL.createObjectURL(response.data as Blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-      return true;
-    } catch (err) {
-      console.error('Package download error:', err);
       return false;
     }
   };
@@ -184,9 +155,7 @@ export default function useSubmissionService() {
     submitExhibits,
     retrieveSubmission,
     retrieveSubmissionListing,
-    acceptSubmission,
     rejectSubmission,
-    downloadAcceptedPackage,
     getSubmissionsByFileNumber,
     removeFile,
     markExhibit,

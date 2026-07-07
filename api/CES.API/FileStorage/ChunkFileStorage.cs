@@ -29,12 +29,17 @@ namespace CES.API.FileStorage
             throw new NotImplementedException();
         }
         
-        public Task AcceptSubmissionAsync(Submission submission)
+        public Task<AcceptedFileResult> PromoteToAcceptedAsync(Submission submission, StoredFiles file)
         {
             throw new NotImplementedException();
         }
 
-        public Task<Stream> GetAcceptedPackageAsync(Submission submission)
+        public Task WriteMetadataAsync(Submission submission, IReadOnlyList<SubmissionAuditLog> auditLogs)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<Stream> GetAcceptedExhibitAsync(StoredFiles file)
         {
             throw new NotImplementedException();
         }

@@ -222,11 +222,10 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
         var id1 = await SubmitAndGetId();
         var id2 = await SubmitAndGetId();
 
-        // Enter the file on id2 so it's acceptable, then accept
+        // Enter the file on id2 so it auto-accepts; the submission then derives Accepted.
         var fileId2 = await GetFirstFileId(id2);
         WithAuth(JwtTokenHelper.AdminToken());
         await _client.PostAsJsonAsync($"/api/files/{fileId2}/enter", new { enteredValue = "1" });
-        await _client.PostAsJsonAsync("/api/submissions/accept", new { submissionId = id2 });
 
         WithAuth(JwtTokenHelper.AdminToken());
         var response = await _client.GetAsync("/api/submissions/listing");
@@ -237,45 +236,20 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
     }
 
     [Fact]
-    public async Task Accept_WithReadyExhibits_Returns200()
+    public async Task SingleFileSubmission_DerivesAccepted_AfterClassification()
     {
-        var submissionId = await SubmitAndGetId();
-        var fileId = await GetFirstFileId(submissionId);
-
-        // Enter the exhibit so the submission is ready to accept
-        WithAuth(JwtTokenHelper.AdminToken());
-        await _client.PostAsJsonAsync($"/api/files/{fileId}/enter", new { enteredValue = "1" });
-
-        var response = await _client.PostAsJsonAsync("/api/submissions/accept", new { submissionId });
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
-    [Fact]
-    public async Task Accept_WithUnclassifiedExhibit_Returns422()
-    {
-        var submissionId = await SubmitAndGetId();
-
-        WithAuth(JwtTokenHelper.AdminToken());
-        var response = await _client.PostAsJsonAsync("/api/submissions/accept", new { submissionId });
-
-        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-    }
-
-    [Fact]
-    public async Task Accept_AlreadyAccepted_Returns422()
-    {
+        // With whole-submission Accept retired, classifying the only exhibit
+        // auto-accepts it and the submission's derived status becomes Accepted.
         var submissionId = await SubmitAndGetId();
         var fileId = await GetFirstFileId(submissionId);
 
         WithAuth(JwtTokenHelper.AdminToken());
         await _client.PostAsJsonAsync($"/api/files/{fileId}/enter", new { enteredValue = "1" });
-        await _client.PostAsJsonAsync("/api/submissions/accept", new { submissionId });
 
-        // Try to accept again
-        var response = await _client.PostAsJsonAsync("/api/submissions/accept", new { submissionId });
+        var response = await _client.GetAsync("/api/submissions/listing");
+        var paged = await response.Content.ReadFromJsonAsync<PagedResult>();
 
-        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        paged!.Items.Should().Contain(i => i.Id == submissionId && i.Status == "Accepted");
     }
 
     [Fact]
@@ -300,44 +274,6 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
         var response = await _client.PostAsJsonAsync("/api/submissions/reject", new { submissionId });
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-    }
-
-    [Fact]
-    public async Task DownloadPackage_AfterAccept_Returns200WithZip()
-    {
-        var submissionId = await SubmitAndGetId();
-        var fileId = await GetFirstFileId(submissionId);
-
-        WithAuth(JwtTokenHelper.AdminToken());
-        await _client.PostAsJsonAsync($"/api/files/{fileId}/enter", new { enteredValue = "1" });
-        await _client.PostAsJsonAsync("/api/submissions/accept", new { submissionId });
-
-        var response = await _client.GetAsync($"/api/submissions/{submissionId}/package");
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        response.Content.Headers.ContentType!.MediaType.Should().Be("application/zip");
-        var bytes = await response.Content.ReadAsByteArrayAsync();
-        bytes.Length.Should().BeGreaterThan(0);
-    }
-
-    [Fact]
-    public async Task DownloadPackage_WhenPending_Returns422()
-    {
-        var submissionId = await SubmitAndGetId();
-
-        WithAuth(JwtTokenHelper.AdminToken());
-        var response = await _client.GetAsync($"/api/submissions/{submissionId}/package");
-
-        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-    }
-
-    [Fact]
-    public async Task DownloadPackage_WhenSubmissionMissing_Returns404()
-    {
-        WithAuth(JwtTokenHelper.AdminToken());
-        var response = await _client.GetAsync("/api/submissions/99999/package");
-
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -388,20 +324,6 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
     }
 
     [Fact]
-    public async Task RemoveFile_CanRemoveEnteredExhibit_WhenPending()
-    {
-        var submissionId = await SubmitAndGetId();
-        var fileId = await GetFirstFileId(submissionId);
-
-        WithAuth(JwtTokenHelper.AdminToken());
-        await _client.PostAsJsonAsync($"/api/files/{fileId}/enter", new { enteredValue = "3" });
-
-        var response = await _client.DeleteAsync($"/api/submissions/files/{fileId}");
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
-    [Fact]
     public async Task RemoveFile_WithAdminRole_Returns404_WhenFileNotFound()
     {
         WithAuth(JwtTokenHelper.AdminToken());
@@ -432,14 +354,14 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
     }
 
     [Fact]
-    public async Task RemoveFile_OnAcceptedSubmission_Returns409()
+    public async Task RemoveFile_WhenFileAccepted_Returns409()
     {
         var submissionId = await SubmitAndGetId();
         var fileId = await GetFirstFileId(submissionId);
 
+        // Entering the exhibit auto-accepts it; accepted files can never be removed.
         WithAuth(JwtTokenHelper.AdminToken());
         await _client.PostAsJsonAsync($"/api/files/{fileId}/enter", new { enteredValue = "1" });
-        await _client.PostAsJsonAsync("/api/submissions/accept", new { submissionId });
 
         var response = await _client.DeleteAsync($"/api/submissions/files/{fileId}");
 

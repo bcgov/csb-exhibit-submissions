@@ -1,10 +1,34 @@
 using CES.Business.Models;
 using CES.Entities;
+using CES.Entities.Enums;
+using CES.Entities.Infrastructure;
 
 namespace CES.Business.Extensions.Entities
 {
     public static class SubmissionExtensions
     {
+        // Derives submission status from its files (CES-39). With whole-submission
+        // Accept retired, a submission reads as Accepted once every non-deleted file
+        // is accepted, and flips back to Pending if a new un-accepted file is added
+        // to it (same-session uploads reuse one submissionId). Rejected is terminal
+        // and never re-derived. Requires Files to be loaded.
+        public static void RecalculateStatus(this Submission submission)
+        {
+            if (submission.Status == SubmissionStatus.Rejected)
+                return;
+
+            var retained = submission.Files.Where(f => !f.IsDeleted).ToList();
+            var newStatus = retained.Count > 0 && retained.All(f => f.IsAccepted)
+                ? SubmissionStatus.Accepted
+                : SubmissionStatus.Pending;
+
+            if (newStatus != submission.Status)
+            {
+                submission.Status = newStatus;
+                submission.StatusChangedDateUTC = SystemDate.UtcNow();
+            }
+        }
+
         public static Submission ToEntity(this EvidenceSubmissionModel model)
         {
             var entity = new Submission

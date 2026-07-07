@@ -1,7 +1,10 @@
 using CES.Business.Extensions.Entities;
+using CES.Business.Interfaces;
+using CES.Business.Models;
 using CES.Business.Services;
 using CES.EF;
 using CES.Entities;
+using CES.Entities.Enums;
 using CES.Entities.Infrastructure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +14,7 @@ namespace CES.Business.Tests.Services;
 public class FileServiceTests : IDisposable
 {
     private readonly CESDataStore _db;
+    private readonly Mock<IFileStorage> _fileStorageMock;
     private readonly FileService _service;
 
     public FileServiceTests()
@@ -19,7 +23,22 @@ public class FileServiceTests : IDisposable
             .UseInMemoryDatabase($"FileServiceTests_{Guid.NewGuid()}")
             .Options;
         _db = new CESDataStore(options);
-        _service = new FileService(_db);
+
+        _fileStorageMock = new Mock<IFileStorage>();
+        // Auto-accept promotion returns a canonical result derived from the ids.
+        _fileStorageMock
+            .Setup(s => s.PromoteToAcceptedAsync(It.IsAny<Submission>(), It.IsAny<StoredFiles>()))
+            .ReturnsAsync((Submission sub, StoredFiles f) => new AcceptedFileResult
+            {
+                CanonicalPath = $"loc001/room1/20260101/{sub.Id}/{f.Id}{Path.GetExtension(f.OriginalFileName)}",
+                AcceptedFileName = $"{f.Id}{Path.GetExtension(f.OriginalFileName)}",
+                Sha256 = "DEADBEEF",
+            });
+        _fileStorageMock
+            .Setup(s => s.WriteMetadataAsync(It.IsAny<Submission>(), It.IsAny<IReadOnlyList<SubmissionAuditLog>>()))
+            .Returns(Task.CompletedTask);
+
+        _service = new FileService(_db, _fileStorageMock.Object);
     }
 
     public void Dispose() => _db.Dispose();
@@ -28,8 +47,21 @@ public class FileServiceTests : IDisposable
         Guid? id = null,
         string? markedValue = null,
         string? enteredValue = null,
-        DateTime? enteredAt = null)
+        DateTime? enteredAt = null,
+        bool isAccepted = false)
     {
+        // Classification now auto-accepts, which needs the parent submission (with
+        // its tickets and files) loaded — so every seeded file hangs off a submission.
+        var submission = new Submission
+        {
+            ShortDate = "20260101",
+            LocationId = "LOC001",
+            RoomCode = "ROOM1",
+            Tickets = new List<SubmissionTicket>
+            {
+                new() { AppearanceId = "APP001", FileNumberText = "FILE001", AccusedName = "Smith, John" },
+            },
+        };
         var file = new StoredFiles
         {
             Id = id ?? Guid.NewGuid(),
@@ -42,8 +74,11 @@ public class FileServiceTests : IDisposable
             MarkedValue = markedValue,
             EnteredValue = enteredValue,
             EnteredAt = enteredAt,
+            IsAccepted = isAccepted,
+            CanonicalPath = isAccepted ? "loc001/room1/20260101/1/canonical.mp4" : null,
         };
-        _db.StoredFiles.Add(file);
+        submission.Files.Add(file);
+        _db.Submissions.Add(submission);
         _db.SaveChanges();
         return file;
     }
@@ -323,6 +358,129 @@ public class FileServiceTests : IDisposable
         var act = async () => await _service.GetExhibitHistoryAsync(Guid.NewGuid());
 
         await act.Should().ThrowAsync<KeyNotFoundException>();
+    }
+
+    // ── Auto-accept (CES-39) ──────────────────────────────────────────────
+
+    [Fact]
+    public async Task MarkExhibit_AutoAcceptsFile_AndWritesMetadata()
+    {
+        var file = SeedFile();
+
+        await _service.MarkExhibitAsync(file.Id, "A", "officer@test.ca");
+
+        var dbFile = _db.StoredFiles.Find(file.Id)!;
+        dbFile.IsAccepted.Should().BeTrue();
+        dbFile.AcceptedAtUTC.Should().NotBeNull();
+        dbFile.CanonicalPath.Should().NotBeNullOrEmpty();
+        dbFile.Sha256.Should().Be("DEADBEEF");
+
+        _fileStorageMock.Verify(s => s.PromoteToAcceptedAsync(It.IsAny<Submission>(), It.Is<StoredFiles>(f => f.Id == file.Id)), Times.Once);
+        _fileStorageMock.Verify(s => s.WriteMetadataAsync(It.IsAny<Submission>(), It.IsAny<IReadOnlyList<SubmissionAuditLog>>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task EnterExhibit_AutoAcceptsFile_OnFirstEntered()
+    {
+        var file = SeedFile();
+
+        await _service.EnterExhibitAsync(file.Id, "5", "officer@test.ca");
+
+        _db.StoredFiles.Find(file.Id)!.IsAccepted.Should().BeTrue();
+        _fileStorageMock.Verify(s => s.PromoteToAcceptedAsync(It.IsAny<Submission>(), It.IsAny<StoredFiles>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task MarkedThenEntered_PromotesOnlyOnce_KeepingSameSha()
+    {
+        var file = SeedFile();
+
+        await _service.MarkExhibitAsync(file.Id, "A", "officer@test.ca");
+        var shaAfterMark = _db.StoredFiles.Find(file.Id)!.Sha256;
+
+        await _service.EnterExhibitAsync(file.Id, "3", "officer@test.ca");
+        var shaAfterEnter = _db.StoredFiles.Find(file.Id)!.Sha256;
+
+        // Bytes are immutable at accept: the second classification does not re-promote.
+        _fileStorageMock.Verify(s => s.PromoteToAcceptedAsync(It.IsAny<Submission>(), It.IsAny<StoredFiles>()), Times.Once);
+        shaAfterEnter.Should().Be(shaAfterMark);
+        // ...but metadata is refreshed on both edits.
+        _fileStorageMock.Verify(s => s.WriteMetadataAsync(It.IsAny<Submission>(), It.IsAny<IReadOnlyList<SubmissionAuditLog>>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task DescriptionEdit_OnAcceptedNotEnteredFile_RewritesMetadata_WithoutPromoting()
+    {
+        var file = SeedFile();
+        await _service.MarkExhibitAsync(file.Id, "A", "officer@test.ca"); // accept it
+        _fileStorageMock.Invocations.Clear();
+
+        await _service.UpdateExhibitDescriptionAsync(file.Id, "a note", "officer@test.ca");
+
+        _fileStorageMock.Verify(s => s.PromoteToAcceptedAsync(It.IsAny<Submission>(), It.IsAny<StoredFiles>()), Times.Never);
+        _fileStorageMock.Verify(s => s.WriteMetadataAsync(It.IsAny<Submission>(), It.IsAny<IReadOnlyList<SubmissionAuditLog>>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DescriptionEdit_OnUnacceptedFile_DoesNotPromoteOrWriteMetadata()
+    {
+        var file = SeedFile();
+
+        await _service.UpdateExhibitDescriptionAsync(file.Id, "a note", "officer@test.ca");
+
+        _db.StoredFiles.Find(file.Id)!.IsAccepted.Should().BeFalse();
+        _fileStorageMock.Verify(s => s.PromoteToAcceptedAsync(It.IsAny<Submission>(), It.IsAny<StoredFiles>()), Times.Never);
+        _fileStorageMock.Verify(s => s.WriteMetadataAsync(It.IsAny<Submission>(), It.IsAny<IReadOnlyList<SubmissionAuditLog>>()), Times.Never);
+    }
+
+    // ── GetExhibitContentAsync (download branch) ──────────────────────────
+
+    [Fact]
+    public async Task GetExhibitContent_AcceptedFile_ReadsFromCanonicalStore()
+    {
+        var file = SeedFile(isAccepted: true);
+        using var accepted = new MemoryStream(new byte[] { 1, 2, 3 });
+        _fileStorageMock.Setup(s => s.GetAcceptedExhibitAsync(It.Is<StoredFiles>(f => f.Id == file.Id))).ReturnsAsync(accepted);
+
+        var (stream, fileName, contentType, error) = await _service.GetExhibitContentAsync(file.Id);
+
+        stream.Should().NotBeNull();
+        fileName.Should().Be("exhibit.mp4");
+        contentType.Should().Be("video/mp4");
+        error.Should().BeNull();
+        _fileStorageMock.Verify(s => s.GetAcceptedExhibitAsync(It.IsAny<StoredFiles>()), Times.Once);
+        _fileStorageMock.Verify(s => s.GetAsync(It.IsAny<StoredFiles>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetExhibitContent_PendingFile_ReadsFromTemporaryStore()
+    {
+        var file = SeedFile(); // not accepted
+        using var pending = new MemoryStream(new byte[] { 9 });
+        _fileStorageMock.Setup(s => s.GetAsync(It.Is<StoredFiles>(f => f.Id == file.Id))).ReturnsAsync(pending);
+
+        var (stream, _, _, error) = await _service.GetExhibitContentAsync(file.Id);
+
+        stream.Should().NotBeNull();
+        error.Should().BeNull();
+        _fileStorageMock.Verify(s => s.GetAsync(It.IsAny<StoredFiles>()), Times.Once);
+        _fileStorageMock.Verify(s => s.GetAcceptedExhibitAsync(It.IsAny<StoredFiles>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetExhibitContent_ReturnsError_WhenFileMissingOrDeleted()
+    {
+        var missing = await _service.GetExhibitContentAsync(Guid.NewGuid());
+        missing.stream.Should().BeNull();
+        missing.error.Should().NotBeNullOrEmpty();
+
+        var file = SeedFile();
+        file.IsDeleted = true;
+        await _db.SaveChangesAsync();
+
+        var deleted = await _service.GetExhibitContentAsync(file.Id);
+        deleted.stream.Should().BeNull();
+        deleted.error.Should().NotBeNullOrEmpty();
     }
 
     // ── Admin override ────────────────────────────────────────────────────
