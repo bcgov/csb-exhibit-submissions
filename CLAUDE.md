@@ -105,6 +105,17 @@ api/
 
 The API exposes controllers for: Login/Logout, Users, Submissions, Review, Files, Locations, and a Developer endpoint.
 
+**Exception handling:** `ApiExceptionMiddleware` (registered in `Program.cs`) translates unhandled exceptions from services/controllers into HTTP status codes centrally, so controllers can `throw` instead of hand-rolling error responses. The mapping is:
+
+| Exception | Status |
+|---|---|
+| `KeyNotFoundException`, `FileNotFoundException`, `DirectoryNotFoundException` | `404 Not Found` |
+| `ArgumentException` | `400 Bad Request` |
+| `InvalidOperationException` | `409 Conflict` |
+| any other `Exception` | `500 Internal Server Error` |
+
+The body is always `{ "message": "…" }` (generic text for 500). When adding a service method, throw the exception that maps to the status you want rather than returning ad-hoc error results.
+
 ### Key Integration Points
 
 - **File uploads:** Dropzone on the frontend, max 100MB, stored locally by the API under the path `{locationId}/{shortDate}/{roomCode}/{submissionId}` (submission-scoped, not per-ticket)
@@ -125,6 +136,7 @@ Feature specifications live in [`/spec`](spec/). Read the relevant spec before i
 | [testing-implementation.md](spec/testing-implementation.md) | Initial testing strategy for backend (xUnit + Moq + WebApplicationFactory) and frontend (Vitest + MSW). Defines project structure, NuGet/npm packages, test cases, and CI integration. |
 | [exhibit-classification.md](spec/exhibit-classification.md) | Officers classify each uploaded exhibit as Marked (A–Z) and/or Entered (1–50) at direction of the JJ. Tracks classification timestamps, enforces a state machine, and supports ticket-number retrieval of exhibit history across court sessions. |
 | [admin-listing-update.md](spec/admin-listing-update.md) | Reworks the admin Submission Listing/Review: explicit `Pending`/`Accepted`/`Rejected` submission lifecycle (replaces `IsDeleted` overloading), historical view of all submissions, a search/filter panel, admin-editable exhibit classification, Accept gated on all-exhibits-final, and whole-submission Reject with a destructive warning. |
+| [exhibit-search.md](spec/exhibit-search.md) | (CES-38) New admin landing page: JJ searches exhibits by file number (partial, 5-char min) or accused last name with an optional court-date range. Returns a flat, Marked→Entered→Unclassified-ordered exhibit list rendered via the shared `ExhibitList.vue` in `alwaysEditable` mode (view/download/edit/history in one screen). Replaces the old Submission Listing in nav; new `GET /api/submissions/exhibit-search` endpoint. |
 | [documents/component-rules.md](spec/documents/component-rules.md) | Reference: BC Gov Design System component rules (Buttons, Text field, Text area, Select, Dialog, Tags/Chips, Date picker) adapted for CES's native-HTML-+-SCSS approach. Universal a11y rules (focus ring, target sizes, labels), per-component states/variants, and a mapping to existing SCSS tokens. Read before styling or building a control. |
 
 ---

@@ -81,23 +81,7 @@ namespace CES.Business.Extensions.Entities
                     AccusedName = t.AccusedName,
                     AccusedDOB = t.AccusedDOB
                 }).ToList(),
-                Files = entity.Files.Select(f => new SubmissionFile
-                {
-                    ContentType = f.ContentType,
-                    FileSize = f.FileSize,
-                    Id = f.Id,
-                    OriginalFileName = f.OriginalFileName,
-                    StorageProvider = f.StorageProvider,
-                    StoredFileName = f.StoredFileName,
-                    Url = "",
-                    Status = f.DeriveStatus(),
-                    MarkedValue = f.MarkedValue,
-                    MarkedAt = f.MarkedAt,
-                    EnteredValue = f.EnteredValue,
-                    EnteredAt = f.EnteredAt,
-                    Description = f.Description,
-                    DeletedAt = f.DeletedAtUTC,
-                }).ToList()
+                Files = entity.Files.Select(f => f.ToSubmissionFile()).ToList()
             };
         }
     }

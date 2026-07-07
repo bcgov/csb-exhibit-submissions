@@ -67,6 +67,12 @@ const router = createRouter({
       meta: { requiresAuth: true, roles: ['User'] },
     },
     {
+      path: '/admin/exhibit-search',
+      name: 'AdminExhibitSearch',
+      component: () => import('@/views/admin/ExhibitSearchView.vue'),
+      meta: { requiresAuth: true, roles: ['Admin'] },
+    },
+    {
       path: '/admin/list',
       name: 'AdminSubmissionList',
       component: () => import('@/views/admin/ListingView.vue'),

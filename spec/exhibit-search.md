@@ -32,6 +32,8 @@ Following [admin-listing-update.md](completed/admin-listing-update.md): a **Subm
 4. As a JJ, I see each exhibit's **classification** (Marked A–Z / Entered 1–50 / Unclassified) clearly alongside the file details, ordered the way exhibits are called, so the list reads like the exhibit sheet.
 5. As a JJ, I can **view or download** an exhibit directly from the results.
 6. As a JJ, I can **update** an exhibit's Marked / Entered / Description inline on the same screen, saved automatically, and review its **change history**, so I never have to leave the search to maintain the record.
+7. As a JJ, I can **click an exhibit's filename** to open a detail popup showing **all details** we hold for that exhibit and a clean list of its **change history**, so I can inspect the full record without editing anything.
+8. As a JJ / registry user, I can add **timestamped notes** to an exhibit from that popup — saved to the database, **immutable once saved**, visible **only** in this popup (never in the exhibit change history) and clearly labelled **"Registry use only"** — so the registry can keep protected annotations against a file.
 
 ---
 
@@ -53,9 +55,11 @@ Following [admin-listing-update.md](completed/admin-listing-update.md): a **Subm
 
 ### Sort order
 
-1. **Marked** (`MarkedValue` set) → by `MarkedValue` A→Z
-2. **Entered** (`EnteredValue` set, `MarkedValue` null) → by `EnteredValue` **numeric** 1→50
+1. **Marked** (`MarkedValue` set, `EnteredValue` null) → by `MarkedValue` A→Z
+2. **Entered** (`EnteredValue` set) → by `EnteredValue` **numeric** 1→50
 3. **Unclassified** (neither) → last
+
+Precedence matches `DeriveStatus()`: an exhibit with an `EnteredValue` is **Entered** (its terminal state) regardless of any `MarkedValue`, and sorts in the Entered group by its number; an exhibit is **Marked** only when it has no `EnteredValue`.
 
 `AppearanceDateTime` is an ISO string (e.g. `2026-07-07T09:00:00`), so a date-range filter compares the `yyyy-MM-dd` prefix lexicographically.
 
@@ -133,6 +137,54 @@ A thin wrapper around the search form and the shared `ExhibitList.vue` control �
 - [router/index.ts](../web/src/router/index.ts): add `{ path: '/admin/exhibit-search', name: 'AdminExhibitSearch', component: ExhibitSearchView, meta: { requiresAuth: true, roles: ['Admin'] } }`. Leave `/admin/list` and `/admin/view/:id` untouched.
 - [LoginView.vue](../web/src/views/LoginView.vue): change the admin post-login redirect from `AdminSubmissionList` → `AdminExhibitSearch`.
 - [App.vue](../web/src/App.vue): replace the "Admin Listing" `v-tab` (→ `/admin/list`) with "Exhibit Search" (→ `/admin/exhibit-search`); update the `selectedTab` default accordingly.
+
+---
+
+## Extended Feature — Exhibit Detail Popup & Registry Notes
+
+A follow-on to the core search: clicking an exhibit opens a **read-only detail popup** with the full record, its change history, and a **registry-only notes** thread. This is deliberately **not** part of the shared `ExhibitList.vue` control — that control only gains a lightweight hook that reports *which* exhibit was clicked; the popup (and all detail/notes fetching) is owned by the parent page (`ExhibitSearch.vue`). This keeps the reusable list generic and lets the popup be page-specific.
+
+### Behaviour & Decisions
+
+| Question | Decision |
+|---|---|
+| Open trigger | The exhibit's **filename** becomes a link. `ExhibitList.vue` gains a `linkableTitle` prop; when set, the filename renders as a button that emits `titleClick(file)`. Default off → plain text (SubmissionReview is unchanged). |
+| Popup ownership | Lives in a new `ExhibitDetailModal.vue` rendered by `ExhibitSearch.vue`, **not** inside `ExhibitList.vue`. The parent maps the clicked file back to its full `ExhibitSearchResultModel` row and passes it in. |
+| Editability | **Read-only** for all file details/classification here — editing stays on the inline `ExhibitList` controls. |
+| Contents | (1) All available details (filename, status, Marked/Entered + timestamps, description, file numbers, accused, court date/time, location, room, submission date, content type, size, storage, submission id); (2) a clean **change-history** table (reuses the `/files/{id}/history` data); (3) the **registry notes** thread. |
+| Notes model | Separate `ExhibitNote` table — **append-only, immutable** once saved (no update/delete path). Each note carries `NoteText`, `CreatedBy`, `CreatedAtUTC`. |
+| Notes scope | **Admin (JJ/registry) only** — `GET/POST /api/files/{id}/notes` authorize `Admin`. Notes are **never** written to `SubmissionAuditLog`, so they never appear in the exhibit change history. |
+| Notes label | Section shows a **"Registry use only"** badge. |
+| Note length | Bounded by `ExhibitNoteConstants.NoteMaxLength = 2000` / `EXHIBIT_NOTE_MAX_LENGTH` (no inline literal). |
+
+### Backend (`/api`)
+
+- **Entity** — `CES.Entities/Entities/ExhibitNote.cs`: `Id`, `Guid FileId` (+ nav `File`), `string NoteText`, `string? CreatedBy`, `DateTime CreatedAtUTC`. Registered on `CESDataStore.ExhibitNotes` and `ICESDataStore`; relationship in `ModelRelationships` (FK → `StoredFiles`, cascade). EF migration `ExhibitNotes`.
+- **Constant** — `ExhibitNoteConstants.NoteMaxLength = 2000`.
+- **Models** — `ExhibitNoteModel` (read) and `AddExhibitNoteModel` (`NoteText`) in `ExhibitClassificationModels.cs`.
+- **Service** — `IFileService` / `FileService`: `GetExhibitNotesAsync(fileId)` (ordered by `CreatedAtUTC`) and `AddExhibitNoteAsync(fileId, noteText, createdBy)` (trims, requires non-empty, enforces max length, immutable insert). No update/delete methods.
+- **Controller** — `FilesController`: `GET /api/files/{fileId}/notes` and `POST /api/files/{fileId}/notes`, both `[Authorize(Roles = "Admin")]`. `createdBy` from the `UserData` claim (fallback `"Admin"`).
+- The shared file projection (`ToReviewModel`, prior-file lookup, exhibit search, and `FileService`) now all funnel through `StoredFilesExtensions.ToSubmissionFile()`.
+
+### Frontend (`/web`)
+
+- **`ExhibitList.vue`** — new `linkableTitle?: boolean` prop + `titleClick` emit; filename renders as a link-button only when opted in.
+- **`ExhibitNoteModel.ts`** + `EXHIBIT_NOTE_MAX_LENGTH` constant.
+- **`SubmissionService.ts`** — `getExhibitNotes(fileId)` and `addExhibitNote(fileId, noteText)`.
+- **`ExhibitDetailModal.vue`** (new, admin) — props: the `ExhibitSearchResultModel` row; on open fetches history + notes; renders details grid, history table, and the registry-notes thread with an append-only add form (counter, "Registry use only" badge). Emits `close`.
+- **`ExhibitSearch.vue`** — passes `:linkable-title="true"`, handles `@title-click` to open the modal for the matching result row.
+
+### Testing (extended)
+
+| Test | Asserts |
+|---|---|
+| Service — add note | Persists an immutable note with `CreatedBy` / `CreatedAtUTC`; empty/whitespace → rejected; over-max → rejected. |
+| Service — get notes | Returns notes for the file, ordered oldest-first; unknown file → throws. |
+| Controller — notes auth | `GET`/`POST /api/files/{id}/notes` are Admin-only (User → 403, anon → 401). |
+| Controller — add note | Round-trips a note; missing file surfaces as an error. |
+| Frontend service | `getExhibitNotes` / `addExhibitNote` hit the right endpoints with the right body. |
+| `ExhibitList` | `linkableTitle` renders the filename as a button and emits `titleClick`; default renders plain text. |
+| `ExhibitDetailModal` | Loads history + notes on mount; renders the "Registry use only" badge; Save disabled when empty; adding a note appends it to the list. |
 
 ---
 

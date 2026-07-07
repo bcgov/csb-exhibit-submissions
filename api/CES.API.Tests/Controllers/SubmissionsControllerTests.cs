@@ -368,6 +368,75 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
+    // ── Exhibit search endpoint (CES-38) ──────────────────────────────────────
+
+    [Fact]
+    public async Task ExhibitSearch_WithAdminRole_ByFileNumber_Returns200WithExhibits()
+    {
+        await SubmitAndGetId();
+
+        WithAuth(JwtTokenHelper.AdminToken());
+        var response = await _client.GetAsync("/api/submissions/exhibit-search?fileNumberText=FILE000");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var rows = await response.Content.ReadFromJsonAsync<List<ExhibitSearchRow>>();
+        rows.Should().NotBeNull();
+        rows!.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task ExhibitSearch_WithAdminRole_ByLastName_Returns200()
+    {
+        await SubmitAndGetId();
+
+        WithAuth(JwtTokenHelper.AdminToken());
+        var response = await _client.GetAsync("/api/submissions/exhibit-search?accusedName=Smith");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task ExhibitSearch_MissingTerms_Returns400()
+    {
+        WithAuth(JwtTokenHelper.AdminToken());
+
+        var response = await _client.GetAsync("/api/submissions/exhibit-search");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task ExhibitSearch_ShortFileNumber_Returns400()
+    {
+        WithAuth(JwtTokenHelper.AdminToken());
+
+        var response = await _client.GetAsync("/api/submissions/exhibit-search?fileNumberText=AH1");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task ExhibitSearch_WithUserRole_Returns403()
+    {
+        WithAuth(JwtTokenHelper.UserToken());
+
+        var response = await _client.GetAsync("/api/submissions/exhibit-search?fileNumberText=FILE000");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task ExhibitSearch_WithoutAuth_Returns401()
+    {
+        _client.DefaultRequestHeaders.Authorization = null;
+
+        var response = await _client.GetAsync("/api/submissions/exhibit-search?fileNumberText=FILE000");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    private record ExhibitSearchRow(int SubmissionId, SubmissionFileItem File);
+
     private record SubmitResult(int SubmissionId);
     private record PagedResult(List<SubmissionListItem> Items, int TotalCount, int Page, int PageSize);
     private record SubmissionListItem(int Id, string Status, int ExhibitCount);

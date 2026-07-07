@@ -301,6 +301,69 @@ describe('SubmissionService', () => {
     expect(result.description).toBe('key piece of evidence');
   });
 
+  it('searchExhibits builds query params and omits empty ones', async () => {
+    let capturedUrl = '';
+    server.use(
+      http.get('/api/submissions/exhibit-search', ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json([]);
+      }),
+    );
+
+    const { searchExhibits } = useSubmissionService();
+    await searchExhibits({
+      fileNumberText: 'AH12345',
+      accusedName: '',
+      appearanceDateFrom: '2026-07-01',
+      appearanceDateTo: '',
+    });
+
+    expect(capturedUrl).toContain('fileNumberText=AH12345');
+    expect(capturedUrl).toContain('appearanceDateFrom=2026-07-01');
+    expect(capturedUrl).not.toContain('accusedName');
+    expect(capturedUrl).not.toContain('appearanceDateTo');
+  });
+
+  it('getExhibitNotes fetches GET /api/files/:fileId/notes', async () => {
+    const fileId = '550e8400-e29b-41d4-a716-446655440006';
+    server.use(
+      http.get(`/api/files/${fileId}/notes`, () =>
+        HttpResponse.json([
+          { id: 1, noteText: 'registry note', createdBy: 'admin', createdAtUTC: '2026-07-07T09:00:00Z' },
+        ]),
+      ),
+    );
+
+    const { getExhibitNotes } = useSubmissionService();
+    const result = await getExhibitNotes(fileId);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ id: 1, noteText: 'registry note' });
+  });
+
+  it('addExhibitNote posts note text and returns the created note', async () => {
+    const fileId = '550e8400-e29b-41d4-a716-446655440007';
+    let capturedBody: unknown = null;
+    server.use(
+      http.post(`/api/files/${fileId}/notes`, async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json({
+          id: 2,
+          noteText: 'hello',
+          createdBy: 'admin',
+          createdAtUTC: '2026-07-07T10:00:00Z',
+        });
+      }),
+    );
+
+    const { addExhibitNote } = useSubmissionService();
+    const result = await addExhibitNote(fileId, 'hello');
+
+    expect(capturedBody).toMatchObject({ noteText: 'hello' });
+    expect(result.id).toBe(2);
+    expect(result.noteText).toBe('hello');
+  });
+
   it('getFileHistory fetches GET /api/files/:fileId/history and returns entries', async () => {
     const fileId = '550e8400-e29b-41d4-a716-446655440005';
     const mockHistory = [

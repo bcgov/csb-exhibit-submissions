@@ -1,4 +1,9 @@
 import type { ExhibitSubmissionModel } from '@/models/ExhibitSubmissionModel';
+import type {
+  ExhibitSearchFilter,
+  ExhibitSearchResultModel,
+} from '@/models/ExhibitSearchResultModel';
+import type { ExhibitNoteModel } from '@/models/ExhibitNoteModel';
 import type { PriorSubmissionModel } from '@/models/PriorSubmissionModel';
 import type {
   ExhibitDescriptionModel,
@@ -116,6 +121,19 @@ export default function useSubmissionService() {
     return apiReturn?.data ?? [];
   };
 
+  const searchExhibits = async (
+    filter: ExhibitSearchFilter,
+  ): Promise<ExhibitSearchResultModel[]> => {
+    const url = `/submissions/exhibit-search`;
+    const params: Record<string, unknown> = {};
+    if (filter.fileNumberText) params['fileNumberText'] = filter.fileNumberText;
+    if (filter.accusedName) params['accusedName'] = filter.accusedName;
+    if (filter.appearanceDateFrom) params['appearanceDateFrom'] = filter.appearanceDateFrom;
+    if (filter.appearanceDateTo) params['appearanceDateTo'] = filter.appearanceDateTo;
+    const apiReturn = await api.get<ExhibitSearchResultModel[]>(url, { params });
+    return apiReturn?.data ?? [];
+  };
+
   const removeFile = async (fileId: string): Promise<boolean> => {
     try {
       await api.delete(`/submissions/files/${fileId}`);
@@ -151,16 +169,33 @@ export default function useSubmissionService() {
     return result?.data ?? [];
   };
 
+  // Registry-only notes (CES-38 extension). Admin/JJ scope; append-only.
+  const getExhibitNotes = async (fileId: string): Promise<ExhibitNoteModel[]> => {
+    const result = await api.get<ExhibitNoteModel[]>(`/files/${fileId}/notes`);
+    return result?.data ?? [];
+  };
+
+  const addExhibitNote = async (
+    fileId: string,
+    noteText: string,
+  ): Promise<ExhibitNoteModel> => {
+    const result = await api.post<ExhibitNoteModel>(`/files/${fileId}/notes`, { noteText });
+    return result.data;
+  };
+
   return {
     submitExhibits,
     retrieveSubmission,
     retrieveSubmissionListing,
     rejectSubmission,
     getSubmissionsByFileNumber,
+    searchExhibits,
     removeFile,
     markExhibit,
     enterExhibit,
     updateExhibitDescription,
     getFileHistory,
+    getExhibitNotes,
+    addExhibitNote,
   };
 }

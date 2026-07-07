@@ -25,8 +25,11 @@ const authStore = useAuthStore();
           </router-link>
         </v-app-bar-title>
         <v-tabs align-tabs="start" v-model="selectedTab">
-          <v-tab value="admin-list" to="/admin/list" v-if="authStore.hasRole('Admin')"
-            >Admin Listing</v-tab
+          <v-tab
+            value="admin-exhibit-search"
+            to="/admin/exhibit-search"
+            v-if="authStore.hasRole('Admin')"
+            >Exhibit Search</v-tab
           >
           <v-tab value="court-list" to="/officer/court-list" v-if="authStore.hasRole('User')"
             >Court list</v-tab

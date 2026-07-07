@@ -92,7 +92,7 @@ const handleLogin = async () => {
     //if no redirectPath send to determined base route for role
     if (!redirectPath) {
       const authStore = useAuthStore();
-      if (authStore.hasRole('Admin')) await router.push({ name: 'AdminSubmissionList' });
+      if (authStore.hasRole('Admin')) await router.push({ name: 'AdminExhibitSearch' });
       else if (authStore.hasRole('User')) await router.push({ name: 'OfficerCourtList' });
     } else await router.push(redirectPath);
   } catch (error) {

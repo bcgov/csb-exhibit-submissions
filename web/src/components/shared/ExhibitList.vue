@@ -32,6 +32,12 @@ const props = defineProps<{
   canDownload?: boolean;
   /** Show a Remove button for each non-Removed file. */
   canRemove?: boolean;
+  /**
+   * When true, the filename renders as a button that emits `titleClick`, letting the
+   * parent open its own exhibit-detail view. Default: plain, non-interactive text.
+   * Detail/notes UI is intentionally owned by the parent, not this shared control.
+   */
+  linkableTitle?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -39,6 +45,7 @@ const emit = defineEmits<{
   previewFile: [file: SubmissionFile];
   downloadFile: [file: SubmissionFile];
   removeFile: [file: SubmissionFile];
+  titleClick: [file: SubmissionFile];
 }>();
 
 const { getFileHistory } = useSubmissionService();
@@ -217,7 +224,15 @@ const onDescriptionBlur = async (file: SubmissionFile) => {
         >
           🕑
         </button>
-        <span class="prior-file-name">{{ entry.file.originalFileName }}</span>
+        <button
+          v-if="linkableTitle"
+          type="button"
+          class="prior-file-name prior-file-name-link"
+          @click="emit('titleClick', entry.file)"
+        >
+          {{ entry.file.originalFileName }}
+        </button>
+        <span v-else class="prior-file-name">{{ entry.file.originalFileName }}</span>
         <span v-if="entry.submissionDate" class="prior-file-date">
           {{ formatDateTime(entry.submissionDate, true) }}
         </span>

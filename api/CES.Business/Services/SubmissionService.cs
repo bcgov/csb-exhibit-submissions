@@ -222,25 +222,106 @@ namespace CES.Business.Services
                     AppearanceDateTime = matchingTicket?.AppearanceDateTime,
                     Location = s.LocationNameText ?? "",
                     Room = s.RoomText ?? "",
-                    Files = s.Files.Select(f => new SubmissionFile
-                    {
-                        Id = f.Id,
-                        OriginalFileName = f.OriginalFileName,
-                        StoredFileName = f.StoredFileName,
-                        ContentType = f.ContentType,
-                        FileSize = f.FileSize,
-                        StorageProvider = f.StorageProvider,
-                        Url = "",
-                        Status = f.DeriveStatus(),
-                        MarkedValue = f.MarkedValue,
-                        MarkedAt = f.MarkedAt,
-                        EnteredValue = f.EnteredValue,
-                        EnteredAt = f.EnteredAt,
-                        Description = f.Description,
-                        DeletedAt = f.DeletedAtUTC,
-                    }).ToList()
+                    Files = s.Files.Select(f => f.ToSubmissionFile()).ToList()
                 };
             }).ToList();
         }
+
+        // Exhibit-centric search (CES-38): a flat list of every non-deleted exhibit
+        // matching the provided file-number / accused-name / date-range terms, ordered
+        // the way exhibits are called in court — Marked (A–Z), then Entered (1–50),
+        // then Unclassified last. Distinct from GetSubmissionsByFileNumberAsync, which
+        // is exact-match and submission-grouped.
+        public async Task<List<ExhibitSearchResultModel>> SearchExhibitsAsync(ExhibitSearchFilter filter)
+        {
+            var query = _datastore.Submissions
+                .Include(s => s.Tickets)
+                .Include(s => s.Files)
+                .Where(s => !s.IsDeleted);
+
+            if (!string.IsNullOrWhiteSpace(filter.FileNumberText))
+            {
+                var fnLower = filter.FileNumberText.Trim().ToLower();
+                query = query.Where(s => s.Tickets.Any(t => t.FileNumberText.ToLower().Contains(fnLower)));
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.AccusedName))
+            {
+                var nameLower = filter.AccusedName.Trim().ToLower();
+                query = query.Where(s => s.Tickets.Any(t => t.AccusedName != null && t.AccusedName.ToLower().Contains(nameLower)));
+            }
+
+            var submissions = await query.ToListAsync();
+
+            // AppearanceDateTime is an ISO string (e.g. 2026-07-07T09:00:00); the date
+            // range compares its yyyy-MM-dd prefix lexicographically. Applied in memory
+            // to keep the string-prefix comparison provider-agnostic.
+            if (filter.AppearanceDateFrom.HasValue || filter.AppearanceDateTo.HasValue)
+            {
+                var fromPrefix = filter.AppearanceDateFrom?.ToString("yyyy-MM-dd");
+                var toPrefix = filter.AppearanceDateTo?.ToString("yyyy-MM-dd");
+                submissions = submissions
+                    .Where(s => s.Tickets.Any(t => AppearanceWithinRange(t.AppearanceDateTime, fromPrefix, toPrefix)))
+                    .ToList();
+            }
+
+            var results = new List<ExhibitSearchResultModel>();
+            foreach (var s in submissions)
+            {
+                var fileNumbers = s.Tickets.Select(t => t.FileNumberText).Distinct().ToList();
+                var firstTicket = s.Tickets.FirstOrDefault();
+                foreach (var f in s.Files.Where(f => !f.IsDeleted))
+                {
+                    results.Add(new ExhibitSearchResultModel
+                    {
+                        File = f.ToSubmissionFile(),
+                        SubmissionId = s.Id,
+                        SubmissionDate = s.UploadDate,
+                        AppearanceDateTime = firstTicket?.AppearanceDateTime,
+                        Location = s.LocationNameText ?? "",
+                        Room = s.RoomText ?? "",
+                        FileNumbers = fileNumbers,
+                        AccusedName = firstTicket?.AccusedName,
+                    });
+                }
+            }
+
+            // Sort tier first (Marked → Entered → Unclassified), then within each tier:
+            // Marked by letter A→Z, Entered by number 1→50.
+            return results
+                .OrderBy(r => SortTier(r.File))
+                .ThenBy(r => SortTier(r.File) == 0 ? r.File.MarkedValue : null)
+                .ThenBy(r => SortTier(r.File) == 1 ? ParseEntered(r.File.EnteredValue) : int.MaxValue)
+                .ToList();
+        }
+
+        private static bool AppearanceWithinRange(string? appearanceDateTime, string? fromPrefix, string? toPrefix)
+        {
+            if (string.IsNullOrEmpty(appearanceDateTime))
+                return false;
+
+            var datePrefix = appearanceDateTime.Length >= 10
+                ? appearanceDateTime.Substring(0, 10)
+                : appearanceDateTime;
+
+            if (fromPrefix != null && string.CompareOrdinal(datePrefix, fromPrefix) < 0)
+                return false;
+            if (toPrefix != null && string.CompareOrdinal(datePrefix, toPrefix) > 0)
+                return false;
+
+            return true;
+        }
+
+        // Precedence matches DeriveStatus(): an EnteredValue makes the exhibit Entered
+        // (terminal) regardless of any MarkedValue; Marked only when no EnteredValue.
+        private static int SortTier(SubmissionFile f)
+        {
+            if (f.EnteredValue != null) return 1; // Entered
+            if (f.MarkedValue != null) return 0;  // Marked
+            return 2;                             // Unclassified
+        }
+
+        private static int ParseEntered(string? value) =>
+            int.TryParse(value, out var n) ? n : int.MaxValue;
     }
 }

@@ -13,5 +13,9 @@ namespace CES.Business.Interfaces
         Task<SubmissionFile> EnterExhibitAsync(Guid fileId, string enteredValue, string changedBy, bool isAdminOverride = false);
         Task<SubmissionFile> UpdateExhibitDescriptionAsync(Guid fileId, string description, string changedBy, bool isAdminOverride = false);
         Task<List<ExhibitHistoryEntryModel>> GetExhibitHistoryAsync(Guid fileId);
+        // Registry-only notes (CES-38 extension). Append-only: add creates an immutable
+        // note; there is deliberately no update or delete.
+        Task<List<ExhibitNoteModel>> GetExhibitNotesAsync(Guid fileId);
+        Task<ExhibitNoteModel> AddExhibitNoteAsync(Guid fileId, string noteText, string createdBy);
     }
 }

@@ -538,4 +538,115 @@ public class FileServiceTests : IDisposable
         await Assert.ThrowsAsync<ArgumentException>(() =>
             _service.EnterExhibitAsync(file.Id, "999", "admin@test.ca", isAdminOverride: true));
     }
+
+    // ── Registry notes (CES-38 extension) ─────────────────────────────────
+
+    [Fact]
+    public async Task AddExhibitNote_PersistsImmutableNote()
+    {
+        var file = SeedFile();
+        var before = DateTime.UtcNow;
+
+        var result = await _service.AddExhibitNoteAsync(file.Id, "Registry note", "admin@test.ca");
+
+        result.Id.Should().BeGreaterThan(0);
+        result.NoteText.Should().Be("Registry note");
+        result.CreatedBy.Should().Be("admin@test.ca");
+        result.CreatedAtUTC.Should().BeOnOrAfter(before);
+        _db.ExhibitNotes.Count(n => n.FileId == file.Id).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task AddExhibitNote_TrimsWhitespace()
+    {
+        var file = SeedFile();
+
+        var result = await _service.AddExhibitNoteAsync(file.Id, "   spaced   ", "admin@test.ca");
+
+        result.NoteText.Should().Be("spaced");
+    }
+
+    [Fact]
+    public async Task AddExhibitNote_Rejects_WhenEmptyOrWhitespace()
+    {
+        var file = SeedFile();
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.AddExhibitNoteAsync(file.Id, "", "admin@test.ca"));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.AddExhibitNoteAsync(file.Id, "   ", "admin@test.ca"));
+    }
+
+    [Fact]
+    public async Task AddExhibitNote_Rejects_WhenOverMaxLength()
+    {
+        var file = SeedFile();
+        var tooLong = new string('x', 2001);
+
+        var act = async () => await _service.AddExhibitNoteAsync(file.Id, tooLong, "admin@test.ca");
+
+        await act.Should().ThrowAsync<ArgumentException>().WithMessage("*2000*");
+    }
+
+    [Fact]
+    public async Task AddExhibitNote_Throws_WhenFileNotFound()
+    {
+        var act = async () => await _service.AddExhibitNoteAsync(Guid.NewGuid(), "note", "admin@test.ca");
+
+        await act.Should().ThrowAsync<KeyNotFoundException>();
+    }
+
+    [Fact]
+    public async Task AddExhibitNote_DoesNotWriteToChangeHistory()
+    {
+        // Registry notes are protected and must never surface in the exhibit's
+        // field-change history (SubmissionAuditLog).
+        var file = SeedFile();
+
+        await _service.AddExhibitNoteAsync(file.Id, "protected note", "admin@test.ca");
+
+        _db.SubmissionAuditLogs.Any(l => l.FileId == file.Id).Should().BeFalse();
+        (await _service.GetExhibitHistoryAsync(file.Id)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetExhibitNotes_ReturnsNotesOldestFirst()
+    {
+        var file = SeedFile();
+        _db.ExhibitNotes.Add(new ExhibitNote
+        {
+            FileId = file.Id,
+            NoteText = "first",
+            CreatedBy = "admin@test.ca",
+            CreatedAtUTC = new DateTime(2026, 7, 7, 9, 0, 0, DateTimeKind.Utc),
+        });
+        _db.ExhibitNotes.Add(new ExhibitNote
+        {
+            FileId = file.Id,
+            NoteText = "second",
+            CreatedBy = "admin@test.ca",
+            CreatedAtUTC = new DateTime(2026, 7, 7, 10, 0, 0, DateTimeKind.Utc),
+        });
+        await _db.SaveChangesAsync();
+
+        var notes = await _service.GetExhibitNotesAsync(file.Id);
+
+        notes.Select(n => n.NoteText).Should().Equal("first", "second");
+    }
+
+    [Fact]
+    public async Task GetExhibitNotes_ReturnsEmpty_WhenNone()
+    {
+        var file = SeedFile();
+
+        var notes = await _service.GetExhibitNotesAsync(file.Id);
+
+        notes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetExhibitNotes_Throws_WhenFileNotFound()
+    {
+        var act = async () => await _service.GetExhibitNotesAsync(Guid.NewGuid());
+
+        await act.Should().ThrowAsync<KeyNotFoundException>();
+    }
 }

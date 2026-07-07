@@ -9,6 +9,7 @@ namespace CES.Business.Interfaces
         Task<PagedResult<SubmissionReviewModel>> RetrieveSubmissionListing(SubmissionListFilter filter);
         Task<(bool success, string? error)> RejectSubmissions(SubmissionActionModel model);
         Task<List<PriorSubmissionModel>> GetSubmissionsByFileNumberAsync(string fileNumberText);
+        Task<List<ExhibitSearchResultModel>> SearchExhibitsAsync(ExhibitSearchFilter filter);
         Task<bool> RemoveFileAsync(Guid fileId);
     }
 }
