@@ -223,6 +223,36 @@
     color: $color-text-secondary;
   }
 
+  // One row per exhibit: col-1 status chip (+ value), col-2 single-exhibit ExhibitList.
+  .exhibit-results-scroll {
+    overflow-x: auto;
+  }
+
+  .exhibit-results-table {
+    width: 100%;
+    border-collapse: collapse;
+
+    td {
+      vertical-align: top;
+      padding: $padding-medium 0;
+      border-top: $border-width-small solid $color-border;
+    }
+
+    tr:first-child td {
+      border-top: none;
+    }
+
+    .status-cell {
+      width: 1%;
+      white-space: nowrap;
+      padding-right: $padding-medium;
+    }
+
+    .list-cell {
+      width: 100%;
+    }
+  }
+
   .preview-modal {
     position: fixed;
     top: 0;
