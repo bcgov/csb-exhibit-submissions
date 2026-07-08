@@ -5,7 +5,7 @@
       <div class="col-md-6 col-lg-4">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h3 class="card-title text-center mb-4">System Login</h3>
+            <h1 class="card-title text-center mb-4">System Login</h1>
 
             <div class="alert alert-secondary text-center small mb-4">
               Local Development Authentication

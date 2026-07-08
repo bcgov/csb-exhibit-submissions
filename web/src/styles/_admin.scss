@@ -32,7 +32,7 @@
       flex-direction: column;
       gap: $margin-xsmall;
       font-size: $font-size-small-body;
-      font-weight: 600;
+      font-weight: $font-weight-bold;
       color: $color-text-secondary;
     }
 
@@ -42,7 +42,7 @@
       min-height: 2rem;
       padding: $padding-small;
       font-size: $font-size-body;
-      font-weight: 400;
+      font-weight: $font-weight-regular;
       color: $color-text-primary;
       border: $border-width-small solid $color-border-medium;
       border-radius: $border-radius-default;
@@ -83,7 +83,7 @@
     border: $border-width-small solid $color-border;
     border-radius: $border-radius-large;
     overflow: hidden;
-    font-size: $font-size-small-body;
+    font-size: $font-size-body;
 
     thead {
       background: $color-bg-dark-blue;
@@ -92,7 +92,7 @@
         padding: 0.75rem;
         text-align: left;
         color: $color-text-invert;
-        font-weight: 600;
+        font-weight: $font-weight-bold;
         white-space: nowrap;
       }
     }
@@ -168,7 +168,7 @@
       flex-direction: column;
       gap: $margin-xsmall;
       font-size: $font-size-small-body;
-      font-weight: 600;
+      font-weight: $font-weight-bold;
       color: $color-text-secondary;
     }
 
@@ -177,7 +177,7 @@
       min-height: 2rem;
       padding: $padding-small;
       font-size: $font-size-body;
-      font-weight: 400;
+      font-weight: $font-weight-regular;
       color: $color-text-primary;
       border: $border-width-small solid $color-border-medium;
       border-radius: $border-radius-default;
@@ -195,7 +195,7 @@
   }
 
   .helper-text {
-    font-size: $font-size-small-body;
+    font-size: $font-size-body;
     color: $color-text-secondary;
     margin-bottom: $margin-medium;
   }
@@ -209,6 +209,8 @@
     margin-top: $margin-small;
     font-size: $font-size-small-body;
     color: $color-text-secondary;
+    // Reserve one line of height so toggling the hint text doesn't shift layout
+    min-height: 1lh;
   }
 
   .loading-text {
@@ -290,7 +292,7 @@
   .package-error {
     margin-bottom: 30px;
     color: $color-danger;
-    font-size: 0.9rem;
+    font-size: $font-size-small-body;
   }
 
   .ticket-table {
@@ -302,7 +304,7 @@
     td {
       border: $border-width-small solid $color-border;
       padding: 0.6rem 0.75rem;
-      font-size: 0.9rem;
+      font-size: $font-size-body;
     }
 
     thead {
@@ -396,7 +398,7 @@
   .accept-error {
     margin-top: 8px;
     color: $color-danger;
-    font-size: 0.9rem;
+    font-size: $font-size-small-body;
   }
 
   .preview-modal {
@@ -508,7 +510,7 @@ $app-bar-height: 64px;
 
     dt {
       font-size: $font-size-label;
-      font-weight: 600;
+      font-weight: $font-weight-bold;
       color: $color-text-secondary;
       text-transform: uppercase;
       letter-spacing: 0.02em;
@@ -533,7 +535,7 @@ $app-bar-height: 64px;
   .detail-history-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: $font-size-small-body;
+    font-size: $font-size-body;
 
     th,
     td {
@@ -570,7 +572,7 @@ $app-bar-height: 64px;
 
   .registry-badge {
     font-size: $font-size-label;
-    font-weight: 700;
+    font-weight: $font-weight-bold;
     text-transform: uppercase;
     letter-spacing: 0.03em;
     color: $color-danger;
@@ -614,7 +616,7 @@ $app-bar-height: 64px;
 
     label {
       display: block;
-      font-weight: 600;
+      font-weight: $font-weight-bold;
       font-size: $font-size-small-body;
       margin-bottom: $margin-xsmall;
     }

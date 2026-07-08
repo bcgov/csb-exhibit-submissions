@@ -1,5 +1,43 @@
 @use "variables" as *;
 
+// --- Global base ---
+// Apply the BC Sans brand typeface site-wide. The @font-face declarations are
+// loaded via `@bcgov/bc-sans` in main.ts; this sets it as the default family so
+// all text (including elements that inherit) uses it.
+//
+// Vuetify sets `font-family: Roboto` on its `.v-application` root at plain-class
+// specificity, so `body .v-application` (higher specificity) is required to make
+// BC Sans win inside Vuetify components regardless of stylesheet load order.
+body,
+body .v-application {
+  font-family: $font-family-base;
+}
+
+body {
+  // BC Gov standard body leading.
+  line-height: $line-height-base;
+}
+
+// Headings follow the BC Gov type scale: bold (700) at 1.5 line height, sized
+// per level. Use the correct semantic level for document structure — do not pick
+// a level for its size, and never skip levels (see spec/documents/typography-rules.md).
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: $font-weight-bold;
+  line-height: $line-height-base;
+}
+
+h1 { font-size: $font-size-h1; }
+h2 { font-size: $font-size-h2; }
+h3 { font-size: $font-size-h3; }
+h4 { font-size: $font-size-h4; }
+h5 { font-size: $font-size-h5; }
+h6 { font-size: $font-size-h6; }
+
 // --- Layout helpers ---
 
 .form-group {
@@ -47,7 +85,7 @@
   font-size: $font-size-label;
   padding: 0.1rem $padding-small;
   border-radius: $border-radius-circular;
-  font-weight: 600;
+  font-weight: $font-weight-bold;
   white-space: nowrap;
   min-width: 88px;
   display: inline-block;

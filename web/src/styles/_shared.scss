@@ -31,11 +31,11 @@
   }
 
   .icon {
-    font-size: 18px;
+    font-size: $icon-size-medium;
   }
 
   .small {
-    font-size: 0.8rem;
+    font-size: $font-size-label;
     color: $color-text-secondary;
   }
 }
@@ -54,7 +54,7 @@
   }
 
   .loading-text {
-    font-size: 0.8rem;
+    font-size: $font-size-label;
     color: $color-text-secondary;
     margin-top: 0.25rem;
   }
@@ -115,7 +115,7 @@
 
   .modal-body {
     margin-bottom: $margin-large;
-    font-size: 0.95rem;
+    font-size: $font-size-body;
     line-height: 1.5;
   }
 
@@ -183,7 +183,7 @@
   .prior-file-item {
     padding: 0.6rem 0.75rem;
     border-bottom: 1px solid $color-border;
-    font-size: 0.85rem;
+    font-size: $font-size-body;
 
     &:nth-child(even) {
       background: $color-bg-light;
@@ -211,12 +211,12 @@
   }
 
   .history-btn {
-    font-size: 0.95rem;
+    font-size: $font-size-body;
     flex: 0 0 auto;
   }
 
   .prior-file-name {
-    font-weight: 500;
+    font-weight: $font-weight-bold;
     color: $color-text-primary;
     flex: 1;
     min-width: 0;
@@ -248,11 +248,11 @@
   .prior-file-date {
     color: $color-text-secondary;
     white-space: nowrap;
-    font-size: 0.8rem;
+    font-size: $font-size-body;
   }
 
   .prior-file-tickets {
-    font-size: 0.8rem;
+    font-size: $font-size-body;
     padding: 0.1rem 0.45rem;
     border-radius: $border-radius-small;
     background: $color-bg-light-blue;
@@ -280,15 +280,15 @@
     width: 115px;
 
     label {
-      font-size: 0.7rem;
+      font-size: $font-size-label;
       color: $color-text-secondary;
-      font-weight: 500;
+      font-weight: $font-weight-bold;
     }
 
     select,
     input[type="text"] {
       padding: 0.2rem 0.35rem;
-      font-size: 0.8rem;
+      font-size: $font-size-small-body;
       border: 1px solid $color-border-medium;
       border-radius: $border-radius-small;
       background: white;
@@ -310,14 +310,14 @@
     gap: 0.15rem;
 
     label {
-      font-size: 0.7rem;
+      font-size: $font-size-label;
       color: $color-text-secondary;
-      font-weight: 500;
+      font-weight: $font-weight-bold;
     }
 
     input {
       padding: 0.2rem 0.35rem;
-      font-size: 0.8rem;
+      font-size: $font-size-small-body;
       border: 1px solid $color-border-medium;
       border-radius: $border-radius-small;
       width: 100%;
@@ -332,7 +332,7 @@
   }
 
   .desc-counter {
-    font-size: 0.68rem;
+    font-size: $font-size-label;
     color: $color-text-disabled;
     text-align: right;
 
@@ -342,7 +342,7 @@
   }
 
   .timestamp-text {
-    font-size: 0.72rem;
+    font-size: $font-size-label;
     color: $color-text-secondary;
     white-space: nowrap;
     overflow: hidden;
@@ -350,7 +350,7 @@
   }
 
   .save-indicator {
-    font-size: 0.8rem;
+    font-size: $font-size-label;
     margin-left: auto;
     white-space: nowrap;
     align-self: center;
@@ -407,7 +407,7 @@
   }
 
   .history-status {
-    font-size: 0.85rem;
+    font-size: $font-size-body;
     color: $color-text-secondary;
   }
 
@@ -418,7 +418,7 @@
   .exhibit-history-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.8rem;
+    font-size: $font-size-body;
 
     th,
     td {

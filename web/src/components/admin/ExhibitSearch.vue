@@ -200,7 +200,7 @@ const updateFileInResults = (updated: SubmissionFile) => {
           Clear
         </button>
       </div>
-      <p v-if="!canSearch" class="validation-hint">{{ validationHint }}</p>
+      <p class="validation-hint">{{ canSearch ? ' ' : validationHint }}</p>
     </form>
 
     <p v-if="loading" class="loading-text">Loading…</p>

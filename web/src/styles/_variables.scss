@@ -69,11 +69,35 @@ $margin-medium:          t.$layout-margin-medium;     // 1rem
 $margin-large:           t.$layout-margin-large;      // 1.5rem
 $margin-xlarge:          t.$layout-margin-xlarge;     // 2rem
 
-// Typography — font sizes
-$font-size-label:        t.$typography-font-size-label;        // 0.75rem
-$font-size-small-body:   t.$typography-font-size-small-body;   // 0.875rem
-$font-size-body:         t.$typography-font-size-body;         // 1rem
-$font-size-large-body:   t.$typography-font-size-large-body;   // 1.125rem
+// Typography — font family
+// BC Sans is the BC Gov brand typeface (loaded via `@bcgov/bc-sans` in main.ts).
+// Fallback stack matches the BC Gov design system recommendation.
+$font-family-base:       "BC Sans", "Noto Sans", Verdana, Arial, sans-serif;
+
+// Typography — body/label font sizes (BC Gov type scale)
+$font-size-label:        t.$typography-font-size-label;        // 0.75rem  / 12px
+$font-size-small-body:   t.$typography-font-size-small-body;   // 0.875rem / 14px
+$font-size-body:         t.$typography-font-size-body;         // 1rem     / 16px
+$font-size-large-body:   t.$typography-font-size-large-body;   // 1.125rem / 18px
+
+// Typography — heading font sizes (BC Gov type scale; all rendered at font-weight 700)
+$font-size-h1:           t.$typography-font-size-h1;   // 2.25rem  / 36px
+$font-size-h2:           t.$typography-font-size-h2;   // 2rem     / 32px
+$font-size-h3:           t.$typography-font-size-h3;   // 1.75rem  / 28px
+$font-size-h4:           t.$typography-font-size-h4;   // 1.5rem   / 24px
+$font-size-h5:           t.$typography-font-size-h5;   // 1.25rem  / 20px
+// H6 has no dedicated token; per the BC Gov scale it shares Large Body's 1.125rem.
+$font-size-h6:           t.$typography-font-size-large-body;   // 1.125rem / 18px
+
+// Typography — font weights. BC Sans ships only Regular (400) and Bold (700);
+// never use 500/600 (the browser fakes them and rendering is inconsistent).
+$font-weight-regular:    t.$typography-font-weights-regular;   // 400
+$font-weight-bold:       t.$typography-font-weights-bold;      // 700
+
+// Typography — line heights (BC Gov standard: 1.5 for body/headings, 1.25 for
+// small-body/label). Tokens are unitless multipliers; no unit suffix.
+$line-height-base:       1.5;
+$line-height-tight:      1.25;
 
 // Icon sizes (tokens are unitless; px suffix added here)
 $icon-size-xsmall:       #{t.$icons-size-xsmall}px;    // 14px
