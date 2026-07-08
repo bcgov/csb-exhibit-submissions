@@ -125,7 +125,7 @@ describe('ExhibitSearch', () => {
     expect(wrapper.find('.btn-search').attributes('disabled')).toBeUndefined();
   });
 
-  it('maps results into ExhibitList entries preserving backend order', async () => {
+  it('renders one single-exhibit list per result row, preserving backend order', async () => {
     mockSearchExhibits.mockResolvedValue([
       makeResult({ file: makeFile({ id: 'f1', originalFileName: 'first.pdf' }) }),
       makeResult({ file: makeFile({ id: 'f2', originalFileName: 'second.pdf' }) }),
@@ -136,22 +136,71 @@ describe('ExhibitSearch', () => {
     await wrapper.find('.filter-panel').trigger('submit');
     await flushPromises();
 
+    // One row → one list → one entry, in backend order.
+    const lists = wrapper.findAll('.exhibit-list-stub');
+    expect(lists).toHaveLength(2);
     const entries = wrapper.findAll('.stub-entry');
     expect(entries).toHaveLength(2);
     expect(entries[0].text()).toContain('first.pdf');
     expect(entries[1].text()).toContain('second.pdf');
   });
 
-  it('passes always-editable and linkable-title to ExhibitList', async () => {
-    mockSearchExhibits.mockResolvedValue([makeResult()]);
+  it('passes always-editable and linkable-title to every per-row list', async () => {
+    mockSearchExhibits.mockResolvedValue([
+      makeResult({ file: makeFile({ id: 'f1' }) }),
+      makeResult({ file: makeFile({ id: 'f2' }) }),
+    ]);
     const wrapper = mountSearch();
     await lastNameInput(wrapper).setValue('Smith');
     await wrapper.find('.filter-panel').trigger('submit');
     await flushPromises();
 
-    const stub = wrapper.find('.exhibit-list-stub');
-    expect(stub.attributes('data-editable')).toBe('true');
-    expect(stub.attributes('data-linkable')).toBe('true');
+    const stubs = wrapper.findAll('.exhibit-list-stub');
+    expect(stubs).toHaveLength(2);
+    for (const stub of stubs) {
+      expect(stub.attributes('data-editable')).toBe('true');
+      expect(stub.attributes('data-linkable')).toBe('true');
+    }
+  });
+
+  it('renders a col-1 status chip with the classification value per row', async () => {
+    mockSearchExhibits.mockResolvedValue([
+      makeResult({
+        file: makeFile({ id: 'f1', status: 'Entered', markedValue: 'C', enteredValue: '12' }),
+      }),
+      makeResult({ file: makeFile({ id: 'f2', status: 'Marked', markedValue: 'A' }) }),
+      makeResult({ file: makeFile({ id: 'f3', status: 'Unclassified' }) }),
+    ]);
+    const wrapper = mountSearch();
+    await lastNameInput(wrapper).setValue('Smith');
+    await wrapper.find('.filter-panel').trigger('submit');
+    await flushPromises();
+
+    const chips = wrapper.findAll('.status-cell .chip');
+    expect(chips).toHaveLength(3);
+    // Terminal status only: an Entered exhibit shows its Entered value, not the Marked letter.
+    expect(chips[0].classes()).toContain('chip-entered');
+    expect(chips[0].text()).toBe('Entered 12');
+    expect(chips[1].classes()).toContain('chip-marked');
+    expect(chips[1].text()).toBe('Marked A');
+    expect(chips[2].classes()).toContain('chip-unclassified');
+    expect(chips[2].text()).toBe('Unclassified');
+  });
+
+  it('excludes Removed exhibits from the result rows', async () => {
+    mockSearchExhibits.mockResolvedValue([
+      makeResult({ file: makeFile({ id: 'f1', originalFileName: 'kept.pdf', status: 'Marked', markedValue: 'A' }) }),
+      makeResult({ file: makeFile({ id: 'f2', originalFileName: 'gone.pdf', status: 'Removed' }) }),
+    ]);
+    const wrapper = mountSearch();
+    await lastNameInput(wrapper).setValue('Smith');
+    await wrapper.find('.filter-panel').trigger('submit');
+    await flushPromises();
+
+    const lists = wrapper.findAll('.exhibit-list-stub');
+    expect(lists).toHaveLength(1);
+    expect(wrapper.findAll('.status-cell .chip')).toHaveLength(1);
+    expect(wrapper.find('.stub-entry').text()).toContain('kept.pdf');
   });
 
   it('patches the row in place when ExhibitList emits file-updated', async () => {

@@ -265,9 +265,9 @@ const submitForm = async () => {
         </div>
       </div>
 
-      <!-- Prior exhibits panel (editable) -->
+      <!-- Attached exhibits panel (editable) -->
       <div v-if="uniqueFileNumbers.length > 0" class="prior-exhibits-section">
-        <h2>Prior Exhibits</h2>
+        <h2>Attached Exhibits</h2>
 
         <p v-if="priorExhibitsError" class="prior-error">
           Could not load prior exhibit history. You can still proceed with the upload.
