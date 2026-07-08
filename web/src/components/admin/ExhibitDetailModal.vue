@@ -103,9 +103,26 @@ const saveNote = async () => {
         </button>
       </header>
 
-      <!-- All available details (read-only) -->
+      <!-- Submission info -->
       <section class="detail-section">
-        <h3>Details</h3>
+        <h3>Submission</h3>
+        <dl class="detail-grid">
+          <div><dt>Submission ID</dt><dd>{{ result.submissionId }}</dd></div>
+          <div><dt>Location</dt><dd>{{ result.location || '—' }}</dd></div>
+          <div><dt>Room</dt><dd>{{ result.room || '—' }}</dd></div>
+          <div><dt>Court date</dt><dd>{{ appearance.date || '—' }}</dd></div>
+          <div><dt>Court time</dt><dd>{{ appearance.time || '—' }}</dd></div>
+          <div><dt>Accused</dt><dd>{{ result.accusedName || '—' }}</dd></div>
+          <div class="detail-grid__wide">
+            <dt>File numbers</dt>
+            <dd>{{ result.fileNumbers.join(', ') || '—' }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <!-- Exhibit info -->
+      <section class="detail-section">
+        <h3>Exhibit</h3>
         <dl class="detail-grid">
           <div><dt>Status</dt><dd>{{ file.status ?? 'Unclassified' }}</dd></div>
           <div><dt>Marked</dt><dd>{{ file.markedValue ?? '—' }}</dd></div>
@@ -118,21 +135,24 @@ const saveNote = async () => {
             <dt>Entered at</dt>
             <dd>{{ file.enteredAt ? formatDateTime(file.enteredAt, true) : '—' }}</dd>
           </div>
-          <div><dt>Description</dt><dd>{{ file.description || '—' }}</dd></div>
-          <div><dt>File numbers</dt><dd>{{ result.fileNumbers.join(', ') || '—' }}</dd></div>
-          <div><dt>Accused</dt><dd>{{ result.accusedName || '—' }}</dd></div>
-          <div><dt>Court date</dt><dd>{{ appearance.date || '—' }}</dd></div>
-          <div><dt>Court time</dt><dd>{{ appearance.time || '—' }}</dd></div>
-          <div><dt>Location</dt><dd>{{ result.location || '—' }}</dd></div>
-          <div><dt>Room</dt><dd>{{ result.room || '—' }}</dd></div>
+          <div class="detail-grid__wide">
+            <dt>Description</dt>
+            <dd>{{ file.description || '—' }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <!-- File metadata -->
+      <section class="detail-section">
+        <h3>Metadata</h3>
+        <dl class="detail-grid">
+          <div><dt>Storage</dt><dd>{{ file.storageProvider }}</dd></div>
+          <div><dt>Content type</dt><dd>{{ file.contentType }}</dd></div>
+          <div><dt>File size</dt><dd>{{ formatFileSize(file.fileSize) }}</dd></div>
           <div>
             <dt>Submitted</dt>
             <dd>{{ result.submissionDate ? formatDateTime(result.submissionDate, true) : '—' }}</dd>
           </div>
-          <div><dt>Content type</dt><dd>{{ file.contentType }}</dd></div>
-          <div><dt>File size</dt><dd>{{ formatFileSize(file.fileSize) }}</dd></div>
-          <div><dt>Storage</dt><dd>{{ file.storageProvider }}</dd></div>
-          <div><dt>Submission ID</dt><dd>{{ result.submissionId }}</dd></div>
         </dl>
       </section>
 

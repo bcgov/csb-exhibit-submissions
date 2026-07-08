@@ -122,6 +122,28 @@ The body is always `{ "message": "…" }` (generic text for 500). When adding a 
 - **Email:** SMTP configuration in `appsettings.json`
 - **BC Gov design system:** BC Gov design tokens and fonts are imported for consistent styling
 
+### BC Gov Design Tokens (styling reference)
+
+Styling is driven by the official [`@bcgov/design-tokens`](https://www2.gov.bc.ca/gov/content/digital/design-system/foundations/design-tokens/glossary) package (`web/package.json`). Read this before writing or changing any SCSS.
+
+**How the tokens are organized upstream** (~200 tokens, grouped by type + intended usage):
+
+| Type | Purpose | Example token names (SCSS, non-prefixed) |
+|---|---|---|
+| **Surface** | Colour palettes/effects for styling UI elements | `$surface-color-primary-button-default`, `$surface-color-border-default`, `$surface-color-background-light-gray`, `$surface-shadow-medium` |
+| **Support** | Colours for messaging (status/alerts/warnings) | `$support-surface-color-danger`, `$support-border-color-success`, `$support-surface-color-warning` |
+| **Layout** | Sizing/spacing measures (mostly unitless) | `$layout-padding-medium`, `$layout-margin-large`, `$layout-border-radius-medium`, `$layout-border-width-small` |
+| **Typography** | Typescale values | `$typography-color-primary`, `$typography-color-link`, `$typography-font-size-body`, `$typography-font-size-label` |
+| **Icons** | Icon sizing/colour (unitless sizes) | `$icons-size-small`, `$icons-size-medium`, `$icons-size-large` |
+| **Theme** | Base palette (gray scale, etc.) | `$theme-gray-20`, `$theme-gray-30` |
+
+Naming reads left→right as `type[-subtype]-role-variant-state` (e.g. `surface-color-primary-button-hover`). Each token ships in a **prefixed** (`BCDS`/`bcds-` namespace, avoids collisions) and **non-prefixed** (matches Figma handoff) form; this repo uses the **non-prefixed** SCSS/CSS variants. Some tokens (layout/icon sizes) are **unitless** and need a `px`/unit suffix when consumed. Package is semver'd — treat major bumps as potentially breaking.
+
+**How this repo consumes them — always go through the aliases:**
+- CSS custom properties are loaded globally in `web/src/main.ts` (`@bcgov/design-tokens/css/variables.css`).
+- SCSS tokens are wrapped in [`web/src/styles/_variables.scss`](web/src/styles/_variables.scss), which `@use`s the package as `t` and re-exports semantic aliases (`$color-primary`, `$padding-medium`, `$font-size-body`, `$border-radius-default`, …). **Use these aliases in style partials**, not raw hex or magic numbers (see Code Style rules).
+- If no alias exists for a token you need, reference it directly as `t.$<token-name>` and add a new alias in `_variables.scss` rather than inlining a literal value.
+
 ## Environment Setup
 
 Copy `docker/.env.template` to `docker/.env` and fill in required values before running Docker services. The devcontainer (`.devcontainer/`) is the recommended environment — it includes .NET 10 SDK, Node 22, Docker-in-Docker, and all required VS Code extensions.

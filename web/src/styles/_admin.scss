@@ -500,6 +500,12 @@ $app-bar-height: 64px;
       gap: 2px;
     }
 
+    // Long-form fields (file numbers, description) span the full width so their
+    // value has room to wrap rather than being squeezed into one grid column.
+    .detail-grid__wide {
+      grid-column: 1 / -1;
+    }
+
     dt {
       font-size: $font-size-label;
       font-weight: 600;
