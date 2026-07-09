@@ -1,4 +1,5 @@
 using CES.API.Models;
+using CES.Business.Constants;
 using CES.Business.Interfaces;
 using CES.Business.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -74,6 +75,24 @@ namespace CES.API.Controllers
                 return BadRequest("fileNumberText is required.");
 
             var result = await _submissionService.GetSubmissionsByFileNumberAsync(fileNumberText);
+            return Ok(result);
+        }
+
+        [HttpGet]
+        [Route("api/submissions/exhibit-search")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> SearchExhibits([FromQuery] ExhibitSearchFilter filter)
+        {
+            var hasFileNumber = !string.IsNullOrWhiteSpace(filter.FileNumberText);
+            var hasAccusedName = !string.IsNullOrWhiteSpace(filter.AccusedName);
+
+            if (!hasFileNumber && !hasAccusedName)
+                return BadRequest("A file number or accused name is required.");
+
+            if (hasFileNumber && filter.FileNumberText!.Trim().Length < ExhibitSearchConstants.FileNumberMinLength)
+                return BadRequest($"File number must be at least {ExhibitSearchConstants.FileNumberMinLength} characters.");
+
+            var result = await _submissionService.SearchExhibitsAsync(filter);
             return Ok(result);
         }
 

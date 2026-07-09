@@ -66,6 +66,30 @@ namespace CES.API.Controllers
             return Ok(result);
         }
 
+        // Registry-only notes (CES-38 extension). Admin (JJ/registry) only — these are
+        // protected and never exposed to officers.
+        [HttpGet]
+        [Route("api/files/{fileId:guid}/notes")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetNotes(Guid fileId)
+        {
+            var result = await _fileService.GetExhibitNotesAsync(fileId);
+            return Ok(result);
+        }
+
+        [HttpPost]
+        [Route("api/files/{fileId:guid}/notes")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> AddNote(Guid fileId, [FromBody] AddExhibitNoteModel model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var createdBy = User.FindFirstValue(ClaimTypes.UserData) ?? "Admin";
+            var result = await _fileService.AddExhibitNoteAsync(fileId, model.NoteText, createdBy);
+            return Ok(result);
+        }
+
         [HttpGet]
         [Route("api/files/{fileId}/view")]
         // NOTE: intentionally left open — the frontend loads previews via a raw

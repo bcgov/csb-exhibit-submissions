@@ -313,6 +313,121 @@ public class FilesControllerTests : IClassFixture<TestWebApplicationFactory>
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    // ── Registry notes endpoints (CES-38 extension) ───────────────────────
+
+    [Fact]
+    public async Task AddNote_WithAdminRole_Returns200AndNote()
+    {
+        var fileId = await UploadFileAndGetId();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.AdminToken());
+
+        var response = await _client.PostAsJsonAsync($"/api/files/{fileId}/notes", new { noteText = "Registry only note" });
+        var body = await response.Content.ReadFromJsonAsync<NoteResult>();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        body!.NoteText.Should().Be("Registry only note");
+        body.Id.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task GetNotes_WithAdminRole_Returns200WithAddedNote()
+    {
+        var fileId = await UploadFileAndGetId();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.AdminToken());
+
+        await _client.PostAsJsonAsync($"/api/files/{fileId}/notes", new { noteText = "note one" });
+
+        var response = await _client.GetAsync($"/api/files/{fileId}/notes");
+        var notes = await response.Content.ReadFromJsonAsync<List<NoteResult>>();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        notes.Should().ContainSingle(n => n.NoteText == "note one");
+    }
+
+    [Fact]
+    public async Task Notes_DoNotAppearInChangeHistory()
+    {
+        var fileId = await UploadFileAndGetId();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.AdminToken());
+
+        await _client.PostAsJsonAsync($"/api/files/{fileId}/notes", new { noteText = "protected" });
+
+        var historyResponse = await _client.GetAsync($"/api/files/{fileId}/history");
+        var history = await historyResponse.Content.ReadFromJsonAsync<List<HistoryEntry>>();
+
+        history.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AddNote_EmptyText_Returns400()
+    {
+        var fileId = await UploadFileAndGetId();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.AdminToken());
+
+        var response = await _client.PostAsJsonAsync($"/api/files/{fileId}/notes", new { noteText = "   " });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task AddNote_UnknownFile_Returns404()
+    {
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.AdminToken());
+
+        var response = await _client.PostAsJsonAsync($"/api/files/{Guid.NewGuid()}/notes", new { noteText = "note" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task AddNote_WithUserRole_Returns403()
+    {
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.UserToken());
+
+        var response = await _client.PostAsJsonAsync($"/api/files/{Guid.NewGuid()}/notes", new { noteText = "note" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task GetNotes_WithUserRole_Returns403()
+    {
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.UserToken());
+
+        var response = await _client.GetAsync($"/api/files/{Guid.NewGuid()}/notes");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task AddNote_WithoutAuth_Returns401()
+    {
+        _client.DefaultRequestHeaders.Authorization = null;
+
+        var response = await _client.PostAsJsonAsync($"/api/files/{Guid.NewGuid()}/notes", new { noteText = "note" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task GetNotes_WithoutAuth_Returns401()
+    {
+        _client.DefaultRequestHeaders.Authorization = null;
+
+        var response = await _client.GetAsync($"/api/files/{Guid.NewGuid()}/notes");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    private record NoteResult(int Id, string NoteText, string? CreatedBy, DateTime CreatedAtUTC);
+
     private record PagedListResult(List<SubmissionListItem> Items, int TotalCount, int Page, int PageSize);
     private record SubmissionListItem(int Id, List<SubmissionFileItem> Files);
     private record SubmissionFileItem(Guid Id);

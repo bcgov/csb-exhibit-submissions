@@ -152,7 +152,7 @@ const removeExhibit = async (file: SubmissionFile) => {
       </div>
 
       <!-- Tickets section -->
-      <h3>Tickets ({{ submission.tickets?.length ?? 0 }})</h3>
+      <h2>Tickets ({{ submission.tickets?.length ?? 0 }})</h2>
       <table class="ticket-table">
         <thead>
           <tr>
@@ -172,7 +172,7 @@ const removeExhibit = async (file: SubmissionFile) => {
         </tbody>
       </table>
 
-      <h3>Submitted Evidence</h3>
+      <h2>Submitted Evidence</h2>
 
       <ExhibitList
         :entries="exhibitEntries"

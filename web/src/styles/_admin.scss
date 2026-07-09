@@ -32,7 +32,7 @@
       flex-direction: column;
       gap: $margin-xsmall;
       font-size: $font-size-small-body;
-      font-weight: 600;
+      font-weight: $font-weight-bold;
       color: $color-text-secondary;
     }
 
@@ -42,7 +42,7 @@
       min-height: 2rem;
       padding: $padding-small;
       font-size: $font-size-body;
-      font-weight: 400;
+      font-weight: $font-weight-regular;
       color: $color-text-primary;
       border: $border-width-small solid $color-border-medium;
       border-radius: $border-radius-default;
@@ -83,7 +83,7 @@
     border: $border-width-small solid $color-border;
     border-radius: $border-radius-large;
     overflow: hidden;
-    font-size: $font-size-small-body;
+    font-size: $font-size-body;
 
     thead {
       background: $color-bg-dark-blue;
@@ -92,7 +92,7 @@
         padding: 0.75rem;
         text-align: left;
         color: $color-text-invert;
-        font-weight: 600;
+        font-weight: $font-weight-bold;
         white-space: nowrap;
       }
     }
@@ -137,6 +137,157 @@
   }
 }
 
+// --- ExhibitSearch (CES-38) ---
+// Reuses the SubmissionListing filter-panel look and the SubmissionReview preview modal.
+
+.exhibit-search-page {
+  padding: $padding-xlarge;
+  max-width: 1280px;
+  margin: auto;
+
+  h1 {
+    margin-bottom: $margin-large;
+  }
+
+  .filter-panel {
+    background: $color-bg-light;
+    border: $border-width-small solid $color-border;
+    border-radius: $border-radius-large;
+    padding: $padding-medium;
+    margin-bottom: $margin-large;
+  }
+
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $margin-medium;
+    margin-bottom: $margin-small;
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: $margin-xsmall;
+      font-size: $font-size-small-body;
+      font-weight: $font-weight-bold;
+      color: $color-text-secondary;
+    }
+
+    input {
+      // WCAG 2.5.8: text field ≥ 32px target (component-rules.md → Text field).
+      min-height: 2rem;
+      padding: $padding-small;
+      font-size: $font-size-body;
+      font-weight: $font-weight-regular;
+      color: $color-text-primary;
+      border: $border-width-small solid $color-border-medium;
+      border-radius: $border-radius-default;
+      background: white;
+
+      &:focus-visible {
+        outline: $border-width-medium solid $color-text-link;
+        outline-offset: 1px;
+      }
+
+      &:hover {
+        border-color: $color-border-dark;
+      }
+    }
+  }
+
+  .helper-text {
+    font-size: $font-size-body;
+    color: $color-text-secondary;
+    margin-bottom: $margin-medium;
+  }
+
+  .filter-actions {
+    display: flex;
+    gap: $margin-small;
+  }
+
+  .validation-hint {
+    margin-top: $margin-small;
+    font-size: $font-size-small-body;
+    color: $color-text-secondary;
+    // Reserve one line of height so toggling the hint text doesn't shift layout
+    min-height: 1lh;
+  }
+
+  .loading-text {
+    color: $color-text-secondary;
+  }
+
+  .empty-state {
+    padding: $padding-large;
+    text-align: center;
+    color: $color-text-secondary;
+  }
+
+  // One row per exhibit: col-1 status chip (+ value), col-2 single-exhibit ExhibitList.
+  .exhibit-results-scroll {
+    overflow-x: auto;
+  }
+
+  .exhibit-results-table {
+    width: 100%;
+    border-collapse: collapse;
+
+    td {
+      vertical-align: top;
+      padding: $padding-medium 0;
+      border-top: $border-width-small solid $color-border;
+    }
+
+    tr:first-child td {
+      border-top: none;
+    }
+
+    .status-cell {
+      width: 1%;
+      white-space: nowrap;
+      padding-right: $padding-medium;
+    }
+
+    .list-cell {
+      width: 100%;
+    }
+  }
+
+  .preview-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: $color-overlay;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      max-width: 1000px;
+      width: 90%;
+      max-height: 90vh;
+      position: relative;
+
+      img,
+      video,
+      iframe {
+        max-width: 100%;
+        max-height: 70vh;
+      }
+    }
+
+    .close {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+    }
+  }
+}
+
 // --- SubmissionReview ---
 
 .review-page {
@@ -171,7 +322,7 @@
   .package-error {
     margin-bottom: 30px;
     color: $color-danger;
-    font-size: 0.9rem;
+    font-size: $font-size-small-body;
   }
 
   .ticket-table {
@@ -183,7 +334,7 @@
     td {
       border: $border-width-small solid $color-border;
       padding: 0.6rem 0.75rem;
-      font-size: 0.9rem;
+      font-size: $font-size-body;
     }
 
     thead {
@@ -277,7 +428,7 @@
   .accept-error {
     margin-top: 8px;
     color: $color-danger;
-    font-size: 0.9rem;
+    font-size: $font-size-small-body;
   }
 
   .preview-modal {
@@ -311,6 +462,225 @@
       position: absolute;
       top: 5px;
       right: 5px;
+    }
+  }
+}
+
+// --- ExhibitDetailModal (CES-38 extension) ---
+
+// Vuetify's default v-app-bar height — the modal must clear it so the fixed header
+// never overlaps the popup's title.
+$app-bar-height: 64px;
+
+.exhibit-detail-overlay {
+  position: fixed;
+  inset: 0;
+  background: $color-overlay;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: $padding-large;
+  // Push the dialog below the app bar; the header stays visible and usable.
+  padding-top: calc(#{$app-bar-height} + #{$padding-large});
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.exhibit-detail-dialog {
+  background: white;
+  border-radius: $border-radius-large;
+  max-width: 820px;
+  width: 100%;
+  // Horizontal centring only; vertical placement is handled by the overlay's
+  // flex-start + top padding so the dialog always clears the header.
+  margin: 0 auto;
+  padding: $padding-large;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+
+  .exhibit-detail-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: $margin-medium;
+    margin-bottom: $margin-large;
+
+    h2 {
+      word-break: break-word;
+      margin: 0;
+    }
+  }
+
+  .detail-section {
+    margin-bottom: $margin-large;
+
+    h3 {
+      margin-bottom: $margin-small;
+      border-bottom: $border-width-small solid $color-border;
+      padding-bottom: $margin-xsmall;
+    }
+  }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: $margin-small $margin-medium;
+    margin: 0;
+
+    div {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    // Long-form fields (file numbers, description) span the full width so their
+    // value has room to wrap rather than being squeezed into one grid column.
+    .detail-grid__wide {
+      grid-column: 1 / -1;
+    }
+
+    dt {
+      font-size: $font-size-label;
+      font-weight: $font-weight-bold;
+      color: $color-text-secondary;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    dd {
+      margin: 0;
+      color: $color-text-primary;
+      word-break: break-word;
+    }
+  }
+
+  .detail-status {
+    color: $color-text-secondary;
+    font-size: $font-size-small-body;
+  }
+
+  .detail-error {
+    color: $color-danger;
+  }
+
+  .detail-history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: $font-size-body;
+
+    th,
+    td {
+      border: $border-width-small solid $color-border;
+      padding: 0.4rem 0.55rem;
+      text-align: left;
+    }
+
+    thead {
+      background: $color-bg-light;
+    }
+  }
+
+  // --- Registry notes ---
+
+  .notes-section {
+    background: $color-bg-light-blue;
+    border: $border-width-small solid $color-border;
+    border-radius: $border-radius-large;
+    padding: $padding-medium;
+  }
+
+  .notes-heading {
+    display: flex;
+    align-items: center;
+    gap: $margin-small;
+
+    h3 {
+      border: none;
+      padding: 0;
+      margin: 0;
+    }
+  }
+
+  .registry-badge {
+    font-size: $font-size-label;
+    font-weight: $font-weight-bold;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: $color-danger;
+    background: $color-danger-bg;
+    border: $border-width-small solid $color-danger;
+    border-radius: $border-radius-default;
+    padding: 2px 8px;
+  }
+
+  .notes-list {
+    list-style: none;
+    padding: 0;
+    margin: $margin-small 0;
+    display: flex;
+    flex-direction: column;
+    gap: $margin-small;
+  }
+
+  .note-item {
+    background: white;
+    border: $border-width-small solid $color-border;
+    border-radius: $border-radius-default;
+    padding: $padding-small;
+
+    .note-text {
+      margin: 0 0 4px;
+      color: $color-text-primary;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .note-meta {
+      margin: 0;
+      font-size: $font-size-label;
+      color: $color-text-secondary;
+    }
+  }
+
+  .note-add {
+    margin-top: $margin-medium;
+
+    label {
+      display: block;
+      font-weight: $font-weight-bold;
+      font-size: $font-size-small-body;
+      margin-bottom: $margin-xsmall;
+    }
+
+    textarea {
+      width: 100%;
+      padding: $padding-small;
+      border: $border-width-small solid $color-border-medium;
+      border-radius: $border-radius-default;
+      font-family: inherit;
+      font-size: $font-size-body;
+      resize: vertical;
+
+      &:focus-visible {
+        outline: $border-width-medium solid $color-text-link;
+        outline-offset: 1px;
+      }
+    }
+  }
+
+  .note-add-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $margin-medium;
+    margin-top: $margin-xsmall;
+  }
+
+  .note-counter {
+    font-size: $font-size-label;
+    color: $color-text-secondary;
+
+    &.over {
+      color: $color-danger;
     }
   }
 }

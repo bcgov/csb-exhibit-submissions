@@ -211,22 +211,57 @@ namespace CES.Business.Services
                 .ToListAsync();
         }
 
-        private static SubmissionFile ToSubmissionFile(StoredFiles f) => new()
+        public async Task<List<ExhibitNoteModel>> GetExhibitNotesAsync(Guid fileId)
         {
-            Id = f.Id,
-            OriginalFileName = f.OriginalFileName,
-            StoredFileName = f.StoredFileName,
-            ContentType = f.ContentType,
-            FileSize = f.FileSize,
-            StorageProvider = f.StorageProvider,
-            Url = "",
-            Status = f.DeriveStatus(),
-            MarkedValue = f.MarkedValue,
-            MarkedAt = f.MarkedAt,
-            EnteredValue = f.EnteredValue,
-            EnteredAt = f.EnteredAt,
-            Description = f.Description,
-            DeletedAt = f.DeletedAtUTC,
-        };
+            var fileExists = await _dataStore.StoredFiles.AnyAsync(f => f.Id == fileId);
+            if (!fileExists)
+                throw new KeyNotFoundException($"File {fileId} not found.");
+
+            return await _dataStore.ExhibitNotes
+                .Where(n => n.FileId == fileId)
+                .OrderBy(n => n.CreatedAtUTC)
+                .Select(n => new ExhibitNoteModel
+                {
+                    Id = n.Id,
+                    NoteText = n.NoteText,
+                    CreatedBy = n.CreatedBy,
+                    CreatedAtUTC = n.CreatedAtUTC,
+                })
+                .ToListAsync();
+        }
+
+        public async Task<ExhibitNoteModel> AddExhibitNoteAsync(Guid fileId, string noteText, string createdBy)
+        {
+            var fileExists = await _dataStore.StoredFiles.AnyAsync(f => f.Id == fileId);
+            if (!fileExists)
+                throw new KeyNotFoundException($"File {fileId} not found.");
+
+            var trimmed = (noteText ?? string.Empty).Trim();
+            if (trimmed.Length == 0)
+                throw new ArgumentException("Note text is required.");
+            if (trimmed.Length > ExhibitNoteConstants.NoteMaxLength)
+                throw new ArgumentException($"Note cannot exceed {ExhibitNoteConstants.NoteMaxLength} characters.");
+
+            var note = new ExhibitNote
+            {
+                FileId = fileId,
+                NoteText = trimmed,
+                CreatedBy = createdBy,
+                CreatedAtUTC = SystemDate.UtcNow(),
+            };
+
+            _dataStore.ExhibitNotes.Add(note);
+            await _dataStore.SaveChangesAsync();
+
+            return new ExhibitNoteModel
+            {
+                Id = note.Id,
+                NoteText = note.NoteText,
+                CreatedBy = note.CreatedBy,
+                CreatedAtUTC = note.CreatedAtUTC,
+            };
+        }
+
+        private static SubmissionFile ToSubmissionFile(StoredFiles f) => f.ToSubmissionFile();
     }
 }

@@ -46,7 +46,7 @@
   }
 
   .offence-list {
-    font-size: 0.7rem;
+    font-size: $font-size-label;
   }
 }
 
@@ -65,11 +65,11 @@
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.25);
 
   .selected-count {
-    font-size: 0.95rem;
+    font-size: $font-size-body;
   }
 
   .upload-btn {
-    font-weight: 600;
+    font-weight: $font-weight-bold;
   }
 }
 
@@ -104,7 +104,7 @@
     .ticket-panel-header {
       padding: 0.6rem 1rem;
       background: $color-bg-light;
-      font-weight: 600;
+      font-weight: $font-weight-bold;
       border-bottom: $border-width-small solid $color-border;
       border-radius: $border-radius-large $border-radius-large 0 0;
       display: flex;
@@ -127,17 +127,17 @@
 
     .ticket-info {
       flex: 1;
-      font-size: 0.9rem;
+      font-size: $font-size-small-body;
     }
 
     .ticket-file-num {
-      font-weight: 600;
+      font-weight: $font-weight-bold;
       font-family: monospace;
     }
 
     .ticket-detail {
       color: $color-text-secondary;
-      font-size: 0.8rem;
+      font-size: $font-size-label;
     }
 
     .remove-btn {
@@ -148,20 +148,23 @@
   .prior-exhibits-section {
     margin-bottom: $margin-large;
 
-    h4 {
+    // Semantically an h2 (page subsection under the "Exhibit Upload" h1). Kept
+    // compact with an on-scale token — same pattern as `.modal-title` — since a
+    // full 32px heading is too heavy for this in-form label.
+    h2 {
       margin-bottom: $margin-small;
-      font-size: 0.95rem;
+      font-size: $font-size-large-body;
     }
   }
 
   .prior-empty {
-    font-size: 0.82rem;
+    font-size: $font-size-small-body;
     color: $color-text-disabled;
     font-style: italic;
   }
 
   .prior-error {
-    font-size: 0.82rem;
+    font-size: $font-size-small-body;
     color: $color-danger;
   }
 

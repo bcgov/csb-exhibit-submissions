@@ -5,7 +5,7 @@
       <div class="col-md-6 col-lg-4">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h3 class="card-title text-center mb-4">System Login</h3>
+            <h1 class="card-title text-center mb-4">System Login</h1>
 
             <div class="alert alert-secondary text-center small mb-4">
               Local Development Authentication
@@ -92,7 +92,7 @@ const handleLogin = async () => {
     //if no redirectPath send to determined base route for role
     if (!redirectPath) {
       const authStore = useAuthStore();
-      if (authStore.hasRole('Admin')) await router.push({ name: 'AdminSubmissionList' });
+      if (authStore.hasRole('Admin')) await router.push({ name: 'AdminExhibitSearch' });
       else if (authStore.hasRole('User')) await router.push({ name: 'OfficerCourtList' });
     } else await router.push(redirectPath);
   } catch (error) {

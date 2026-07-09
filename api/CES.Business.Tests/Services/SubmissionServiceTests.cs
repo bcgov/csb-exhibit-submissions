@@ -778,4 +778,149 @@ public class SubmissionServiceTests : IDisposable
     // Per-file download is covered in FileServiceTests (GetExhibitContentAsync) and
     // the controller integration tests. The whole-submission ZIP package is retired
     // (CES-39, Phase 6).
+
+    // ── SearchExhibitsAsync (CES-38) ──────────────────────────────────────────
+
+    private static StoredFiles ClassifiedFile(string? marked = null, string? entered = null, bool removed = false)
+    {
+        var f = BuildStoredFile();
+        f.MarkedValue = marked;
+        f.EnteredValue = entered;
+        f.IsDeleted = removed;
+        return f;
+    }
+
+    [Fact]
+    public async Task SearchExhibits_FileNumberContainsMatch_ReturnsExhibitsAcrossSubmissions()
+    {
+        var sub1 = BuildSubmission("AH123456789-1", "APP001");
+        sub1.Files.Add(BuildStoredFile());
+        var sub2 = BuildSubmission("AH123456789-2", "APP002");
+        sub2.Files.Add(BuildStoredFile());
+        var other = BuildSubmission("ZZ999888", "APP003");
+        other.Files.Add(BuildStoredFile());
+        _db.Submissions.AddRange(sub1, sub2, other);
+        await _db.SaveChangesAsync();
+
+        var result = await _service.SearchExhibitsAsync(new ExhibitSearchFilter { FileNumberText = "AH1234" });
+
+        result.Should().HaveCount(2);
+        result.Select(r => r.SubmissionId).Should().BeEquivalentTo(new[] { sub1.Id, sub2.Id });
+    }
+
+    [Fact]
+    public async Task SearchExhibits_LastNameContainsMatch_FiltersByAccusedName()
+    {
+        var smith = BuildSubmission("FILE001", "APP001");
+        smith.Files.Add(BuildStoredFile());
+        var jones = BuildSubmission("FILE002", "APP002");
+        jones.Tickets.First().AccusedName = "Jones, Mary";
+        jones.Files.Add(BuildStoredFile());
+        _db.Submissions.AddRange(smith, jones);
+        await _db.SaveChangesAsync();
+
+        var result = await _service.SearchExhibitsAsync(new ExhibitSearchFilter { AccusedName = "smith" });
+
+        result.Should().HaveCount(1);
+        result[0].SubmissionId.Should().Be(smith.Id);
+        result[0].AccusedName.Should().Be("Smith, John");
+    }
+
+    [Fact]
+    public async Task SearchExhibits_DateRange_FiltersOnAppearanceDate()
+    {
+        var july = BuildSubmission("SHARED123", "APP001");
+        july.Tickets.First().AppearanceDateTime = "2026-07-07T09:00:00";
+        july.Files.Add(BuildStoredFile());
+        var august = BuildSubmission("SHARED123", "APP002");
+        august.Tickets.First().AppearanceDateTime = "2026-08-01T09:00:00";
+        august.Files.Add(BuildStoredFile());
+        _db.Submissions.AddRange(july, august);
+        await _db.SaveChangesAsync();
+
+        var result = await _service.SearchExhibitsAsync(new ExhibitSearchFilter
+        {
+            FileNumberText = "SHARED123",
+            AppearanceDateFrom = new DateTime(2026, 7, 1),
+            AppearanceDateTo = new DateTime(2026, 7, 31),
+        });
+
+        result.Should().HaveCount(1);
+        result[0].SubmissionId.Should().Be(july.Id);
+    }
+
+    [Fact]
+    public async Task SearchExhibits_SortOrder_MarkedThenEnteredThenUnclassified()
+    {
+        var sub = BuildSubmission("FILE001");
+        sub.Files.Add(ClassifiedFile(marked: "B"));
+        sub.Files.Add(ClassifiedFile(marked: "A"));
+        sub.Files.Add(ClassifiedFile(entered: "10"));
+        sub.Files.Add(ClassifiedFile(entered: "2"));
+        // Marked + Entered → sorts in the Entered group by its number (terminal state).
+        sub.Files.Add(ClassifiedFile(marked: "Z", entered: "5"));
+        sub.Files.Add(ClassifiedFile());
+        _db.Submissions.Add(sub);
+        await _db.SaveChangesAsync();
+
+        var result = await _service.SearchExhibitsAsync(new ExhibitSearchFilter { FileNumberText = "FILE001" });
+
+        var order = result
+            .Select(r => r.File.EnteredValue ?? r.File.MarkedValue ?? "-")
+            .ToList();
+        order.Should().Equal("A", "B", "2", "5", "10", "-");
+    }
+
+    [Fact]
+    public async Task SearchExhibits_ExcludesRemovedFiles()
+    {
+        var sub = BuildSubmission("FILE001");
+        sub.Files.Add(BuildStoredFile());
+        sub.Files.Add(ClassifiedFile(removed: true));
+        _db.Submissions.Add(sub);
+        await _db.SaveChangesAsync();
+
+        var result = await _service.SearchExhibitsAsync(new ExhibitSearchFilter { FileNumberText = "FILE001" });
+
+        result.Should().HaveCount(1);
+        result[0].File.Status.Should().NotBe("Removed");
+    }
+
+    [Fact]
+    public async Task SearchExhibits_ExcludesDeletedSubmissions()
+    {
+        var active = BuildSubmission("FILE001");
+        active.Files.Add(BuildStoredFile());
+        var deleted = BuildSubmission("FILE001");
+        deleted.IsDeleted = true;
+        deleted.Files.Add(BuildStoredFile());
+        _db.Submissions.AddRange(active, deleted);
+        await _db.SaveChangesAsync();
+
+        var result = await _service.SearchExhibitsAsync(new ExhibitSearchFilter { FileNumberText = "FILE001" });
+
+        result.Should().HaveCount(1);
+        result[0].SubmissionId.Should().Be(active.Id);
+    }
+
+    [Fact]
+    public async Task SearchExhibits_PopulatesSubmissionContext()
+    {
+        var sub = BuildSubmission("FILE001", "APP001");
+        sub.RoomText = "Courtroom 1";
+        sub.Tickets.First().AppearanceDateTime = "2026-07-07T09:00:00";
+        sub.Files.Add(BuildStoredFile());
+        _db.Submissions.Add(sub);
+        await _db.SaveChangesAsync();
+
+        var result = await _service.SearchExhibitsAsync(new ExhibitSearchFilter { FileNumberText = "FILE001" });
+
+        var row = result.Single();
+        row.SubmissionId.Should().Be(sub.Id);
+        row.Location.Should().Be("Test Court");
+        row.Room.Should().Be("Courtroom 1");
+        row.AppearanceDateTime.Should().Be("2026-07-07T09:00:00");
+        row.FileNumbers.Should().Equal("FILE001");
+        row.SubmissionDate.Should().NotBeNull();
+    }
 }

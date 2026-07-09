@@ -1,6 +1,6 @@
 <template>
   <div class="search-container">
-    <h2>Court Search</h2>
+    <h1>Court Search</h1>
 
     <form @submit.prevent="onSubmit" class="search-form">
       <div class="form-group">

@@ -4,7 +4,7 @@
 
     <div class="tools-grid">
       <div v-for="tool in tools" :key="tool.name" class="tool-card">
-        <h3>{{ tool.name }}</h3>
+        <h2>{{ tool.name }}</h2>
         <p>{{ tool.description }}</p>
 
         <button
