@@ -24,6 +24,7 @@ vi.mock('@/services/SubmissionService', () => ({
     markExhibit: mockMarkExhibit,
     enterExhibit: mockEnterExhibit,
     updateExhibitDescription: mockUpdateExhibitDescription,
+    updateEvidenceSource: vi.fn(),
   }),
 }));
 

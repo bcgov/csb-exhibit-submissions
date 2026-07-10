@@ -12,8 +12,14 @@ import ExhibitDetailModal from './ExhibitDetailModal.vue';
 import ExhibitList from '../shared/ExhibitList.vue';
 import FileViewer from '../shared/FileViewer.vue';
 
-const { searchExhibits, markExhibit, enterExhibit, updateExhibitDescription, updateEvidenceSource } =
-  useSubmissionService();
+const {
+  searchExhibits,
+  markExhibit,
+  enterExhibit,
+  updateExhibitDescription,
+  updateEvidenceSource,
+  removeFile,
+} = useSubmissionService();
 
 const filter = reactive<ExhibitSearchFilter>({
   fileNumberText: '',
@@ -28,6 +34,12 @@ const searched = ref(false);
 const errorMessage = ref<string | null>(null);
 const previewFile = ref<SubmissionFile | null>(null);
 const detailResult = ref<ExhibitSearchResultModel | null>(null);
+
+// An exhibit may only be removed from this page while it is still fully unclassified —
+// once it has been Marked or Entered it has been called in court and removal stays on the
+// Submission Review flow (see exhibit-search.md open question).
+const isUnclassified = (file: SubmissionFile): boolean =>
+  file.markedValue == null && file.enteredValue == null;
 
 const getFileUrl = (fileId: string, action: 'view' | 'download') =>
   `/api/files/${fileId}/${action}`;
@@ -176,6 +188,23 @@ const downloadFile = async (file: SubmissionFile) => {
   }
 };
 
+// Remove an (unclassified) exhibit. On success, flag it Removed in place — resultRows
+// filters Removed files out, so the row drops from the list.
+const removeExhibit = async (file: SubmissionFile) => {
+  errorMessage.value = null;
+  if (!window.confirm(`Remove "${file.originalFileName}"? This cannot be undone.`)) return;
+  const success = await removeFile(file.id);
+  if (success) {
+    results.value = results.value.map((r) =>
+      r.file.id === file.id
+        ? { ...r, file: { ...r.file, status: 'Removed', deletedAt: new Date().toISOString() } }
+        : r,
+    );
+  } else {
+    errorMessage.value = 'Could not remove exhibit.';
+  }
+};
+
 // Patch the matching row in place so the classification badge/state updates after an
 // inline auto-save, preserving the client-attached view/download URLs.
 const updateFileInResults = (updated: SubmissionFile) => {
@@ -245,7 +274,7 @@ const updateFileInResults = (updated: SubmissionFile) => {
                   :always-editable="true"
                   :show-removed="false"
                   :can-download="true"
-                  :can-remove="false"
+                  :can-remove="isUnclassified(row.entry.file)"
                   :linkable-title="true"
                   :mark-fn="(id: string, v: string) => markExhibit(id, { markedValue: v })"
                   :enter-fn="(id: string, v: string) => enterExhibit(id, { enteredValue: v })"
@@ -254,6 +283,7 @@ const updateFileInResults = (updated: SubmissionFile) => {
                   @file-updated="updateFileInResults"
                   @preview-file="openPreview"
                   @download-file="downloadFile"
+                  @remove-file="removeExhibit"
                   @title-click="openDetails"
                 />
               </td>

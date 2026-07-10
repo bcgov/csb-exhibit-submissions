@@ -15,6 +15,7 @@ vi.mock('@/services/SubmissionService', () => ({
     markExhibit: mockMarkExhibit,
     enterExhibit: mockEnterExhibit,
     updateExhibitDescription: mockUpdateExhibitDescription,
+    updateEvidenceSource: vi.fn(),
   }),
 }));
 
@@ -56,6 +57,7 @@ const ExhibitListStub = {
     'markFn',
     'enterFn',
     'descriptionFn',
+    'evidenceSourceFn',
   ],
   emits: ['fileUpdated', 'previewFile', 'downloadFile', 'removeFile', 'titleClick'],
   template: `

@@ -28,6 +28,7 @@ const HISTORY_FIELD_LABELS: Record<string, string> = {
   MarkedValue: 'Marked',
   EnteredValue: 'Entered',
   Description: 'Description',
+  EvidenceSourceType: 'Source',
 };
 const historyFieldLabel = (fieldName: string): string =>
   HISTORY_FIELD_LABELS[fieldName] ?? fieldName;
@@ -130,6 +131,7 @@ const saveNote = async () => {
             <dt>Marked at</dt>
             <dd>{{ file.markedAt ? formatDateTime(file.markedAt, true) : '—' }}</dd>
           </div>
+          <div><dt>Source</dt><dd>{{ file.evidenceSourceType ?? '—' }}</dd></div>
           <div><dt>Entered</dt><dd>{{ file.enteredValue ?? '—' }}</dd></div>
           <div>
             <dt>Entered at</dt>

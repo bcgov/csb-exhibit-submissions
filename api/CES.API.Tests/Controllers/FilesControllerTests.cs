@@ -262,6 +262,97 @@ public class FilesControllerTests : IClassFixture<TestWebApplicationFactory>
         body!.Description.Should().Be("admin note");
     }
 
+    // ── Evidence source endpoint ──────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdateEvidenceSource_WithUserRole_Returns200AndUpdatedFile()
+    {
+        var fileId = await UploadFileAndGetId();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.UserToken());
+
+        var response = await _client.PatchAsJsonAsync($"/api/files/{fileId}/evidence-source", new { evidenceSourceType = "BodyCam" });
+        var body = await response.Content.ReadFromJsonAsync<ClassificationFileResult>();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        body!.EvidenceSourceType.Should().Be("BodyCam");
+    }
+
+    [Fact]
+    public async Task UpdateEvidenceSource_InvalidValue_Returns400()
+    {
+        var fileId = await UploadFileAndGetId();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.UserToken());
+
+        var response = await _client.PatchAsJsonAsync($"/api/files/{fileId}/evidence-source", new { evidenceSourceType = "Drone" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task UpdateEvidenceSource_EmptyString_Returns200AndClears()
+    {
+        var fileId = await UploadFileAndGetId();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.UserToken());
+        await _client.PatchAsJsonAsync($"/api/files/{fileId}/evidence-source", new { evidenceSourceType = "DashCam" });
+
+        var response = await _client.PatchAsJsonAsync($"/api/files/{fileId}/evidence-source", new { evidenceSourceType = "" });
+        var body = await response.Content.ReadFromJsonAsync<ClassificationFileResult>();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        body!.EvidenceSourceType.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task UpdateEvidenceSource_WhenEntered_Returns409()
+    {
+        var fileId = await UploadFileAndGetId();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.UserToken());
+        await _client.PostAsJsonAsync($"/api/files/{fileId}/enter", new { enteredValue = "5" });
+
+        var response = await _client.PatchAsJsonAsync($"/api/files/{fileId}/evidence-source", new { evidenceSourceType = "BodyCam" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task UpdateEvidenceSource_WithoutAuth_Returns401()
+    {
+        _client.DefaultRequestHeaders.Authorization = null;
+
+        var response = await _client.PatchAsJsonAsync($"/api/files/{Guid.NewGuid()}/evidence-source", new { evidenceSourceType = "BodyCam" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task UpdateEvidenceSource_UnknownFile_Returns404()
+    {
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.UserToken());
+
+        var response = await _client.PatchAsJsonAsync($"/api/files/{Guid.NewGuid()}/evidence-source", new { evidenceSourceType = "BodyCam" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task UpdateEvidenceSource_WritesHistoryEntry()
+    {
+        var fileId = await UploadFileAndGetId();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.UserToken());
+        await _client.PatchAsJsonAsync($"/api/files/{fileId}/evidence-source", new { evidenceSourceType = "Other" });
+
+        var response = await _client.GetAsync($"/api/files/{fileId}/history");
+        var history = await response.Content.ReadFromJsonAsync<List<HistoryEntry>>();
+
+        history.Should().ContainSingle(h => h.FieldName == "EvidenceSourceType" && h.NewValue == "Other");
+    }
+
     // ── History endpoint ──────────────────────────────────────────────────
 
     [Fact]
@@ -437,7 +528,8 @@ public class FilesControllerTests : IClassFixture<TestWebApplicationFactory>
         string Status,
         string? MarkedValue,
         string? EnteredValue,
-        string? Description);
+        string? Description,
+        string? EvidenceSourceType);
     private record HistoryEntry(
         string FieldName,
         string? OldValue,

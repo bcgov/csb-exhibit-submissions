@@ -307,6 +307,90 @@ public class FileServiceTests : IDisposable
             .WithMessage("*250*");
     }
 
+    // ── UpdateExhibitEvidenceSourceAsync ──────────────────────────────────
+
+    [Fact]
+    public async Task UpdateEvidenceSource_PersistsAndAudits()
+    {
+        var file = SeedFile();
+
+        var result = await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "BodyCam", "officer@test.ca");
+
+        var dbFile = _db.StoredFiles.Find(file.Id)!;
+        dbFile.EvidenceSourceType.Should().Be("BodyCam");
+
+        var log = _db.SubmissionAuditLogs.Single(l => l.FileId == file.Id && l.FieldName == "EvidenceSourceType");
+        log.NewValue.Should().Be("BodyCam");
+        log.ChangedBy.Should().Be("officer@test.ca");
+
+        result.EvidenceSourceType.Should().Be("BodyCam");
+    }
+
+    [Fact]
+    public async Task UpdateEvidenceSource_Rejects_WhenEntered()
+    {
+        var file = SeedFile(enteredValue: "5", enteredAt: DateTime.UtcNow);
+
+        var act = async () => await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "DashCam", "officer@test.ca");
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Entered*");
+    }
+
+    [Fact]
+    public async Task UpdateEvidenceSource_AdminOverride_Succeeds_WhenEntered()
+    {
+        var file = SeedFile(enteredValue: "5", enteredAt: DateTime.UtcNow);
+
+        var result = await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "DashCam", "admin@test.ca", isAdminOverride: true);
+
+        result.EvidenceSourceType.Should().Be("DashCam");
+        _db.StoredFiles.Find(file.Id)!.EvidenceSourceType.Should().Be("DashCam");
+    }
+
+    [Fact]
+    public async Task UpdateEvidenceSource_Rejects_InvalidValue()
+    {
+        var file = SeedFile();
+
+        var act = async () => await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "Drone", "officer@test.ca");
+
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*BodyCam*");
+    }
+
+    [Fact]
+    public async Task UpdateEvidenceSource_AllowsEmpty_ToUnset()
+    {
+        var file = SeedFile();
+        await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "BodyCam", "officer@test.ca");
+
+        var result = await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "", "officer@test.ca");
+
+        result.EvidenceSourceType.Should().BeNull();
+        _db.StoredFiles.Find(file.Id)!.EvidenceSourceType.Should().BeNull();
+        _db.SubmissionAuditLogs.Count(l => l.FileId == file.Id && l.FieldName == "EvidenceSourceType")
+            .Should().Be(2);
+    }
+
+    [Fact]
+    public async Task UpdateEvidenceSource_Succeeds_ForMarkedFile()
+    {
+        var file = SeedFile(markedValue: "A");
+
+        var result = await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "Other", "officer@test.ca");
+
+        result.EvidenceSourceType.Should().Be("Other");
+    }
+
+    [Fact]
+    public async Task UpdateEvidenceSource_Throws_WhenFileNotFound()
+    {
+        var act = async () => await _service.UpdateExhibitEvidenceSourceAsync(Guid.NewGuid(), "BodyCam", "officer@test.ca");
+
+        await act.Should().ThrowAsync<KeyNotFoundException>();
+    }
+
     // ── DeriveStatus extension ────────────────────────────────────────────
 
     [Fact]

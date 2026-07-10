@@ -301,6 +301,35 @@ describe('SubmissionService', () => {
     expect(result.description).toBe('key piece of evidence');
   });
 
+  it('updateEvidenceSource sends PATCH /api/files/:fileId/evidence-source and returns updated file', async () => {
+    const fileId = '550e8400-e29b-41d4-a716-446655440009';
+    const mockFile: SubmissionFile = {
+      id: fileId,
+      originalFileName: 'exhibit.mp4',
+      storedFileName: 'stored.mp4',
+      viewUrl: '',
+      downloadUrl: '',
+      contentType: 'video/mp4',
+      fileSize: 1024,
+      storageProvider: 'Local',
+      status: 'Unclassified',
+      evidenceSourceType: 'DashCam',
+    };
+    let capturedBody: unknown = null;
+    server.use(
+      http.patch(`/api/files/${fileId}/evidence-source`, async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json(mockFile);
+      }),
+    );
+
+    const { updateEvidenceSource } = useSubmissionService();
+    const result = await updateEvidenceSource(fileId, { evidenceSourceType: 'DashCam' });
+
+    expect(capturedBody).toMatchObject({ evidenceSourceType: 'DashCam' });
+    expect(result.evidenceSourceType).toBe('DashCam');
+  });
+
   it('searchExhibits builds query params and omits empty ones', async () => {
     let capturedUrl = '';
     server.use(
