@@ -302,6 +302,35 @@
     }
   }
 
+  .source-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    // Fixed width so it draws space from Description (flex: 1), leaving Marked/Entered untouched.
+    width: 140px;
+
+    label {
+      font-size: $font-size-label;
+      color: $color-text-secondary;
+      font-weight: $font-weight-bold;
+    }
+
+    select {
+      padding: 0.2rem 0.35rem;
+      font-size: $font-size-small-body;
+      border: 1px solid $color-border-medium;
+      border-radius: $border-radius-small;
+      background: white;
+      min-width: 70px;
+
+      &:disabled {
+        background: $color-bg-light;
+        color: $color-text-disabled;
+        cursor: not-allowed;
+      }
+    }
+  }
+
   .description-group {
     flex: 1;
     min-width: 180px;

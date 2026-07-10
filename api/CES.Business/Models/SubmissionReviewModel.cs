@@ -32,6 +32,7 @@ namespace CES.Business.Models
         public string? EnteredValue { get; set; }
         public DateTime? EnteredAt { get; set; }
         public string? Description { get; set; }
+        public string? EvidenceSourceType { get; set; }
         public DateTime? DeletedAt { get; set; }
     }
 }

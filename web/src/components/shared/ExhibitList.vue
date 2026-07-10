@@ -4,6 +4,7 @@ import {
   DESCRIPTION_MAX_LENGTH,
   ENTERED_MAX,
   ENTERED_MIN,
+  EVIDENCE_SOURCE_TYPES,
   MARKED_MIN,
   SAVE_INDICATOR_FADE_SECONDS,
   VIEWABLE_CONTENT_TYPE_PREFIXES,
@@ -24,6 +25,7 @@ const props = defineProps<{
   markFn: (fileId: string, value: string) => Promise<SubmissionFile>;
   enterFn: (fileId: string, value: string) => Promise<SubmissionFile>;
   descriptionFn: (fileId: string, description: string) => Promise<SubmissionFile>;
+  evidenceSourceFn: (fileId: string, value: string) => Promise<SubmissionFile>;
   /** When true, all classification controls are always enabled (admin mode: no windows, no locks). */
   alwaysEditable?: boolean;
   /** When true, Removed exhibits are shown greyed-out with no controls. Default: hidden. */
@@ -60,6 +62,7 @@ const HISTORY_FIELD_LABELS: Record<string, string> = {
   MarkedValue: 'Marked',
   EnteredValue: 'Entered',
   Description: 'Description',
+  EvidenceSourceType: 'Source',
 };
 
 const historyFieldLabel = (fieldName: string): string =>
@@ -128,6 +131,9 @@ const isEnteredEnabled = (file: SubmissionFile): boolean => {
 };
 
 const isDescriptionEnabled = (file: SubmissionFile): boolean =>
+  !!props.alwaysEditable || file.enteredValue == null;
+
+const isEvidenceSourceEnabled = (file: SubmissionFile): boolean =>
   !!props.alwaysEditable || file.enteredValue == null;
 
 const statusChipClass = (status?: string) => {
@@ -200,6 +206,17 @@ const onDescriptionBlur = async (file: SubmissionFile) => {
     showSaveSuccess(file.id);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Failed to save description.';
+    showSaveError(file.id, msg);
+  }
+};
+
+const onEvidenceSourceChange = async (file: SubmissionFile, value: string) => {
+  try {
+    const updated = await props.evidenceSourceFn(file.id, value);
+    emit('fileUpdated', updated);
+    showSaveSuccess(file.id);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to save source type.';
     showSaveError(file.id, msg);
   }
 };
@@ -329,6 +346,21 @@ const onDescriptionBlur = async (file: SubmissionFile) => {
           <span v-if="entry.file.enteredAt" class="timestamp-text">
             {{ formatClassificationDate(entry.file.enteredAt) }}
           </span>
+        </div>
+
+        <!-- Evidence source type -->
+        <div class="source-group">
+          <label>Source</label>
+          <select
+            :disabled="!isEvidenceSourceEnabled(entry.file)"
+            :value="entry.file.evidenceSourceType ?? ''"
+            @change="onEvidenceSourceChange(entry.file, ($event.target as HTMLSelectElement).value)"
+          >
+            <option value="">—</option>
+            <option v-for="opt in EVIDENCE_SOURCE_TYPES" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
+          </select>
         </div>
 
         <!-- Description -->

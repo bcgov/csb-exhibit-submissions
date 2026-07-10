@@ -57,6 +57,20 @@ namespace CES.API.Controllers
             return Ok(result);
         }
 
+        [HttpPatch]
+        [Route("api/files/{fileId:guid}/evidence-source")]
+        [Authorize(Roles = "User,Admin")]
+        public async Task<IActionResult> UpdateEvidenceSource(Guid fileId, [FromBody] ExhibitEvidenceSourceModel model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var isAdmin = User.IsInRole("Admin");
+            var changedBy = User.FindFirstValue(ClaimTypes.UserData) ?? (isAdmin ? "Admin" : "Officer");
+            var result = await _fileService.UpdateExhibitEvidenceSourceAsync(fileId, model.EvidenceSourceType, changedBy, isAdmin);
+            return Ok(result);
+        }
+
         [HttpGet]
         [Route("api/files/{fileId:guid}/history")]
         [Authorize(Roles = "User,Admin")]

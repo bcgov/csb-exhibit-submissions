@@ -38,6 +38,7 @@ namespace CES.Business.Models
         public string? EnteredValue { get; set; }
         public DateTime? EnteredAt { get; set; }
         public string? Description { get; set; }
+        public string? EvidenceSourceType { get; set; }
         // De-dup: one file, many tickets — the full ticket mapping for traceability.
         public List<string> AssociatedTickets { get; set; } = new();
     }

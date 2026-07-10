@@ -30,6 +30,9 @@ namespace CES.Entities
         public DateTime? EnteredAt { get; set; }
         public string? Description { get; set; }
 
+        // Evidence source device — "BodyCam" / "DashCam" / "Other"; null = unset (added for CES-18)
+        public string? EvidenceSourceType { get; set; }
+
         // Per-file acceptance / canonical storage (added for CES-39).
         // The DB is the source of truth; metadata.json is a derived export.
         public bool IsAccepted { get; set; } = false;

@@ -8,6 +8,7 @@ import type { PriorSubmissionModel } from '@/models/PriorSubmissionModel';
 import type {
   ExhibitDescriptionModel,
   ExhibitEnterModel,
+  ExhibitEvidenceSourceModel,
   ExhibitHistoryEntry,
   ExhibitMarkModel,
   PagedResult,
@@ -164,6 +165,14 @@ export default function useSubmissionService() {
     return result.data;
   };
 
+  const updateEvidenceSource = async (
+    fileId: string,
+    model: ExhibitEvidenceSourceModel,
+  ): Promise<SubmissionFile> => {
+    const result = await api.patch<SubmissionFile>(`/files/${fileId}/evidence-source`, model);
+    return result.data;
+  };
+
   const getFileHistory = async (fileId: string): Promise<ExhibitHistoryEntry[]> => {
     const result = await api.get<ExhibitHistoryEntry[]>(`/files/${fileId}/history`);
     return result?.data ?? [];
@@ -194,6 +203,7 @@ export default function useSubmissionService() {
     markExhibit,
     enterExhibit,
     updateExhibitDescription,
+    updateEvidenceSource,
     getFileHistory,
     getExhibitNotes,
     addExhibitNote,

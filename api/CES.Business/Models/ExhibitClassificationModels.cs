@@ -15,6 +15,11 @@ namespace CES.Business.Models
         public string Description { get; set; } = string.Empty;
     }
 
+    public class ExhibitEvidenceSourceModel
+    {
+        public string? EvidenceSourceType { get; set; }
+    }
+
     public class ExhibitHistoryEntryModel
     {
         public string FieldName { get; set; } = string.Empty;

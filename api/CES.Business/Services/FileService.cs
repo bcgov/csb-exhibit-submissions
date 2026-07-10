@@ -156,6 +156,39 @@ namespace CES.Business.Services
             return ToSubmissionFile(file);
         }
 
+        public async Task<SubmissionFile> UpdateExhibitEvidenceSourceAsync(Guid fileId, string? evidenceSourceType, string changedBy, bool isAdminOverride = false)
+        {
+            var file = await LoadFileWithSubmissionAsync(fileId)
+                ?? throw new KeyNotFoundException($"File {fileId} not found.");
+
+            if (!isAdminOverride && file.EnteredValue != null)
+                throw new InvalidOperationException("Entered exhibits cannot be modified.");
+
+            // Empty/whitespace clears the value; otherwise it must be a known source type.
+            var normalised = string.IsNullOrWhiteSpace(evidenceSourceType) ? null : evidenceSourceType;
+            if (normalised != null && !ClassificationConstants.EvidenceSourceTypes.Contains(normalised))
+                throw new ArgumentException($"Evidence source type must be one of: {string.Join(", ", ClassificationConstants.EvidenceSourceTypes)}.");
+
+            var oldValue = file.EvidenceSourceType;
+            file.EvidenceSourceType = normalised;
+            file.SetUpdateBy(changedBy);
+
+            _dataStore.SubmissionAuditLogs.Add(new SubmissionAuditLog
+            {
+                SubmissionId = file.SubmissionId,
+                FileId = file.Id,
+                FieldName = "EvidenceSourceType",
+                OldValue = oldValue,
+                NewValue = normalised,
+                ChangedBy = changedBy,
+            });
+
+            // Like a description edit: never triggers acceptance on its own, only
+            // refreshes the sidecar when the file is already accepted.
+            await FinalizeClassificationAsync(file, autoAccept: false);
+            return ToSubmissionFile(file);
+        }
+
         // Loads a file together with its submission's tickets and files so promotion
         // and metadata refresh have the full context they need.
         private async Task<StoredFiles?> LoadFileWithSubmissionAsync(Guid fileId)

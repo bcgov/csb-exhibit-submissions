@@ -21,6 +21,7 @@ const {
   markExhibit,
   enterExhibit,
   updateExhibitDescription,
+  updateEvidenceSource,
 } = useSubmissionService();
 const selectionStore = useCourtFileSelectionStore();
 
@@ -280,6 +281,9 @@ const submitForm = async () => {
           :enter-fn="(id: string, v: string) => enterExhibit(id, { enteredValue: v })"
           :description-fn="
             (id: string, d: string) => updateExhibitDescription(id, { description: d })
+          "
+          :evidence-source-fn="
+            (id: string, v: string) => updateEvidenceSource(id, { evidenceSourceType: v })
           "
           @file-updated="updateFileInStore"
           @preview-file="openPreview"

@@ -24,6 +24,7 @@ const {
   markExhibit,
   enterExhibit,
   updateExhibitDescription,
+  updateEvidenceSource,
 } = useSubmissionService();
 
 const submission = ref<SubmissionReviewModel | undefined>(undefined);
@@ -184,6 +185,9 @@ const removeExhibit = async (file: SubmissionFile) => {
         :enter-fn="(id: string, v: string) => enterExhibit(id, { enteredValue: v })"
         :description-fn="
           (id: string, d: string) => updateExhibitDescription(id, { description: d })
+        "
+        :evidence-source-fn="
+          (id: string, v: string) => updateEvidenceSource(id, { evidenceSourceType: v })
         "
         @file-updated="updateFileInSubmission"
         @preview-file="openPreview"

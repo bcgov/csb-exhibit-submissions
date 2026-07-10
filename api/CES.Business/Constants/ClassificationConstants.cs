@@ -8,5 +8,6 @@ namespace CES.Business.Constants
         public const string MarkedMax = "Z";
         public const int EnteredMin = 1;
         public const int EnteredMax = 50;
+        public static readonly string[] EvidenceSourceTypes = { "BodyCam", "DashCam", "Other" };
     }
 }

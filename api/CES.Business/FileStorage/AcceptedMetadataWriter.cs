@@ -69,6 +69,7 @@ namespace CES.Business.FileStorage
                     EnteredValue = f.EnteredValue,
                     EnteredAt = f.EnteredAt,
                     Description = f.Description,
+                    EvidenceSourceType = f.EvidenceSourceType,
                     AssociatedTickets = associatedTickets.ToList(),
                 }).ToList(),
                 Revisions = auditLogs

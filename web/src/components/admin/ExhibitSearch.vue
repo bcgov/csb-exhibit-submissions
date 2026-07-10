@@ -12,7 +12,7 @@ import ExhibitDetailModal from './ExhibitDetailModal.vue';
 import ExhibitList from '../shared/ExhibitList.vue';
 import FileViewer from '../shared/FileViewer.vue';
 
-const { searchExhibits, markExhibit, enterExhibit, updateExhibitDescription } =
+const { searchExhibits, markExhibit, enterExhibit, updateExhibitDescription, updateEvidenceSource } =
   useSubmissionService();
 
 const filter = reactive<ExhibitSearchFilter>({
@@ -250,6 +250,7 @@ const updateFileInResults = (updated: SubmissionFile) => {
                   :mark-fn="(id: string, v: string) => markExhibit(id, { markedValue: v })"
                   :enter-fn="(id: string, v: string) => enterExhibit(id, { enteredValue: v })"
                   :description-fn="(id: string, d: string) => updateExhibitDescription(id, { description: d })"
+                  :evidence-source-fn="(id: string, v: string) => updateEvidenceSource(id, { evidenceSourceType: v })"
                   @file-updated="updateFileInResults"
                   @preview-file="openPreview"
                   @download-file="downloadFile"

@@ -17,6 +17,7 @@ export interface SubmissionFile {
   enteredValue?: string | null;
   enteredAt?: string | null;
   description?: string | null;
+  evidenceSourceType?: string | null;
   deletedAt?: string | null;
 }
 
@@ -30,6 +31,10 @@ export interface ExhibitEnterModel {
 
 export interface ExhibitDescriptionModel {
   description: string;
+}
+
+export interface ExhibitEvidenceSourceModel {
+  evidenceSourceType: string;
 }
 
 export interface ExhibitHistoryEntry {

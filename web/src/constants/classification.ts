@@ -6,6 +6,13 @@ export const MARKED_MAX = 'Z';
 export const ENTERED_MIN = 1;
 export const ENTERED_MAX = 50;
 
+// Evidence source device options. `value` is stored/validated by the API; `label` is the display text.
+export const EVIDENCE_SOURCE_TYPES = [
+  { value: 'BodyCam', label: 'Body Cam' },
+  { value: 'DashCam', label: 'Dash Cam' },
+  { value: 'Other', label: 'Other' },
+] as const;
+
 // Content-type prefixes the browser can render inline (used to gate the View button)
 export const VIEWABLE_CONTENT_TYPE_PREFIXES: string[] = [
   'image/',

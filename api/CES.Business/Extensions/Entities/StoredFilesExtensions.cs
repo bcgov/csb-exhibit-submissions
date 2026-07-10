@@ -31,6 +31,7 @@ namespace CES.Business.Extensions.Entities
             EnteredValue = f.EnteredValue,
             EnteredAt = f.EnteredAt,
             Description = f.Description,
+            EvidenceSourceType = f.EvidenceSourceType,
             DeletedAt = f.DeletedAtUTC,
         };
     }
