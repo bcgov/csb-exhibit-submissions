@@ -136,14 +136,40 @@ describe('SubmissionReview', () => {
       expect(labels.some((t) => t.includes('Entered'))).toBe(true);
     });
 
-    it('shows description input for non-Removed files', async () => {
+    // CES-42: the first description is added inline; once one exists the list is read-only.
+    it('shows the description input for a non-Removed file with no description yet', async () => {
       mockRetrieveSubmission.mockResolvedValue(
         makeSubmission({ files: [makeFile({ status: 'Unclassified' })] }),
       );
       const wrapper = mountReview();
       await flushPromises();
 
-      expect(wrapper.find('input[type="text"]').exists()).toBe(true);
+      expect(wrapper.find('[data-test="desc-input"]').exists()).toBe(true);
+    });
+
+    it('renders an existing description read-only, with no input', async () => {
+      mockRetrieveSubmission.mockResolvedValue(
+        makeSubmission({
+          files: [
+            makeFile({
+              status: 'Unclassified',
+              descriptions: [
+                {
+                  id: 1,
+                  descriptionText: 'the first description',
+                  createdBy: 'officer@test.ca',
+                  createdAtUTC: '2026-07-07T09:00:00Z',
+                },
+              ],
+            }),
+          ],
+        }),
+      );
+      const wrapper = mountReview();
+      await flushPromises();
+
+      expect(wrapper.find('[data-test="desc-input"]').exists()).toBe(false);
+      expect(wrapper.find('[data-test="desc-full"]').text()).toBe('the first description');
     });
 
     it('shows Remove button for non-Removed files', async () => {

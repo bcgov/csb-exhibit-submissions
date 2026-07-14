@@ -23,7 +23,7 @@ const {
   removeFile,
   markExhibit,
   enterExhibit,
-  updateExhibitDescription,
+  addExhibitDescription,
   updateEvidenceSource,
 } = useSubmissionService();
 
@@ -177,15 +177,14 @@ const removeExhibit = async (file: SubmissionFile) => {
 
       <ExhibitList
         :entries="exhibitEntries"
+        :initial-expanded="true"
         :always-editable="!isTerminal"
         :show-removed="true"
         :can-download="true"
         :can-remove="!isTerminal"
         :mark-fn="(id: string, v: string) => markExhibit(id, { markedValue: v })"
         :enter-fn="(id: string, v: string) => enterExhibit(id, { enteredValue: v })"
-        :description-fn="
-          (id: string, d: string) => updateExhibitDescription(id, { description: d })
-        "
+        :add-description-fn="addExhibitDescription"
         :evidence-source-fn="
           (id: string, v: string) => updateEvidenceSource(id, { evidenceSourceType: v })
         "

@@ -8,7 +8,7 @@ import type { SubmissionFile } from '@/models/SubmissionReviewModel';
 import useSubmissionService from '@/services/SubmissionService';
 import type { AxiosError } from 'axios';
 import { computed, reactive, ref } from 'vue';
-import ExhibitDetailModal from './ExhibitDetailModal.vue';
+import ExhibitDetailModal from '../shared/ExhibitDetailModal.vue';
 import ExhibitList from '../shared/ExhibitList.vue';
 import FileViewer from '../shared/FileViewer.vue';
 
@@ -16,7 +16,7 @@ const {
   searchExhibits,
   markExhibit,
   enterExhibit,
-  updateExhibitDescription,
+  addExhibitDescription,
   updateEvidenceSource,
   removeFile,
 } = useSubmissionService();
@@ -278,7 +278,7 @@ const updateFileInResults = (updated: SubmissionFile) => {
                   :linkable-title="true"
                   :mark-fn="(id: string, v: string) => markExhibit(id, { markedValue: v })"
                   :enter-fn="(id: string, v: string) => enterExhibit(id, { enteredValue: v })"
-                  :description-fn="(id: string, d: string) => updateExhibitDescription(id, { description: d })"
+                  :add-description-fn="addExhibitDescription"
                   :evidence-source-fn="(id: string, v: string) => updateEvidenceSource(id, { evidenceSourceType: v })"
                   @file-updated="updateFileInResults"
                   @preview-file="openPreview"
@@ -313,6 +313,14 @@ const updateFileInResults = (updated: SubmissionFile) => {
     </div>
 
     <!-- Exhibit detail popup (read-only details, change history, registry notes) -->
-    <ExhibitDetailModal v-if="detailResult" :result="detailResult" @close="closeDetails" />
+    <ExhibitDetailModal
+      v-if="detailResult"
+      :result="detailResult"
+      can-view-notes
+      always-editable
+      :add-description-fn="addExhibitDescription"
+      @file-updated="updateFileInResults"
+      @close="closeDetails"
+    />
   </div>
 </template>

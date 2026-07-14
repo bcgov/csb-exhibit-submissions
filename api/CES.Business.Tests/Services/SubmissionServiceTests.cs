@@ -761,7 +761,7 @@ public class SubmissionServiceTests : IDisposable
         file.MarkedAt = DateTime.UtcNow;
         file.EnteredValue = "4";
         file.EnteredAt = DateTime.UtcNow;
-        file.Description = "test exhibit";
+        file.Descriptions.Add(new ExhibitDescription { DescriptionText = "test exhibit", CreatedBy = "officer@test.ca" });
         submission.Files.Add(file);
         _db.Submissions.Add(submission);
         await _db.SaveChangesAsync();
@@ -771,7 +771,8 @@ public class SubmissionServiceTests : IDisposable
         var resultFile = result.First().Files.First();
         resultFile.MarkedValue.Should().Be("B");
         resultFile.EnteredValue.Should().Be("4");
-        resultFile.Description.Should().Be("test exhibit");
+        resultFile.Descriptions.Should().ContainSingle()
+            .Which.DescriptionText.Should().Be("test exhibit");
         resultFile.Status.Should().Be("Entered");
     }
 

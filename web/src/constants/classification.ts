@@ -1,6 +1,15 @@
 export const CLASSIFICATION_EDIT_WINDOW_SECONDS = 10;
 export const SAVE_INDICATOR_FADE_SECONDS = 5;
-export const DESCRIPTION_MAX_LENGTH = 250;
+// Maximum length of a single description entry. Mirrors backend
+// ClassificationConstants.DescriptionMaxLength.
+export const DESCRIPTION_MAX_LENGTH = 1000;
+// Characters of the first description shown inline on a condensed exhibit-list row
+// before it is truncated with an ellipsis.
+export const DESCRIPTION_PREVIEW_MAX_LENGTH = 200;
+// The inline description textarea starts at this many rows and auto-grows to the max
+// before it scrolls.
+export const DESCRIPTION_INPUT_MIN_ROWS = 1;
+export const DESCRIPTION_INPUT_MAX_ROWS = 8;
 export const MARKED_MIN = 'A';
 export const MARKED_MAX = 'Z';
 export const ENTERED_MIN = 1;

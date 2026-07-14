@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using CES.API.Tests.Fixtures;
+using CES.Business.Constants;
 using FluentAssertions;
 
 namespace CES.API.Tests.Controllers;
@@ -209,57 +210,111 @@ public class FilesControllerTests : IClassFixture<TestWebApplicationFactory>
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
-    // ── Description endpoint ──────────────────────────────────────────────
+    // ── Description entries endpoint (CES-42, append-only) ────────────────
 
     [Fact]
-    public async Task UpdateDescription_WithUserRole_Returns200AndUpdatedFile()
+    public async Task AddDescription_WithUserRole_Returns200AndUpdatedFile()
     {
         var fileId = await UploadFileAndGetId();
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", JwtTokenHelper.UserToken());
 
-        var response = await _client.PatchAsJsonAsync($"/api/files/{fileId}/description", new { description = "key exhibit" });
+        var response = await _client.PostAsJsonAsync($"/api/files/{fileId}/descriptions", new { descriptionText = "key exhibit" });
         var body = await response.Content.ReadFromJsonAsync<ClassificationFileResult>();
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        body!.Description.Should().Be("key exhibit");
+        body!.Descriptions.Should().ContainSingle()
+            .Which.DescriptionText.Should().Be("key exhibit");
     }
 
     [Fact]
-    public async Task UpdateDescription_WhenTooLong_Returns400()
+    public async Task AddDescription_Appends_KeepingEarlierEntries()
     {
         var fileId = await UploadFileAndGetId();
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", JwtTokenHelper.UserToken());
-        var tooLong = new string('x', 251);
 
-        var response = await _client.PatchAsJsonAsync($"/api/files/{fileId}/description", new { description = tooLong });
+        await _client.PostAsJsonAsync($"/api/files/{fileId}/descriptions", new { descriptionText = "first" });
+        var response = await _client.PostAsJsonAsync($"/api/files/{fileId}/descriptions", new { descriptionText = "an addendum" });
+        var body = await response.Content.ReadFromJsonAsync<ClassificationFileResult>();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        body!.Descriptions.Select(d => d.DescriptionText).Should().ContainInOrder("first", "an addendum");
+    }
+
+    [Fact]
+    public async Task AddDescription_WhenEmpty_Returns400()
+    {
+        var fileId = await UploadFileAndGetId();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.UserToken());
+
+        var response = await _client.PostAsJsonAsync($"/api/files/{fileId}/descriptions", new { descriptionText = "   " });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
-    public async Task UpdateDescription_WithoutAuth_Returns401()
+    public async Task AddDescription_WhenTooLong_Returns400()
+    {
+        var fileId = await UploadFileAndGetId();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.UserToken());
+        var tooLong = new string('x', ClassificationConstants.DescriptionMaxLength + 1);
+
+        var response = await _client.PostAsJsonAsync($"/api/files/{fileId}/descriptions", new { descriptionText = tooLong });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task AddDescription_WhenFileUnknown_Returns404()
+    {
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.UserToken());
+
+        var response = await _client.PostAsJsonAsync($"/api/files/{Guid.NewGuid()}/descriptions", new { descriptionText = "x" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // Officers are locked out once the exhibit is Entered; the admin override is not.
+    [Fact]
+    public async Task AddDescription_AsOfficer_OnEnteredExhibit_Returns409()
+    {
+        var fileId = await UploadFileAndGetId();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.UserToken());
+        await _client.PostAsJsonAsync($"/api/files/{fileId}/enter", new { enteredValue = "3" });
+
+        var response = await _client.PostAsJsonAsync($"/api/files/{fileId}/descriptions", new { descriptionText = "too late" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task AddDescription_WithoutAuth_Returns401()
     {
         _client.DefaultRequestHeaders.Authorization = null;
 
-        var response = await _client.PatchAsJsonAsync($"/api/files/{Guid.NewGuid()}/description", new { description = "x" });
+        var response = await _client.PostAsJsonAsync($"/api/files/{Guid.NewGuid()}/descriptions", new { descriptionText = "x" });
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
-    public async Task UpdateDescription_WithAdminRole_Returns200AndUpdatedFile()
+    public async Task AddDescription_WithAdminRole_Returns200AndUpdatedFile()
     {
         var fileId = await UploadFileAndGetId();
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", JwtTokenHelper.AdminToken());
 
-        var response = await _client.PatchAsJsonAsync($"/api/files/{fileId}/description", new { description = "admin note" });
+        var response = await _client.PostAsJsonAsync($"/api/files/{fileId}/descriptions", new { descriptionText = "admin note" });
         var body = await response.Content.ReadFromJsonAsync<ClassificationFileResult>();
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        body!.Description.Should().Be("admin note");
+        body!.Descriptions.Should().ContainSingle()
+            .Which.DescriptionText.Should().Be("admin note");
     }
 
     // ── Evidence source endpoint ──────────────────────────────────────────
@@ -528,8 +583,9 @@ public class FilesControllerTests : IClassFixture<TestWebApplicationFactory>
         string Status,
         string? MarkedValue,
         string? EnteredValue,
-        string? Description,
+        List<DescriptionEntryResult> Descriptions,
         string? EvidenceSourceType);
+    private record DescriptionEntryResult(int Id, string DescriptionText, string? CreatedBy, DateTime CreatedAtUTC);
     private record HistoryEntry(
         string FieldName,
         string? OldValue,

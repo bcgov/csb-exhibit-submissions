@@ -6,7 +6,8 @@ namespace CES.Business.Constants
     public static class AcceptedStorageConstants
     {
         // metadata.json schema version — bump when the serialized shape changes.
-        public const int MetadataSchemaVersion = 1;
+        // v2 (CES-42): exhibit.description (string) became exhibit.descriptions (array).
+        public const int MetadataSchemaVersion = 2;
 
         // Hash algorithm recorded in the sidecar and used to compute Sha256.
         public const string HashAlgorithm = "SHA256";

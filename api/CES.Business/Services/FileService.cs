@@ -124,7 +124,11 @@ namespace CES.Business.Services
             return ToSubmissionFile(file);
         }
 
-        public async Task<SubmissionFile> UpdateExhibitDescriptionAsync(Guid fileId, string description, string changedBy, bool isAdminOverride = false)
+        // Appends an immutable description entry (CES-42). There is deliberately no
+        // update or delete: a correction is a new entry and the earlier ones remain.
+        // The entry list is the description's history, so — unlike Marked/Entered/Source
+        // — no SubmissionAuditLog row is written.
+        public async Task<SubmissionFile> AddExhibitDescriptionAsync(Guid fileId, string descriptionText, string createdBy, bool isAdminOverride = false)
         {
             var file = await LoadFileWithSubmissionAsync(fileId)
                 ?? throw new KeyNotFoundException($"File {fileId} not found.");
@@ -132,29 +136,34 @@ namespace CES.Business.Services
             if (!isAdminOverride && file.EnteredValue != null)
                 throw new InvalidOperationException("Entered exhibits cannot be modified.");
 
-            if (description.Length > ClassificationConstants.DescriptionMaxLength)
+            var normalised = NormaliseDescription(descriptionText);
+            if (normalised.Length == 0)
+                throw new ArgumentException("Description text is required.");
+            if (normalised.Length > ClassificationConstants.DescriptionMaxLength)
                 throw new ArgumentException($"Description cannot exceed {ClassificationConstants.DescriptionMaxLength} characters.");
 
-            var oldValue = file.Description;
-            file.Description = description;
-            file.SetUpdateBy(changedBy);
-
-            _dataStore.SubmissionAuditLogs.Add(new SubmissionAuditLog
+            var entry = new ExhibitDescription
             {
-                SubmissionId = file.SubmissionId,
                 FileId = file.Id,
-                FieldName = "Description",
-                OldValue = oldValue,
-                NewValue = description,
-                ChangedBy = changedBy,
-            });
+                DescriptionText = normalised,
+                CreatedBy = createdBy,
+                CreatedAtUTC = SystemDate.UtcNow(),
+            };
 
-            // A description edit never triggers acceptance on its own; it only
+            file.Descriptions.Add(entry);
+            file.SetUpdateBy(createdBy);
+
+            // Adding a description never triggers acceptance on its own; it only
             // refreshes the sidecar when the file is already accepted (and, per the
             // guard above, not yet Entered).
             await FinalizeClassificationAsync(file, autoAccept: false);
             return ToSubmissionFile(file);
         }
+
+        // Plain text, multiline: line endings are normalised to \n and the entry as a
+        // whole is trimmed, but interior whitespace (indentation, blank lines) is kept.
+        private static string NormaliseDescription(string? text)
+            => (text ?? string.Empty).Replace("\r\n", "\n").Replace("\r", "\n").Trim();
 
         public async Task<SubmissionFile> UpdateExhibitEvidenceSourceAsync(Guid fileId, string? evidenceSourceType, string changedBy, bool isAdminOverride = false)
         {
@@ -193,8 +202,9 @@ namespace CES.Business.Services
         // and metadata refresh have the full context they need.
         private async Task<StoredFiles?> LoadFileWithSubmissionAsync(Guid fileId)
             => await _dataStore.StoredFiles
+                .Include(f => f.Descriptions)
                 .Include(f => f.Submission).ThenInclude(s => s.Tickets)
-                .Include(f => f.Submission).ThenInclude(s => s.Files)
+                .Include(f => f.Submission).ThenInclude(s => s.Files).ThenInclude(sf => sf.Descriptions)
                 .FirstOrDefaultAsync(f => f.Id == fileId && !f.IsDeleted);
 
         // Persists the DB change (source of truth) first, then promotes bytes /

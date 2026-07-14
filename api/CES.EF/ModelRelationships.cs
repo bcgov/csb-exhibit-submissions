@@ -41,6 +41,15 @@ namespace CES.EF
                 .WithMany()
                 .HasForeignKey(n => n.FileId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<StoredFiles>()
+                .HasMany(f => f.Descriptions)
+                .WithOne(d => d.File)
+                .HasForeignKey(d => d.FileId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ExhibitDescription>()
+                .HasIndex(d => new { d.FileId, d.CreatedAtUTC });
         }
     }
 }

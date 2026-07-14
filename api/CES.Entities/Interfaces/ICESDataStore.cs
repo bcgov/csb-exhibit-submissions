@@ -18,5 +18,6 @@ namespace CES.Entities.Interfaces
         public DbSet<StoredFiles> StoredFiles { get; }
         public DbSet<SubmissionAuditLog> SubmissionAuditLogs { get; }
         public DbSet<ExhibitNote> ExhibitNotes { get; }
+        public DbSet<ExhibitDescription> ExhibitDescriptions { get; }
     }
 }

@@ -1,3 +1,4 @@
+using CES.Business.Constants;
 using CES.Business.Extensions.Entities;
 using CES.Business.Interfaces;
 using CES.Business.Models;
@@ -265,46 +266,89 @@ public class FileServiceTests : IDisposable
         await Assert.ThrowsAsync<ArgumentException>(() => _service.EnterExhibitAsync(file.Id, "abc", "x"));
     }
 
-    // ── UpdateExhibitDescriptionAsync ─────────────────────────────────────
+    // ── AddExhibitDescriptionAsync (CES-42, append-only) ──────────────────
 
     [Fact]
-    public async Task UpdateDescription_PersistsAndAudits()
+    public async Task AddDescription_PersistsEntry_WithoutAuditRow()
     {
         var file = SeedFile();
 
-        var result = await _service.UpdateExhibitDescriptionAsync(file.Id, "key piece of evidence", "officer@test.ca");
+        var result = await _service.AddExhibitDescriptionAsync(file.Id, "key piece of evidence", "officer@test.ca");
 
-        var dbFile = _db.StoredFiles.Find(file.Id)!;
-        dbFile.Description.Should().Be("key piece of evidence");
+        var entry = _db.ExhibitDescriptions.Single(d => d.FileId == file.Id);
+        entry.DescriptionText.Should().Be("key piece of evidence");
+        entry.CreatedBy.Should().Be("officer@test.ca");
 
-        var log = _db.SubmissionAuditLogs.Single(l => l.FileId == file.Id && l.FieldName == "Description");
-        log.NewValue.Should().Be("key piece of evidence");
-        log.ChangedBy.Should().Be("officer@test.ca");
+        result.Descriptions.Should().ContainSingle()
+            .Which.DescriptionText.Should().Be("key piece of evidence");
 
-        result.Description.Should().Be("key piece of evidence");
+        // The entry list is the description's history — it is not an audited field.
+        _db.SubmissionAuditLogs.Should().NotContain(l => l.FieldName == "Description");
     }
 
     [Fact]
-    public async Task UpdateDescription_Rejects_WhenEntered()
+    public async Task AddDescription_Appends_AndKeepsEarlierEntries()
+    {
+        var file = SeedFile();
+
+        await _service.AddExhibitDescriptionAsync(file.Id, "first", "officer@test.ca");
+        var result = await _service.AddExhibitDescriptionAsync(file.Id, "an addendum", "officer@test.ca");
+
+        _db.ExhibitDescriptions.Count(d => d.FileId == file.Id).Should().Be(2);
+        result.Descriptions.Select(d => d.DescriptionText)
+            .Should().ContainInOrder("first", "an addendum");
+    }
+
+    [Fact]
+    public async Task AddDescription_NormalisesLineEndings_AndPreservesInteriorWhitespace()
+    {
+        var file = SeedFile();
+
+        var result = await _service.AddExhibitDescriptionAsync(file.Id, "  line one\r\n\r\n    indented\t line  ", "officer@test.ca");
+
+        result.Descriptions.Single().DescriptionText.Should().Be("line one\n\n    indented\t line");
+    }
+
+    [Fact]
+    public async Task AddDescription_Rejects_WhenEntered()
     {
         var file = SeedFile(enteredValue: "5", enteredAt: DateTime.UtcNow);
 
-        var act = async () => await _service.UpdateExhibitDescriptionAsync(file.Id, "notes", "officer@test.ca");
+        var act = async () => await _service.AddExhibitDescriptionAsync(file.Id, "notes", "officer@test.ca");
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Entered*");
     }
 
     [Fact]
-    public async Task UpdateDescription_Rejects_WhenOverMaxLength()
+    public async Task AddDescription_Rejects_WhenWhitespaceOnly()
     {
         var file = SeedFile();
-        var tooLong = new string('x', 251);
 
-        var act = async () => await _service.UpdateExhibitDescriptionAsync(file.Id, tooLong, "officer@test.ca");
+        var act = async () => await _service.AddExhibitDescriptionAsync(file.Id, "   \n  ", "officer@test.ca");
 
         await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*250*");
+            .WithMessage("*required*");
+    }
+
+    [Fact]
+    public async Task AddDescription_Rejects_WhenOverMaxLength()
+    {
+        var file = SeedFile();
+        var tooLong = new string('x', ClassificationConstants.DescriptionMaxLength + 1);
+
+        var act = async () => await _service.AddExhibitDescriptionAsync(file.Id, tooLong, "officer@test.ca");
+
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage($"*{ClassificationConstants.DescriptionMaxLength}*");
+    }
+
+    [Fact]
+    public async Task AddDescription_Throws_WhenFileNotFound()
+    {
+        var act = async () => await _service.AddExhibitDescriptionAsync(Guid.NewGuid(), "text", "officer@test.ca");
+
+        await act.Should().ThrowAsync<KeyNotFoundException>();
     }
 
     // ── UpdateExhibitEvidenceSourceAsync ──────────────────────────────────
@@ -414,13 +458,13 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile();
         await _service.MarkExhibitAsync(file.Id, "A", "officer@test.ca");
-        await _service.UpdateExhibitDescriptionAsync(file.Id, "first note", "officer@test.ca");
+        await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "BodyCam", "officer@test.ca");
         await _service.EnterExhibitAsync(file.Id, "5", "admin@test.ca", isAdminOverride: true);
 
         var history = await _service.GetExhibitHistoryAsync(file.Id);
 
         history.Should().HaveCount(3);
-        history.Select(h => h.FieldName).Should().ContainInOrder("MarkedValue", "Description", "EnteredValue");
+        history.Select(h => h.FieldName).Should().ContainInOrder("MarkedValue", "EvidenceSourceType", "EnteredValue");
         history[0].NewValue.Should().Be("A");
         history[0].ChangedBy.Should().Be("officer@test.ca");
         history.Should().BeInAscendingOrder(h => h.ChangedAtUTC);
@@ -493,24 +537,24 @@ public class FileServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task DescriptionEdit_OnAcceptedNotEnteredFile_RewritesMetadata_WithoutPromoting()
+    public async Task AddDescription_OnAcceptedNotEnteredFile_RewritesMetadata_WithoutPromoting()
     {
         var file = SeedFile();
         await _service.MarkExhibitAsync(file.Id, "A", "officer@test.ca"); // accept it
         _fileStorageMock.Invocations.Clear();
 
-        await _service.UpdateExhibitDescriptionAsync(file.Id, "a note", "officer@test.ca");
+        await _service.AddExhibitDescriptionAsync(file.Id, "a note", "officer@test.ca");
 
         _fileStorageMock.Verify(s => s.PromoteToAcceptedAsync(It.IsAny<Submission>(), It.IsAny<StoredFiles>()), Times.Never);
         _fileStorageMock.Verify(s => s.WriteMetadataAsync(It.IsAny<Submission>(), It.IsAny<IReadOnlyList<SubmissionAuditLog>>()), Times.Once);
     }
 
     [Fact]
-    public async Task DescriptionEdit_OnUnacceptedFile_DoesNotPromoteOrWriteMetadata()
+    public async Task AddDescription_OnUnacceptedFile_DoesNotPromoteOrWriteMetadata()
     {
         var file = SeedFile();
 
-        await _service.UpdateExhibitDescriptionAsync(file.Id, "a note", "officer@test.ca");
+        await _service.AddExhibitDescriptionAsync(file.Id, "a note", "officer@test.ca");
 
         _db.StoredFiles.Find(file.Id)!.IsAccepted.Should().BeFalse();
         _fileStorageMock.Verify(s => s.PromoteToAcceptedAsync(It.IsAny<Submission>(), It.IsAny<StoredFiles>()), Times.Never);
@@ -594,14 +638,15 @@ public class FileServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task UpdateDescription_AdminOverride_SucceedsOnEnteredFile()
+    public async Task AddDescription_AdminOverride_SucceedsOnEnteredFile()
     {
         var file = SeedFile(enteredValue: "5", enteredAt: DateTime.UtcNow);
 
-        var result = await _service.UpdateExhibitDescriptionAsync(file.Id, "admin note", "admin@test.ca", isAdminOverride: true);
+        var result = await _service.AddExhibitDescriptionAsync(file.Id, "admin note", "admin@test.ca", isAdminOverride: true);
 
-        result.Description.Should().Be("admin note");
-        _db.SubmissionAuditLogs.Should().Contain(l => l.FieldName == "Description" && l.ChangedBy == "admin@test.ca");
+        result.Descriptions.Should().ContainSingle()
+            .Which.DescriptionText.Should().Be("admin note");
+        _db.ExhibitDescriptions.Single(d => d.FileId == file.Id).CreatedBy.Should().Be("admin@test.ca");
     }
 
     [Fact]

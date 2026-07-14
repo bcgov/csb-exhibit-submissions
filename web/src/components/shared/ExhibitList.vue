@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
   CLASSIFICATION_EDIT_WINDOW_SECONDS,
-  DESCRIPTION_MAX_LENGTH,
   ENTERED_MAX,
   ENTERED_MIN,
   EVIDENCE_SOURCE_TYPES,
@@ -13,6 +12,7 @@ import { formatDateTime } from '@/helpers/formatters';
 import type { ExhibitHistoryEntry, SubmissionFile } from '@/models/SubmissionReviewModel';
 import useSubmissionService from '@/services/SubmissionService';
 import { computed, reactive, ref, watch } from 'vue';
+import ExhibitDescriptionCell from './ExhibitDescriptionCell.vue';
 
 interface PriorFileEntry {
   file: SubmissionFile;
@@ -24,7 +24,8 @@ const props = defineProps<{
   entries: PriorFileEntry[];
   markFn: (fileId: string, value: string) => Promise<SubmissionFile>;
   enterFn: (fileId: string, value: string) => Promise<SubmissionFile>;
-  descriptionFn: (fileId: string, description: string) => Promise<SubmissionFile>;
+  /** Appends the first description entry. Addenda are added from the detail modal. */
+  addDescriptionFn: (fileId: string, text: string) => Promise<SubmissionFile>;
   evidenceSourceFn: (fileId: string, value: string) => Promise<SubmissionFile>;
   /** When true, all classification controls are always enabled (admin mode: no windows, no locks). */
   alwaysEditable?: boolean;
@@ -37,9 +38,13 @@ const props = defineProps<{
   /**
    * When true, the filename renders as a button that emits `titleClick`, letting the
    * parent open its own exhibit-detail view. Default: plain, non-interactive text.
-   * Detail/notes UI is intentionally owned by the parent, not this shared control.
    */
   linkableTitle?: boolean;
+  /**
+   * Row-2 (Marked/Entered/Source) state a row starts in. Condensed by default — one
+   * line per exhibit, which is what keeps a long Exhibit Search result set readable.
+   */
+  initialExpanded?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -58,10 +63,11 @@ const historyEntries = ref<ExhibitHistoryEntry[]>([]);
 const historyLoading = ref(false);
 const historyError = ref(false);
 
+// Description is no longer an audited field (CES-42) — its append-only entry list is
+// its history, so it never appears here.
 const HISTORY_FIELD_LABELS: Record<string, string> = {
   MarkedValue: 'Marked',
   EnteredValue: 'Entered',
-  Description: 'Description',
   EvidenceSourceType: 'Source',
 };
 
@@ -89,19 +95,30 @@ const closeHistory = () => {
 const markedWindowActive = reactive<Set<string>>(new Set());
 const enteredWindowActive = reactive<Set<string>>(new Set());
 const saveIndicators = reactive<Record<string, 'success' | string | null>>({});
-const localDescriptions = reactive<Record<string, string>>({});
+
+// Per-row expansion of the classification controls. Seeded from `initialExpanded` as
+// each entry appears; toggling afterwards is purely local.
+const expandedRows = reactive<Set<string>>(new Set());
+const seenRows = reactive<Set<string>>(new Set());
 
 watch(
   () => props.entries,
   (entries) => {
     for (const entry of entries) {
-      if (!(entry.file.id in localDescriptions)) {
-        localDescriptions[entry.file.id] = entry.file.description ?? '';
-      }
+      if (seenRows.has(entry.file.id)) continue;
+      seenRows.add(entry.file.id);
+      if (props.initialExpanded) expandedRows.add(entry.file.id);
     }
   },
-  { immediate: true },
+  { immediate: true, deep: false },
 );
+
+const isExpanded = (fileId: string): boolean => expandedRows.has(fileId);
+
+const toggleRow = (fileId: string) => {
+  if (expandedRows.has(fileId)) expandedRows.delete(fileId);
+  else expandedRows.add(fileId);
+};
 
 const visibleEntries = computed(() =>
   props.showRemoved ? props.entries : props.entries.filter((e) => e.file.status !== 'Removed'),
@@ -130,6 +147,7 @@ const isEnteredEnabled = (file: SubmissionFile): boolean => {
   return enteredWindowActive.has(file.id);
 };
 
+// May *append* a description. Entered locks officers out; admin keeps the input.
 const isDescriptionEnabled = (file: SubmissionFile): boolean =>
   !!props.alwaysEditable || file.enteredValue == null;
 
@@ -197,16 +215,18 @@ const onEnterChange = async (file: SubmissionFile, value: string) => {
   }
 };
 
-const onDescriptionBlur = async (file: SubmissionFile) => {
-  const description = localDescriptions[file.id] ?? '';
-  if (description === (file.description ?? '')) return;
+// Adds the first description entry. Returns false so the cell keeps the draft text
+// when the save fails, rather than silently losing what was typed.
+const onDescriptionSave = async (file: SubmissionFile, text: string): Promise<boolean> => {
   try {
-    const updated = await props.descriptionFn(file.id, description);
+    const updated = await props.addDescriptionFn(file.id, text);
     emit('fileUpdated', updated);
     showSaveSuccess(file.id);
+    return true;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Failed to save description.';
     showSaveError(file.id, msg);
+    return false;
   }
 };
 
@@ -224,29 +244,21 @@ const onEvidenceSourceChange = async (file: SubmissionFile, value: string) => {
 
 <template>
   <ul class="prior-file-list">
-    <li
-      v-for="entry in visibleEntries"
-      :key="entry.file.id"
-      class="prior-file-item"
-      :class="{ 'prior-file-item-removed': entry.file.status === 'Removed' }"
-    >
-      <!-- Row 1: name, (date), (ticket badge), status chip, (save indicator), (actions) -->
+    <li v-for="entry in visibleEntries" :key="entry.file.id" class="prior-file-item" :class="{
+      'prior-file-item-removed': entry.file.status === 'Removed',
+      'prior-file-item--condensed': !isExpanded(entry.file.id),
+    }">
+      <!-- Row 1: chevron, name, (date), (ticket badge), status chip, (description), (save indicator), (actions) -->
       <div class="prior-file-row1">
-        <button
-          type="button"
-          class="btn btn--icon btn--tertiary history-btn"
-          title="View change history"
-          aria-label="View change history"
-          @click="openHistory(entry.file)"
-        >
-          🕑
+        <button v-if="entry.file.status !== 'Removed'" type="button" class="btn btn--icon btn--tertiary chevron-btn"
+          :aria-expanded="isExpanded(entry.file.id)" :aria-controls="`exhibit-row2-${entry.file.id}`"
+          :title="isExpanded(entry.file.id) ? 'Hide classification' : 'Show classification'"
+          :aria-label="isExpanded(entry.file.id) ? 'Hide classification' : 'Show classification'"
+          @click="toggleRow(entry.file.id)">
+          {{ isExpanded(entry.file.id) ? '▾' : '▸' }}
         </button>
-        <button
-          v-if="linkableTitle"
-          type="button"
-          class="prior-file-name prior-file-name-link"
-          @click="emit('titleClick', entry.file)"
-        >
+        <button v-if="linkableTitle" type="button" class="prior-file-name prior-file-name-link"
+          @click="emit('titleClick', entry.file)">
           {{ entry.file.originalFileName }}
         </button>
         <span v-else class="prior-file-name">{{ entry.file.originalFileName }}</span>
@@ -259,69 +271,50 @@ const onEvidenceSourceChange = async (file: SubmissionFile, value: string) => {
           }}<span
             v-if="entry.fileNumbers.length > 2"
             class="ticket-overflow"
-            :title="entry.fileNumbers.join(' \n')"
-          >
-            (+{{ entry.fileNumbers.length - 1 }})</span
-          >
+            :title="entry.fileNumbers.join(' \n')">
+            (+{{ entry.fileNumbers.length - 1 }})</span>
         </span>
         <span :class="statusChipClass(entry.file.status)">{{
           entry.file.status ?? 'Unclassified'
-        }}</span>
+          }}</span>
 
-        <!-- Save indicator and action buttons: non-Removed files only -->
+        <!-- Save indicator, description, and action buttons: non-Removed files only -->
         <template v-if="entry.file.status !== 'Removed'">
-          <span
-            v-if="saveIndicators[entry.file.id] === 'success'"
-            class="save-indicator save-success"
-            title="Saved"
-            >✓</span
-          >
-          <span
-            v-else-if="saveIndicators[entry.file.id]"
-            class="save-indicator save-error"
-            :title="saveIndicators[entry.file.id] as string"
-            >✕</span
-          >
+          <!-- Condensed rows carry the description inline; expanded rows show it in row 2. -->
+          <ExhibitDescriptionCell v-if="!isExpanded(entry.file.id)" :file="entry.file" compact
+            :disabled="!isDescriptionEnabled(entry.file)"
+            :save-fn="(text: string) => onDescriptionSave(entry.file, text)" />
+
+          <span v-if="saveIndicators[entry.file.id] === 'success'" class="save-indicator save-success"
+            title="Saved">✓</span>
+          <span v-else-if="saveIndicators[entry.file.id]" class="save-indicator save-error"
+            :title="saveIndicators[entry.file.id] as string">✕</span>
 
           <div class="view-container">
-            <button
-              v-if="isViewable(entry.file.contentType)"
-              type="button"
-              class="btn btn--sm btn--primary-outline view-btn"
-              @click="emit('previewFile', entry.file)"
-            >
+            <button v-if="isViewable(entry.file.contentType)" type="button"
+              class="btn btn--sm btn--primary-outline view-btn" @click="emit('previewFile', entry.file)">
               View
             </button>
-            <button
-              v-if="canDownload"
-              type="button"
-              class="btn btn--sm btn--primary-outline dl-btn"
-              @click="emit('downloadFile', entry.file)"
-            >
+            <button v-if="canDownload" type="button" class="btn btn--sm btn--primary-outline dl-btn"
+              @click="emit('downloadFile', entry.file)">
               Download
             </button>
-            <button
-              v-if="canRemove"
-              type="button"
-              class="btn btn--sm btn--danger-outline rm-btn"
-              @click="emit('removeFile', entry.file)"
-            >
+            <button v-if="canRemove" type="button" class="btn btn--sm btn--danger-outline rm-btn"
+              @click="emit('removeFile', entry.file)">
               Remove
             </button>
           </div>
         </template>
       </div>
 
-      <!-- Row 2: classification controls (non-Removed files only) -->
-      <div v-if="entry.file.status !== 'Removed'" class="prior-file-row2">
+      <!-- Row 2: classification controls (non-Removed, expanded files only) -->
+      <div v-if="entry.file.status !== 'Removed' && isExpanded(entry.file.id)" :id="`exhibit-row2-${entry.file.id}`"
+        class="prior-file-row2">
         <!-- Marked -->
         <div class="classification-group">
           <label>Marked</label>
-          <select
-            :disabled="!isMarkedEnabled(entry.file)"
-            :value="entry.file.markedValue ?? ''"
-            @change="onMarkChange(entry.file, ($event.target as HTMLSelectElement).value)"
-          >
+          <select :disabled="!isMarkedEnabled(entry.file)" :value="entry.file.markedValue ?? ''"
+            @change="onMarkChange(entry.file, ($event.target as HTMLSelectElement).value)">
             <option value="">—</option>
             <option v-for="letter in markedLetters" :key="letter" :value="letter">
               {{ letter }}
@@ -335,11 +328,8 @@ const onEvidenceSourceChange = async (file: SubmissionFile, value: string) => {
         <!-- Entered -->
         <div class="classification-group">
           <label>Entered</label>
-          <select
-            :disabled="!isEnteredEnabled(entry.file)"
-            :value="entry.file.enteredValue ?? ''"
-            @change="onEnterChange(entry.file, ($event.target as HTMLSelectElement).value)"
-          >
+          <select :disabled="!isEnteredEnabled(entry.file)" :value="entry.file.enteredValue ?? ''"
+            @change="onEnterChange(entry.file, ($event.target as HTMLSelectElement).value)">
             <option value="">—</option>
             <option v-for="num in enteredNumbers" :key="num" :value="num">{{ num }}</option>
           </select>
@@ -351,11 +341,8 @@ const onEvidenceSourceChange = async (file: SubmissionFile, value: string) => {
         <!-- Evidence source type -->
         <div class="source-group">
           <label>Source</label>
-          <select
-            :disabled="!isEvidenceSourceEnabled(entry.file)"
-            :value="entry.file.evidenceSourceType ?? ''"
-            @change="onEvidenceSourceChange(entry.file, ($event.target as HTMLSelectElement).value)"
-          >
+          <select :disabled="!isEvidenceSourceEnabled(entry.file)" :value="entry.file.evidenceSourceType ?? ''"
+            @change="onEvidenceSourceChange(entry.file, ($event.target as HTMLSelectElement).value)">
             <option value="">—</option>
             <option v-for="opt in EVIDENCE_SOURCE_TYPES" :key="opt.value" :value="opt.value">
               {{ opt.label }}
@@ -363,26 +350,9 @@ const onEvidenceSourceChange = async (file: SubmissionFile, value: string) => {
           </select>
         </div>
 
-        <!-- Description -->
-        <div class="description-group">
-          <label>Description</label>
-          <input
-            type="text"
-            :disabled="!isDescriptionEnabled(entry.file)"
-            :maxlength="DESCRIPTION_MAX_LENGTH"
-            v-model="localDescriptions[entry.file.id]"
-            @blur="onDescriptionBlur(entry.file)"
-            placeholder="Optional description…"
-          />
-          <span
-            class="desc-counter"
-            :class="{
-              over: (localDescriptions[entry.file.id]?.length ?? 0) > DESCRIPTION_MAX_LENGTH,
-            }"
-          >
-            {{ DESCRIPTION_MAX_LENGTH - (localDescriptions[entry.file.id]?.length ?? 0) }} remaining
-          </span>
-        </div>
+        <!-- Description (append-only: input only until the first entry exists) -->
+        <ExhibitDescriptionCell :file="entry.file" :disabled="!isDescriptionEnabled(entry.file)"
+          :save-fn="(text: string) => onDescriptionSave(entry.file, text)" />
       </div>
     </li>
   </ul>

@@ -56,7 +56,7 @@ const ExhibitListStub = {
     'linkableTitle',
     'markFn',
     'enterFn',
-    'descriptionFn',
+    'addDescriptionFn',
     'evidenceSourceFn',
   ],
   emits: ['fileUpdated', 'previewFile', 'downloadFile', 'removeFile', 'titleClick'],

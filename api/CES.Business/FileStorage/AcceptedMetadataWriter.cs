@@ -68,7 +68,14 @@ namespace CES.Business.FileStorage
                     MarkedAt = f.MarkedAt,
                     EnteredValue = f.EnteredValue,
                     EnteredAt = f.EnteredAt,
-                    Description = f.Description,
+                    Descriptions = f.Descriptions
+                        .OrderBy(d => d.CreatedAtUTC)
+                        .Select(d => new AcceptedMetadataDescription
+                        {
+                            Text = d.DescriptionText,
+                            By = d.CreatedBy,
+                            AtUTC = d.CreatedAtUTC,
+                        }).ToList(),
                     EvidenceSourceType = f.EvidenceSourceType,
                     AssociatedTickets = associatedTickets.ToList(),
                 }).ToList(),

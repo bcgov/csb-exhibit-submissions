@@ -30,7 +30,16 @@ namespace CES.Business.Extensions.Entities
             MarkedAt = f.MarkedAt,
             EnteredValue = f.EnteredValue,
             EnteredAt = f.EnteredAt,
-            Description = f.Description,
+            Descriptions = f.Descriptions
+                .OrderBy(d => d.CreatedAtUTC)
+                .Select(d => new ExhibitDescriptionEntryModel
+                {
+                    Id = d.Id,
+                    DescriptionText = d.DescriptionText,
+                    CreatedBy = d.CreatedBy,
+                    CreatedAtUTC = d.CreatedAtUTC,
+                })
+                .ToList(),
             EvidenceSourceType = f.EvidenceSourceType,
             DeletedAt = f.DeletedAtUTC,
         };
