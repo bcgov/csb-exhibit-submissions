@@ -105,8 +105,8 @@ const saveNote = async () => {
       </header>
 
       <!-- Submission info -->
-      <section class="detail-section">
-        <h3>Submission</h3>
+      <details class="detail-section" open>
+        <summary><h3>Submission</h3></summary>
         <dl class="detail-grid">
           <div><dt>Submission ID</dt><dd>{{ result.submissionId }}</dd></div>
           <div><dt>Location</dt><dd>{{ result.location || '—' }}</dd></div>
@@ -119,11 +119,11 @@ const saveNote = async () => {
             <dd>{{ result.fileNumbers.join(', ') || '—' }}</dd>
           </div>
         </dl>
-      </section>
+      </details>
 
       <!-- Exhibit info -->
-      <section class="detail-section">
-        <h3>Exhibit</h3>
+      <details class="detail-section" open>
+        <summary><h3>Exhibit</h3></summary>
         <dl class="detail-grid">
           <div><dt>Status</dt><dd>{{ file.status ?? 'Unclassified' }}</dd></div>
           <div><dt>Marked</dt><dd>{{ file.markedValue ?? '—' }}</dd></div>
@@ -142,51 +142,7 @@ const saveNote = async () => {
             <dd>{{ file.description || '—' }}</dd>
           </div>
         </dl>
-      </section>
-
-      <!-- File metadata -->
-      <section class="detail-section">
-        <h3>Metadata</h3>
-        <dl class="detail-grid">
-          <div><dt>Storage</dt><dd>{{ file.storageProvider }}</dd></div>
-          <div><dt>Content type</dt><dd>{{ file.contentType }}</dd></div>
-          <div><dt>File size</dt><dd>{{ formatFileSize(file.fileSize) }}</dd></div>
-          <div>
-            <dt>Submitted</dt>
-            <dd>{{ result.submissionDate ? formatDateTime(result.submissionDate, true) : '—' }}</dd>
-          </div>
-        </dl>
-      </section>
-
-      <!-- Change history -->
-      <section class="detail-section">
-        <h3>Change History</h3>
-        <p v-if="historyLoading" class="detail-status">Loading…</p>
-        <p v-else-if="historyError" class="detail-status detail-error">
-          Could not load change history.
-        </p>
-        <table v-else-if="history.length > 0" class="detail-history-table">
-          <thead>
-            <tr>
-              <th>Field</th>
-              <th>From</th>
-              <th>To</th>
-              <th>Changed By</th>
-              <th>When</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(item, idx) in history" :key="idx">
-              <td>{{ historyFieldLabel(item.fieldName) }}</td>
-              <td>{{ item.oldValue ?? '—' }}</td>
-              <td>{{ item.newValue ?? '—' }}</td>
-              <td>{{ item.changedBy ?? '—' }}</td>
-              <td>{{ formatDateTime(item.changedAtUTC, true) }}</td>
-            </tr>
-          </tbody>
-        </table>
-        <p v-else class="detail-status">No changes have been recorded for this exhibit.</p>
-      </section>
+      </details>
 
       <!-- Registry-only notes -->
       <section class="detail-section notes-section">
@@ -233,6 +189,50 @@ const saveNote = async () => {
           <p v-if="saveNoteError" class="detail-status detail-error">{{ saveNoteError }}</p>
         </div>
       </section>
+
+      <!-- Change history -->
+      <section class="detail-section">
+        <h3>Change History</h3>
+        <p v-if="historyLoading" class="detail-status">Loading…</p>
+        <p v-else-if="historyError" class="detail-status detail-error">
+          Could not load change history.
+        </p>
+        <table v-else-if="history.length > 0" class="detail-history-table">
+          <thead>
+            <tr>
+              <th>Field</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Changed By</th>
+              <th>When</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(item, idx) in history" :key="idx">
+              <td>{{ historyFieldLabel(item.fieldName) }}</td>
+              <td>{{ item.oldValue ?? '—' }}</td>
+              <td>{{ item.newValue ?? '—' }}</td>
+              <td>{{ item.changedBy ?? '—' }}</td>
+              <td>{{ formatDateTime(item.changedAtUTC, true) }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p v-else class="detail-status">No changes have been recorded for this exhibit.</p>
+      </section>      
+
+      <!-- File metadata -->
+      <details class="detail-section">
+        <summary><h3>Metadata</h3></summary>
+        <dl class="detail-grid">
+          <div><dt>Storage</dt><dd>{{ file.storageProvider }}</dd></div>
+          <div><dt>Content type</dt><dd>{{ file.contentType }}</dd></div>
+          <div><dt>File size</dt><dd>{{ formatFileSize(file.fileSize) }}</dd></div>
+          <div>
+            <dt>Submitted</dt>
+            <dd>{{ result.submissionDate ? formatDateTime(result.submissionDate, true) : '—' }}</dd>
+          </div>
+        </dl>
+      </details>
     </div>
   </div>
 </template>

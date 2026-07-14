@@ -520,6 +520,51 @@ $app-bar-height: 64px;
     }
   }
 
+  // Collapsible sections (Submission / Exhibit / Metadata) use native <details>.
+  // The <summary> is the clickable header row; the h3 inside carries the label and
+  // the section's underline, with a chevron that rotates on open/close.
+  details.detail-section {
+    > summary {
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: $margin-small;
+      // Underline the whole header row (text + chevron), not just the heading,
+      // so the chevron sits inline with the label rather than above it.
+      border-bottom: $border-width-small solid $color-border;
+      padding-bottom: $margin-xsmall;
+      margin-bottom: $margin-small;
+
+      &::-webkit-details-marker {
+        display: none;
+      }
+
+      h3 {
+        flex: 1;
+        margin: 0;
+        border: none;
+        padding: 0;
+      }
+
+      &::after {
+        content: '⌄';
+        color: $color-text-secondary;
+        font-size: $font-size-h5;
+        line-height: 1;
+        transition: transform 0.15s ease;
+      }
+    }
+
+    &[open] > summary::after {
+      transform: rotate(180deg);
+    }
+
+    > summary + * {
+      margin-top: $margin-small;
+    }
+  }
+
   .detail-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
