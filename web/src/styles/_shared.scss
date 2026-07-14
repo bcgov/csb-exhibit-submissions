@@ -195,8 +195,9 @@
   }
 
   // Condensed row (CES-42): the classification controls are hidden, so the item
-  // tightens to roughly one line — the difference between a readable and an
-  // unreadable Exhibit Search result set.
+  // tightens up — the difference between a readable and an unreadable Exhibit
+  // Search result set. Row 1 is identical in both states; only what hangs below
+  // it changes (description line vs. classification strip).
   .prior-file-item--condensed {
     padding: 0.25rem 0.75rem;
 
@@ -218,19 +219,32 @@
     font-size: $font-size-body;
     flex: 0 0 auto;
     line-height: 1;
+    // Fixed so the description line below can be indented to align with the filename.
+    width: $chevron-width;
+    padding: 0;
   }
 
   .prior-file-row1 {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: $row1-gap;
     margin-bottom: 0.45rem;
     flex-wrap: wrap;
+
+    // Uniform width regardless of label length ("Entered" vs "Unclassified"), so the
+    // filename — and the description line under it — start at the same x on every row.
+    .chip {
+      flex: 0 0 auto;
+      width: $status-chip-width;
+      text-align: center;
+    }
   }
 
-  .history-btn {
-    font-size: $font-size-body;
-    flex: 0 0 auto;
+  // The condensed description, hanging under the filename it belongs to.
+  .prior-file-desc-line {
+    display: flex;
+    margin-top: 0.15rem;
+    padding-left: calc(#{$chevron-width} + #{$status-chip-width} + (2 * #{$row1-gap}));
   }
 
   .prior-file-name {
@@ -400,12 +414,15 @@
     }
   }
 
+  // Condensed form: one line under the filename, capped so it never crowds the
+  // action buttons above it.
   .description-cell--compact {
     flex: 1 1 auto;
     flex-direction: row;
     align-items: center;
     gap: 0.35rem;
     min-width: 0;
+    max-width: 40rem;
 
     .desc-preview {
       font-size: $font-size-small-body;
@@ -462,65 +479,6 @@
   .dl-btn,
   .rm-btn {
     white-space: nowrap;
-  }
-}
-
-// --- Per-exhibit change history popup (ExhibitList) ---
-
-.exhibit-history-overlay {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  background: $color-overlay;
-}
-
-.exhibit-history-dialog {
-  background: white;
-  border-radius: $border-radius-large;
-  padding: $padding-large;
-  width: 90%;
-  max-width: 750px;
-  max-height: 80vh;
-  overflow-y: auto;
-
-  h3 {
-    margin: 0 0 $margin-medium;
-    font-size: $font-size-body;
-    word-break: break-word;
-  }
-
-  .history-status {
-    font-size: $font-size-body;
-    color: $color-text-secondary;
-  }
-
-  .history-error {
-    color: $color-danger;
-  }
-
-  .exhibit-history-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: $font-size-body;
-
-    th,
-    td {
-      border: $border-width-small solid $color-border;
-      padding: 0.4rem 0.6rem;
-      text-align: left;
-    }
-
-    thead {
-      background: $color-bg-light;
-    }
-  }
-
-  .exhibit-history-footer {
-    margin-top: $margin-medium;
-    text-align: right;
   }
 }
 

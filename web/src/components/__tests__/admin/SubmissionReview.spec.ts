@@ -14,7 +14,9 @@ const mockRejectSubmission = vi.hoisted(() => vi.fn());
 const mockRemoveFile = vi.hoisted(() => vi.fn());
 const mockMarkExhibit = vi.hoisted(() => vi.fn());
 const mockEnterExhibit = vi.hoisted(() => vi.fn());
-const mockUpdateExhibitDescription = vi.hoisted(() => vi.fn());
+const mockAddExhibitDescription = vi.hoisted(() => vi.fn());
+const mockGetFileHistory = vi.hoisted(() => vi.fn());
+const mockGetExhibitNotes = vi.hoisted(() => vi.fn());
 
 vi.mock('@/services/SubmissionService', () => ({
   default: () => ({
@@ -23,8 +25,11 @@ vi.mock('@/services/SubmissionService', () => ({
     removeFile: mockRemoveFile,
     markExhibit: mockMarkExhibit,
     enterExhibit: mockEnterExhibit,
-    updateExhibitDescription: mockUpdateExhibitDescription,
+    addExhibitDescription: mockAddExhibitDescription,
     updateEvidenceSource: vi.fn(),
+    getFileHistory: mockGetFileHistory,
+    getExhibitNotes: mockGetExhibitNotes,
+    addExhibitNote: vi.fn(),
   }),
 }));
 
@@ -81,7 +86,9 @@ beforeEach(() => {
   mockRemoveFile.mockReset();
   mockMarkExhibit.mockReset();
   mockEnterExhibit.mockReset();
-  mockUpdateExhibitDescription.mockReset();
+  mockAddExhibitDescription.mockReset();
+  mockGetFileHistory.mockReset().mockResolvedValue([]);
+  mockGetExhibitNotes.mockReset().mockResolvedValue([]);
 });
 
 describe('SubmissionReview', () => {
@@ -365,5 +372,22 @@ describe('SubmissionReview', () => {
 
       expect(wrapper.find('.remove-error').exists()).toBe(true);
     });
+  });
+
+  // CES-42: the per-row history button is gone; the detail modal is now the way in.
+  it('opens the exhibit detail modal from the filename', async () => {
+    mockGetFileHistory.mockResolvedValue([]);
+    mockGetExhibitNotes.mockResolvedValue([]);
+    mockRetrieveSubmission.mockResolvedValue(makeSubmission({ files: [makeFile()] }));
+    const wrapper = mountReview();
+    await flushPromises();
+
+    expect(wrapper.find('.history-btn').exists()).toBe(false);
+
+    await wrapper.find('.prior-file-name-link').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('.exhibit-detail-dialog').exists()).toBe(true);
+    expect(mockGetFileHistory).toHaveBeenCalledWith('file-uuid-1');
   });
 });

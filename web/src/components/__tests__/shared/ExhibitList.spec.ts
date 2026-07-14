@@ -4,12 +4,6 @@ import { DESCRIPTION_PREVIEW_MAX_LENGTH } from '@/constants/classification';
 import type { ExhibitDescriptionModel } from '@/models/ExhibitDescriptionModel';
 import type { SubmissionFile } from '@/models/SubmissionReviewModel';
 
-vi.mock('@/services/SubmissionService', () => ({
-  default: () => ({
-    getFileHistory: vi.fn().mockResolvedValue([]),
-  }),
-}));
-
 const makeDescription = (
   overrides: Partial<ExhibitDescriptionModel> = {},
 ): ExhibitDescriptionModel => ({
@@ -70,7 +64,33 @@ describe('ExhibitList — linkableTitle hook', () => {
   });
 });
 
+describe('ExhibitList — shared first row (CES-42)', () => {
+  it('shows the status chip and no history button, in both states', async () => {
+    const entries = [{ file: makeFile({ status: 'Entered', enteredValue: '3' }), fileNumbers: [] }];
+
+    const condensed = mount(ExhibitList, { props: { ...baseProps(), entries } });
+    expect(condensed.find('.history-btn').exists()).toBe(false);
+    expect(condensed.find('.chip').text()).toBe('Entered');
+
+    await condensed.find('.chevron-btn').trigger('click');
+    expect(condensed.find('.history-btn').exists()).toBe(false);
+    expect(condensed.find('.chip').text()).toBe('Entered');
+  });
+});
+
 describe('ExhibitList — condensed rows (CES-42)', () => {
+  it('puts the description on its own line when condensed, and in row 2 when expanded', async () => {
+    const wrapper = mount(ExhibitList, { props: baseProps() });
+
+    expect(wrapper.find('.prior-file-desc-line').exists()).toBe(true);
+    expect(wrapper.find('.prior-file-row2').exists()).toBe(false);
+
+    await wrapper.find('.chevron-btn').trigger('click');
+
+    expect(wrapper.find('.prior-file-desc-line').exists()).toBe(false);
+    expect(wrapper.find('.prior-file-row2 .description-cell').exists()).toBe(true);
+  });
+
   it('hides the classification controls until the chevron is clicked', async () => {
     const wrapper = mount(ExhibitList, { props: baseProps() });
 
