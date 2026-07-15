@@ -414,6 +414,14 @@
       color: $color-text-secondary;
       white-space: nowrap;
     }
+
+    // No entries, and this row can't add one (locked/read-only) — nothing to type into.
+    .desc-empty {
+      margin: 0;
+      font-size: $font-size-small-body;
+      font-style: italic;
+      color: $color-text-disabled;
+    }
   }
 
   // Condensed form: one line under the filename, capped so it never crowds the
@@ -426,7 +434,8 @@
     min-width: 0;
     max-width: 40rem;
 
-    .desc-preview {
+    .desc-preview,
+    .desc-empty {
       font-size: $font-size-small-body;
       color: $color-text-secondary;
       min-width: 0;

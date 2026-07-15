@@ -147,7 +147,9 @@ describe('ExhibitSearch', () => {
     expect(entries[1].text()).toContain('second.pdf');
   });
 
-  it('passes always-editable and linkable-title to every per-row list', async () => {
+  // Not always-editable: an Entered exhibit is terminal in Exhibit Search too, so rows
+  // keep the standard enteredValue-based lock instead of staying editable forever.
+  it('keeps the standard per-exhibit lock (not always-editable) and passes linkable-title to every per-row list', async () => {
     mockSearchExhibits.mockResolvedValue([
       makeResult({ file: makeFile({ id: 'f1' }) }),
       makeResult({ file: makeFile({ id: 'f2' }) }),
@@ -160,7 +162,7 @@ describe('ExhibitSearch', () => {
     const stubs = wrapper.findAll('.exhibit-list-stub');
     expect(stubs).toHaveLength(2);
     for (const stub of stubs) {
-      expect(stub.attributes('data-editable')).toBe('true');
+      expect(stub.attributes('data-editable')).toBe('false');
       expect(stub.attributes('data-linkable')).toBe('true');
     }
   });

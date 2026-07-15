@@ -240,6 +240,9 @@ const updateFileInResults = (updated: SubmissionFile) => {
 
     <template v-else-if="searched">
       <div v-if="resultEntries.length > 0" class="exhibit-results-scroll">
+        <!-- Not alwaysEditable: an Entered exhibit is terminal here too, so it keeps the
+             standard enteredValue-based lock (same as the officer view) instead of staying
+             editable forever. -->
         <ExhibitList
           v-for="entry in resultEntries"
           :key="entry.file.id"

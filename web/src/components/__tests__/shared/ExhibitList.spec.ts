@@ -215,7 +215,7 @@ describe('ExhibitList — description entries (CES-42)', () => {
     expect(wrapper.text()).not.toContain('an addendum');
   });
 
-  it('disables the input once the exhibit is Entered (officer view)', () => {
+  it('shows a no-description message instead of an input once the exhibit is Entered with no description (officer view)', () => {
     const wrapper = mount(ExhibitList, {
       props: {
         ...expandedProps(),
@@ -223,7 +223,8 @@ describe('ExhibitList — description entries (CES-42)', () => {
       },
     });
 
-    expect(wrapper.find('[data-test="desc-input"]').attributes('disabled')).toBeDefined();
+    expect(wrapper.find('[data-test="desc-input"]').exists()).toBe(false);
+    expect(wrapper.find('[data-test="desc-empty"]').text()).toBe('No description provided');
   });
 
   it('keeps the input enabled for an Entered exhibit in alwaysEditable (admin) mode', () => {

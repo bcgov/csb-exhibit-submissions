@@ -81,12 +81,14 @@ describe('SubmissionService', () => {
     expect(result).toBe(7);
   });
 
+  // Reads the raw multipart body as text rather than `request.formData()`: parsing a
+  // jsdom-polyfilled File through undici's multipart parser throws in this test
+  // environment (unrelated to submitExhibits itself — see docker/README or CI notes).
   it('submitExhibits includes submissionId in the form when appending to an existing submission', async () => {
-    let sentSubmissionId: FormDataEntryValue | null = null;
+    let body = '';
     server.use(
       http.post('/api/submissions/submit/', async ({ request }) => {
-        const form = await request.formData();
-        sentSubmissionId = form.get('submissionId');
+        body = await request.text();
         return HttpResponse.json({ submissionId: 7 });
       }),
     );
@@ -95,15 +97,14 @@ describe('SubmissionService', () => {
     const file = new File(['video content'], 'test.mp4', { type: 'video/mp4' });
     await submitExhibits(mockModel, [file], undefined, 7);
 
-    expect(sentSubmissionId).toBe('7');
+    expect(body).toMatch(/name="submissionId"\r?\n\r?\n7\r?\n/);
   });
 
   it('submitExhibits omits submissionId on the first upload', async () => {
-    let hasSubmissionId = true;
+    let body = '';
     server.use(
       http.post('/api/submissions/submit/', async ({ request }) => {
-        const form = await request.formData();
-        hasSubmissionId = form.has('submissionId');
+        body = await request.text();
         return HttpResponse.json({ submissionId: 7 });
       }),
     );
@@ -112,7 +113,7 @@ describe('SubmissionService', () => {
     const file = new File(['video content'], 'test.mp4', { type: 'video/mp4' });
     await submitExhibits(mockModel, [file], undefined, null);
 
-    expect(hasSubmissionId).toBe(false);
+    expect(body).not.toContain('name="submissionId"');
   });
 
   it('retrieveSubmission fetches GET /api/submissions/retrieve', async () => {

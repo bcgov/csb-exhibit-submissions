@@ -86,6 +86,12 @@ const onBlur = async () => {
       </span>
     </template>
 
+    <!-- No entries and not editable here: nothing to add, so skip the dead input. -->
+    <template v-else-if="disabled">
+      <label v-if="!compact">Description</label>
+      <p class="desc-empty" data-test="desc-empty">No description provided</p>
+    </template>
+
     <!-- No entries: the one place the first description can be added from the list. -->
     <template v-else>
       <label v-if="!compact" :for="`desc-${file.id}`">Description</label>
@@ -97,7 +103,6 @@ const onBlur = async () => {
         data-test="desc-input"
         :rows="DESCRIPTION_INPUT_MIN_ROWS"
         :maxlength="DESCRIPTION_MAX_LENGTH"
-        :disabled="disabled"
         :placeholder="compact ? 'Add a description…' : 'Add a description (saved permanently)…'"
         @input="autoGrow"
         @blur="onBlur"
