@@ -21,13 +21,13 @@ export const useAuthStore = defineStore('auth', () => {
   function decodeAndSetUser(jwt: string) {
     try {
       const decoded = jwtDecode<JwtPayload>(jwt);
-      console.log(decoded, decoded.roles);
+      const decodedRoles = Array.isArray(decoded.role) ? decoded.role : [decoded.role];
       user.value = {
         id: decoded.sub,
         email: decoded.email,
-        roles: decoded.roles || [],
+        roles: decodedRoles,
       };
-      roles.value = Array.isArray(decoded.role) ? decoded.role : [decoded.role];
+      roles.value = decodedRoles;
     } catch (error) {
       console.error('Invalid token format', error);
       clearAuth();

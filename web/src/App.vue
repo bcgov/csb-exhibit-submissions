@@ -5,6 +5,7 @@ import { ref } from 'vue';
 import logo from './assets/bc-logo.svg?url';
 import useAuthService from './services/AuthService';
 import { useAuthStore } from './stores/authStore';
+import { ROLE_ADMIN, ROLE_USER, ROLE_CLERK } from './constants/roles';
 
 const selectedTab = ref('/officer/court-list');
 const { logout } = useAuthService();
@@ -28,10 +29,13 @@ const authStore = useAuthStore();
           <v-tab
             value="admin-exhibit-search"
             to="/admin/exhibit-search"
-            v-if="authStore.hasRole('Admin')"
+            v-if="authStore.hasRole(ROLE_ADMIN)"
             >Exhibit Search</v-tab
           >
-          <v-tab value="court-list" to="/officer/court-list" v-if="authStore.hasRole('User')"
+          <v-tab value="admin-list" to="/admin/list" v-if="authStore.hasRole(ROLE_CLERK)"
+            >Submission Listing</v-tab
+          >
+          <v-tab value="court-list" to="/officer/court-list" v-if="authStore.hasRole(ROLE_USER)"
             >Court list</v-tab
           >
 

@@ -18,7 +18,7 @@ namespace CES.API.Controllers
 
         [HttpPost]
         [Route("api/submissions/submit")]
-        [Authorize(Roles = "User")]
+        [Authorize(Roles = RoleConstants.User)]
         public async Task<IActionResult> SubmitEvidence([FromForm] SubmissionModel model)
         {
             if (!ModelState.IsValid)
@@ -47,7 +47,7 @@ namespace CES.API.Controllers
 
         [HttpGet]
         [Route("api/submissions/retrieve")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = RoleConstants.AdminOrClerk)]
         public async Task<IActionResult> RetrieveSubmission([FromQuery] int fileId)
         {
             var model = await _submissionService.RetrieveSubmission(fileId);
@@ -59,7 +59,7 @@ namespace CES.API.Controllers
 
         [HttpGet]
         [Route("api/submissions/listing")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = RoleConstants.AdminOrClerk)]
         public async Task<IActionResult> RetrieveSubmissionListing([FromQuery] SubmissionListFilter filter)
         {
             var result = await _submissionService.RetrieveSubmissionListing(filter);
@@ -80,7 +80,7 @@ namespace CES.API.Controllers
 
         [HttpGet]
         [Route("api/submissions/exhibit-search")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = RoleConstants.Admin)]
         public async Task<IActionResult> SearchExhibits([FromQuery] ExhibitSearchFilter filter)
         {
             var hasFileNumber = !string.IsNullOrWhiteSpace(filter.FileNumberText);
@@ -98,7 +98,7 @@ namespace CES.API.Controllers
 
         [HttpPost]
         [Route("api/submissions/reject")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = RoleConstants.AdminOrClerk)]
         public async Task<IActionResult> RejectSubmissions([FromBody] SubmissionActionModel model)
         {
             if (!ModelState.IsValid)
@@ -117,7 +117,7 @@ namespace CES.API.Controllers
 
         [HttpDelete]
         [Route("api/submissions/files/{fileId:guid}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = RoleConstants.AdminOrClerk)]
         public async Task<IActionResult> RemoveFile(Guid fileId)
         {
             var result = await _submissionService.RemoveFileAsync(fileId);

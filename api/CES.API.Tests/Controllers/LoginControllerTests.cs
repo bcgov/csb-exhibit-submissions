@@ -30,6 +30,21 @@ public class LoginControllerTests : IClassFixture<TestWebApplicationFactory>
     }
 
     [Fact]
+    public async Task Login_WithClerkCredentials_Returns200WithToken()
+    {
+        var response = await _client.PostAsJsonAsync("/api/auth/login", new
+        {
+            username = "clerk@gov.bc.ca",
+            password = "pass123"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<TokenResponse>();
+        body!.Token.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
     public async Task Login_WithInvalidCredentials_Returns401()
     {
         var response = await _client.PostAsJsonAsync("/api/auth/login", new

@@ -32,7 +32,7 @@ Jasper uses Option B (backend-driven token relay, described below) with no OIDC 
 1. As an officer, I am redirected to the BC Gov Keycloak login page when I access the application unauthenticated, so that I sign in with my IDIR account.
 2. As an officer, I am redirected back to the application after a successful login and can use the app without further authentication steps.
 3. As an officer, clicking Logout ends my session in both the application and Keycloak.
-4. As an admin, I have access to admin routes when my IDIR account carries the `ces-admin` Keycloak realm role.
+4. As an admin, I have access to admin routes when my IDIR account carries the `ces-judicial` Keycloak client role.
 5. As a developer, running `./docker/manage debug` (or any local dev environment) gives me a mock login by default, so that day-to-day development work never requires a Keycloak client or touches real IDIR/SSO.
 
 ---
@@ -64,8 +64,8 @@ Jasper uses Option B (backend-driven token relay, described below) with no OIDC 
 |---|---|---|
 | Identity provider | IDIR only | Government employees only; no BCeID or business accounts |
 | Authentication flow | Option B — backend-driven token relay | Matches bcgov/jasper pattern; proven in production on a sister project |
-| Role strategy | Keycloak realm roles | Roles live in the realm, not in a DB; simpler for an internal tool |
-| Role names | `ces-admin`, `ces-user` | Namespaced to avoid collision with other clients on the same realm |
+| Role strategy | Keycloak **client** roles (on the CES confidential client), not realm roles | Scoped to the CES client rather than shared realm-wide; avoids collision with other clients on the same realm |
+| Role names | `ces-user`, `ces-judicial`, `ces-clerk` | Three roles: officer (submit), judicial/JJ (exhibit search), clerk (registry triage/review) |
 | IDP hint | `kc_idp_hint=idir` | Forces login directly to IDIR without showing an IDP selector screen |
 | Dev bypass | Env-flag-controlled mock login, unchanged from today's implementation | Allows development without a Keycloak client; deliberately does **not** attempt to replicate Keycloak's token/claim shape — simplicity for local dev matters more than fidelity |
 
@@ -123,8 +123,8 @@ When a user authenticates via IDIR, Keycloak includes these claims in the token.
 | `preferred_username` | Always ends with `@idir` for IDIR users | `jsmith@idir` |
 | `display_name` | Full display name | `Smith, John CITZ:EX` |
 | `email` | Work email | `john.smith@gov.bc.ca` |
-| `realm_access.roles` | Array of realm roles assigned to the user | `["ces-admin", "default-roles-standard"]` |
-| `groups` | Keycloak group memberships — **not currently consumed** by CES (role mapping uses `realm_access.roles` only); don't request the `groups` scope unless a future feature needs group membership | `["/ces-admins"]` |
+| `resource_access.<clientId>.roles` | Array of **client** roles assigned to the user on the CES OIDC client | `["ces-judicial"]` |
+| `groups` | Keycloak group memberships — **not currently consumed** by CES (role mapping uses `resource_access.<clientId>.roles` only); don't request the `groups` scope unless a future feature needs group membership | `["/ces-admins"]` |
 
 ---
 
@@ -236,20 +236,24 @@ public static IServiceCollection AddCESAuthentication(
                 if (ctx.Principal?.Identity is not ClaimsIdentity identity)
                     return Task.CompletedTask;
 
-                // Map Keycloak realm roles to app roles
-                var realmRolesClaim = ctx.Principal.FindFirst("realm_access")?.Value;
-                if (realmRolesClaim != null)
+                // Map Keycloak client roles (on the CES client) to app roles.
+                // Client roles live under resource_access.<clientId>.roles, not
+                // realm_access.roles — CES roles are scoped to the CES client, not realm-wide.
+                var resourceAccessClaim = ctx.Principal.FindFirst("resource_access")?.Value;
+                if (resourceAccessClaim != null)
                 {
-                    var realmAccess = JsonSerializer.Deserialize<JsonElement>(realmRolesClaim);
-                    if (realmAccess.TryGetProperty("roles", out var rolesElement))
+                    var resourceAccess = JsonSerializer.Deserialize<JsonElement>(resourceAccessClaim);
+                    if (resourceAccess.TryGetProperty(clientId, out var clientAccess)
+                        && clientAccess.TryGetProperty("roles", out var rolesElement))
                     {
                         foreach (var role in rolesElement.EnumerateArray()
                             .Select(r => r.GetString()).OfType<string>())
                         {
                             var appRole = role switch
                             {
-                                "ces-admin" => "Admin",
-                                "ces-user"  => "User",
+                                "ces-judicial" => "Admin",
+                                "ces-user"     => "User",
+                                "ces-clerk"    => "Clerk",
                                 _ => null
                             };
                             if (appRole != null)
@@ -555,16 +559,16 @@ The following must be configured in the target Keycloak realm by the SSO team be
    - Valid post-logout redirect URIs per environment
    - A client secret generated and securely provided to the deployment team
 
-2. **Realm roles** created:
+2. **Client roles** created on the CES confidential client (not realm roles):
    - `ces-clerk`
    - `ces-user`
    - `ces-judicial`
 
-3. ~~`groups` scope~~ — **not required.** CES's role mapping uses `realm_access.roles` only; the `groups` claim isn't consumed anywhere in this design. Skip requesting this unless a future feature needs group membership (see IDIR Token Claims table).
+3. ~~`groups` scope~~ — **not required.** CES's role mapping uses `resource_access.<clientId>.roles` only; the `groups` claim isn't consumed anywhere in this design. Skip requesting this unless a future feature needs group membership (see IDIR Token Claims table).
 
 4. ~~Audience mapper~~ — **not required.** CES's Option B flow has no `JwtBearer` scheme validating incoming API tokens (the API is the OIDC client, not a resource server), so there's no `aud` validation in code for this to satisfy. Only revisit this if CES later adds a service that independently validates bearer tokens.
 
-5. **Test IDIR accounts** assigned to `ces-admin` and `ces-user` roles for integration testing.
+5. **Test IDIR accounts** assigned to `ces-judicial`, `ces-user`, and `ces-clerk` roles for integration testing.
 
 > **Note:** The callback path registered in Keycloak must be `/api/auth/signin-oidc` — this is where ASP.NET's OpenIdConnect middleware listens. It is not a Vue route.
 

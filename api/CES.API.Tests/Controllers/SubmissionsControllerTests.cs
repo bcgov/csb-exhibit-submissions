@@ -203,9 +203,35 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
     }
 
     [Fact]
+    public async Task Retrieve_WithClerkRole_Returns200WithTickets()
+    {
+        var submissionId = await SubmitAndGetId(ticketCount: 2);
+
+        WithAuth(JwtTokenHelper.ClerkToken());
+        var response = await _client.GetAsync($"/api/submissions/retrieve?fileId={submissionId}");
+        var body = await response.Content.ReadFromJsonAsync<SubmissionDetail>();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        body!.Tickets.Should().HaveCount(2);
+    }
+
+    [Fact]
     public async Task Listing_WithAdminRole_Returns200WithPagedResult()
     {
         WithAuth(JwtTokenHelper.AdminToken());
+
+        var response = await _client.GetAsync("/api/submissions/listing");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<PagedResult>();
+        body.Should().NotBeNull();
+        body!.Items.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Listing_WithClerkRole_Returns200WithPagedResult()
+    {
+        WithAuth(JwtTokenHelper.ClerkToken());
 
         var response = await _client.GetAsync("/api/submissions/listing");
 
@@ -258,6 +284,17 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
         var submissionId = await SubmitAndGetId();
 
         WithAuth(JwtTokenHelper.AdminToken());
+        var response = await _client.PostAsJsonAsync("/api/submissions/reject", new { submissionId });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Reject_WithClerkRole_Returns200()
+    {
+        var submissionId = await SubmitAndGetId();
+
+        WithAuth(JwtTokenHelper.ClerkToken());
         var response = await _client.PostAsJsonAsync("/api/submissions/reject", new { submissionId });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -331,6 +368,18 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
         var response = await _client.DeleteAsync($"/api/submissions/files/{Guid.NewGuid()}");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task RemoveFile_WithClerkRole_Returns200_WhenFileExists()
+    {
+        var submissionId = await SubmitAndGetId();
+        var fileId = await GetFirstFileId(submissionId);
+
+        WithAuth(JwtTokenHelper.ClerkToken());
+        var response = await _client.DeleteAsync($"/api/submissions/files/{fileId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
@@ -419,6 +468,17 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
     public async Task ExhibitSearch_WithUserRole_Returns403()
     {
         WithAuth(JwtTokenHelper.UserToken());
+
+        var response = await _client.GetAsync("/api/submissions/exhibit-search?fileNumberText=FILE000");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task ExhibitSearch_WithClerkRole_Returns403()
+    {
+        // Exhibit Search stays Admin/JJ-exclusive — Clerk does not get it.
+        WithAuth(JwtTokenHelper.ClerkToken());
 
         var response = await _client.GetAsync("/api/submissions/exhibit-search?fileNumberText=FILE000");
 

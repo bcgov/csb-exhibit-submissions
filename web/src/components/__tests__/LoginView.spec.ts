@@ -4,12 +4,26 @@ import { http, HttpResponse } from 'msw';
 import { server } from '@/test/setup';
 import LoginView from '@/views/LoginView.vue';
 
+const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
+
 vi.mock('@/router', () => ({
   default: {
-    push: vi.fn(),
+    push: pushMock,
     currentRoute: { value: { path: '/', query: {} } },
   },
 }));
+
+// LoginView reads router/route via the vue-router composables (not the '@/router'
+// module directly), so those need to resolve to the same push mock above for
+// assertions on redirect targets to mean anything.
+vi.mock('vue-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('vue-router')>();
+  return {
+    ...actual,
+    useRouter: () => ({ push: pushMock }),
+    useRoute: () => ({ query: {} }),
+  };
+});
 
 function buildValidToken(): string {
   const encode = (obj: unknown) => Buffer.from(JSON.stringify(obj)).toString('base64url');
@@ -21,9 +35,20 @@ function buildValidToken(): string {
   })}.sig`;
 }
 
+function buildClerkToken(): string {
+  const encode = (obj: unknown) => Buffer.from(JSON.stringify(obj)).toString('base64url');
+  return `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({
+    sub: 'clerk@gov.bc.ca',
+    email: 'clerk@gov.bc.ca',
+    role: 'Clerk',
+    exp: Math.floor(Date.now() / 1000) + 7200,
+  })}.sig`;
+}
+
 beforeEach(() => {
   localStorage.clear();
   setActivePinia(createPinia());
+  pushMock.mockClear();
 });
 
 describe('LoginView', () => {
@@ -52,8 +77,7 @@ describe('LoginView', () => {
     expect(wrapper.find('.alert-danger').text()).toContain('Invalid email or password');
   });
 
-  it('redirects to home on successful login', async () => {
-    const routerMock = await import('@/router');
+  it('redirects an Admin login to Exhibit Search', async () => {
     server.use(http.post('/api/auth/login', () => HttpResponse.json({ token: buildValidToken() })));
 
     const wrapper = mount(LoginView, {
@@ -65,6 +89,21 @@ describe('LoginView', () => {
     await wrapper.find('form').trigger('submit');
     await flushPromises();
 
-    expect(routerMock.default.push).toHaveBeenCalled();
+    expect(pushMock).toHaveBeenCalledWith({ name: 'AdminExhibitSearch' });
+  });
+
+  it('redirects a Clerk login to the Submission Listing route', async () => {
+    server.use(http.post('/api/auth/login', () => HttpResponse.json({ token: buildClerkToken() })));
+
+    const wrapper = mount(LoginView, {
+      global: { plugins: [createPinia()] },
+    });
+
+    await wrapper.find('input[type="email"]').setValue('clerk@gov.bc.ca');
+    await wrapper.find('input[type="password"]').setValue('pass123');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(pushMock).toHaveBeenCalledWith({ name: 'AdminSubmissionList' });
   });
 });

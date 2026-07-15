@@ -35,4 +35,5 @@ public static class JwtTokenHelper
 
     public static string AdminToken() => GenerateToken("admin@gov.bc.ca", "Admin");
     public static string UserToken() => GenerateToken("officer@gov.bc.ca", "User");
+    public static string ClerkToken() => GenerateToken("clerk@gov.bc.ca", "Clerk");
 }

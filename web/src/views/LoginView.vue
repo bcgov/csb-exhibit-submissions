@@ -65,6 +65,7 @@ import { useRouter, useRoute } from 'vue-router';
 import useAuthService from '@/services/AuthService';
 import axios from 'axios';
 import { useAuthStore } from '@/stores/authStore';
+import { ROLE_ADMIN, ROLE_USER, ROLE_CLERK } from '@/constants/roles';
 
 const router = useRouter();
 const route = useRoute();
@@ -92,8 +93,10 @@ const handleLogin = async () => {
     //if no redirectPath send to determined base route for role
     if (!redirectPath) {
       const authStore = useAuthStore();
-      if (authStore.hasRole('Admin')) await router.push({ name: 'AdminExhibitSearch' });
-      else if (authStore.hasRole('User')) await router.push({ name: 'OfficerCourtList' });
+      if (authStore.hasRole(ROLE_ADMIN)) await router.push({ name: 'AdminExhibitSearch' });
+      else if (authStore.hasRole(ROLE_CLERK)) await router.push({ name: 'AdminSubmissionList' });
+      else if (authStore.hasRole(ROLE_USER)) await router.push({ name: 'OfficerCourtList' });
+      else await router.push({ name: 'Forbidden' });
     } else await router.push(redirectPath);
   } catch (error) {
     // Strictly typed error handling

@@ -144,6 +144,35 @@ public class FilesControllerTests : IClassFixture<TestWebApplicationFactory>
     }
 
     [Fact]
+    public async Task MarkExhibit_WithClerkRole_Returns200AndUpdatedFile()
+    {
+        var fileId = await UploadFileAndGetId();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.ClerkToken());
+
+        var response = await _client.PostAsJsonAsync($"/api/files/{fileId}/mark", new { markedValue = "D" });
+        var body = await response.Content.ReadFromJsonAsync<ClassificationFileResult>();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        body!.MarkedValue.Should().Be("D");
+    }
+
+    [Fact]
+    public async Task MarkExhibit_AsClerk_RecordsChangedByClerk()
+    {
+        var fileId = await UploadFileAndGetId();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.ClerkToken());
+
+        await _client.PostAsJsonAsync($"/api/files/{fileId}/mark", new { markedValue = "E" });
+
+        var response = await _client.GetAsync($"/api/files/{fileId}/history");
+        var history = await response.Content.ReadFromJsonAsync<List<HistoryEntry>>();
+
+        history.Should().ContainSingle(h => h.FieldName == "MarkedValue" && h.ChangedBy == "Clerk");
+    }
+
+    [Fact]
     public async Task MarkExhibit_UnknownFile_Returns404()
     {
         _client.DefaultRequestHeaders.Authorization =
@@ -290,6 +319,37 @@ public class FilesControllerTests : IClassFixture<TestWebApplicationFactory>
         var response = await _client.PostAsJsonAsync($"/api/files/{fileId}/descriptions", new { descriptionText = "too late" });
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    // Clerk gets the same edit-after-Entered override as Admin.
+    [Fact]
+    public async Task AddDescription_AsClerk_OnEnteredExhibit_Returns200()
+    {
+        var fileId = await UploadFileAndGetId();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.UserToken());
+        await _client.PostAsJsonAsync($"/api/files/{fileId}/enter", new { enteredValue = "3" });
+
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.ClerkToken());
+        var response = await _client.PostAsJsonAsync($"/api/files/{fileId}/descriptions", new { descriptionText = "clerk override" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task AddDescription_WithClerkRole_Returns200AndUpdatedFile()
+    {
+        var fileId = await UploadFileAndGetId();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.ClerkToken());
+
+        var response = await _client.PostAsJsonAsync($"/api/files/{fileId}/descriptions", new { descriptionText = "clerk note" });
+        var body = await response.Content.ReadFromJsonAsync<ClassificationFileResult>();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        body!.Descriptions.Should().ContainSingle()
+            .Which.DescriptionText.Should().Be("clerk note");
     }
 
     [Fact]
@@ -439,6 +499,18 @@ public class FilesControllerTests : IClassFixture<TestWebApplicationFactory>
     }
 
     [Fact]
+    public async Task GetHistory_WithClerkRole_Returns200()
+    {
+        var fileId = await UploadFileAndGetId();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.ClerkToken());
+
+        var response = await _client.GetAsync($"/api/files/{fileId}/history");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task GetHistory_UnknownFile_Returns404()
     {
         _client.DefaultRequestHeaders.Authorization =
@@ -482,6 +554,37 @@ public class FilesControllerTests : IClassFixture<TestWebApplicationFactory>
         var fileId = await UploadFileAndGetId();
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", JwtTokenHelper.AdminToken());
+
+        await _client.PostAsJsonAsync($"/api/files/{fileId}/notes", new { noteText = "note one" });
+
+        var response = await _client.GetAsync($"/api/files/{fileId}/notes");
+        var notes = await response.Content.ReadFromJsonAsync<List<NoteResult>>();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        notes.Should().ContainSingle(n => n.NoteText == "note one");
+    }
+
+    [Fact]
+    public async Task AddNote_WithClerkRole_Returns200AndNote()
+    {
+        var fileId = await UploadFileAndGetId();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.ClerkToken());
+
+        var response = await _client.PostAsJsonAsync($"/api/files/{fileId}/notes", new { noteText = "Clerk registry note" });
+        var body = await response.Content.ReadFromJsonAsync<NoteResult>();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        body!.NoteText.Should().Be("Clerk registry note");
+        body.CreatedBy.Should().Be("Clerk");
+    }
+
+    [Fact]
+    public async Task GetNotes_WithClerkRole_Returns200WithAddedNote()
+    {
+        var fileId = await UploadFileAndGetId();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", JwtTokenHelper.ClerkToken());
 
         await _client.PostAsJsonAsync($"/api/files/{fileId}/notes", new { noteText = "note one" });
 

@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import DevDashboard from '@/views/DevDashboardView.vue';
 import { useAuthStore } from '@/stores/authStore';
+import { ROLE_ADMIN, ROLE_USER, ROLE_CLERK } from '@/constants/roles';
 
 //TODO: Future auth guard when using keycloak
 //Copied from project: bcgov-jasper
@@ -58,36 +59,41 @@ const router = createRouter({
       path: '/officer/court-list',
       name: 'OfficerCourtList',
       component: () => import('@/views/officer/CourtListView.vue'),
-      meta: { requiresAuth: true, roles: ['User'] },
+      meta: { requiresAuth: true, roles: [ROLE_USER] },
     },
     {
       path: '/officer/submission/',
       name: 'OfficerSubmissions',
       component: () => import('@/views/officer/SubmissionsView.vue'),
-      meta: { requiresAuth: true, roles: ['User'] },
+      meta: { requiresAuth: true, roles: [ROLE_USER] },
     },
     {
       path: '/admin/exhibit-search',
       name: 'AdminExhibitSearch',
       component: () => import('@/views/admin/ExhibitSearchView.vue'),
-      meta: { requiresAuth: true, roles: ['Admin'] },
+      meta: { requiresAuth: true, roles: [ROLE_ADMIN] },
     },
     {
       path: '/admin/list',
       name: 'AdminSubmissionList',
       component: () => import('@/views/admin/ListingView.vue'),
-      meta: { requiresAuth: true, roles: ['Admin'] },
+      meta: { requiresAuth: true, roles: [ROLE_ADMIN, ROLE_CLERK] },
     },
     {
       path: '/admin/view/:id',
       name: 'AdminViewSubmission',
       component: () => import('@/views/admin/SubmissionReviewView.vue'),
-      meta: { requiresAuth: true, roles: ['Admin'] },
+      meta: { requiresAuth: true, roles: [ROLE_ADMIN, ROLE_CLERK] },
     },
     {
       path: '/login',
       name: 'Login',
       component: () => import('@/views/LoginView.vue'),
+    },
+    {
+      path: '/forbidden',
+      name: 'Forbidden',
+      component: () => import('@/views/ForbiddenView.vue'),
     },
   ],
 });

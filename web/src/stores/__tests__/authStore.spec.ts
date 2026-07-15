@@ -20,6 +20,13 @@ const expiredJwt = makeJwt({
   exp: Math.floor(Date.now() / 1000) - 3600,
 });
 
+const clerkJwt = makeJwt({
+  sub: 'clerk@gov.bc.ca',
+  email: 'clerk@gov.bc.ca',
+  role: 'Clerk',
+  exp: Math.floor(Date.now() / 1000) + 7200,
+});
+
 beforeEach(() => {
   localStorage.clear();
   setActivePinia(createPinia());
@@ -64,5 +71,19 @@ describe('authStore', () => {
     const store = useAuthStore();
     store.setToken(validJwt);
     expect(store.hasRole('Admin')).toBe(true);
+  });
+
+  it('hasRole returns true for a Clerk token', () => {
+    const store = useAuthStore();
+    store.setToken(clerkJwt);
+    expect(store.hasRole('Clerk')).toBe(true);
+    expect(store.hasRole('Admin')).toBe(false);
+  });
+
+  it('user.roles matches the roles ref used by hasRole', () => {
+    const store = useAuthStore();
+    store.setToken(clerkJwt);
+    expect(store.user?.roles).toEqual(store.roles);
+    expect(store.user?.roles).toEqual(['Clerk']);
   });
 });
