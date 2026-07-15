@@ -25,6 +25,10 @@ $btn-success-hover-darken: 8%;
 $color-success-hover: color.adjust($color-success, $lightness: -$btn-success-hover-darken);
 
 .btn {
+  // Set explicitly rather than relying on the inherited box-sizing chain —
+  // Chromium doesn't propagate it to elements nested in a <details>, which
+  // otherwise makes min-height resolve inconsistently for buttons inside one.
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;

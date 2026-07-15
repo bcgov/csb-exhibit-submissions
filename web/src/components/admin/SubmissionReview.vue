@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { convertUtcToLocal, formatDateTime, splitDateTimeForDisplay } from '@/helpers/formatters';
+import type { ExhibitSearchResultModel } from '@/models/ExhibitSearchResultModel';
 import type {
   SubmissionActionModel,
   SubmissionFile,
@@ -9,6 +10,7 @@ import useSubmissionService from '@/services/SubmissionService';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AppModal from '../shared/AppModal.vue';
+import ExhibitDetailModal from '../shared/ExhibitDetailModal.vue';
 import ExhibitList from '../shared/ExhibitList.vue';
 import FileViewer from '../shared/FileViewer.vue';
 
@@ -23,7 +25,7 @@ const {
   removeFile,
   markExhibit,
   enterExhibit,
-  updateExhibitDescription,
+  addExhibitDescription,
   updateEvidenceSource,
 } = useSubmissionService();
 
@@ -31,6 +33,10 @@ const submission = ref<SubmissionReviewModel | undefined>(undefined);
 const showRejectModal = ref(false);
 const removeError = ref<string | null>(null);
 const previewFile = ref<SubmissionFile | null>(null);
+
+// Exhibit detail popup — the only path to an exhibit's change history now that the
+// per-row history button is gone (CES-42).
+const detailResult = ref<ExhibitSearchResultModel | null>(null);
 
 const getFileUrl = (fileId: string, action: 'view' | 'download') =>
   `/api/files/${fileId}/${action}`;
@@ -57,6 +63,23 @@ onMounted(async () => {
     })),
   };
 });
+
+const openDetails = (file: SubmissionFile) => {
+  if (!submission.value) return;
+  detailResult.value = {
+    file,
+    submissionId: submission.value.id,
+    submissionDate: submission.value.submissionDate,
+    appearanceDateTime: submission.value.courtDateTime,
+    location: submission.value.location,
+    room: submission.value.room,
+    fileNumbers: submission.value.tickets.map((t) => t.fileNumberText),
+    accusedName: submission.value.tickets[0]?.accusedName,
+  };
+};
+const closeDetails = () => {
+  detailResult.value = null;
+};
 
 const openPreview = (file: SubmissionFile) => {
   previewFile.value = file;
@@ -177,15 +200,15 @@ const removeExhibit = async (file: SubmissionFile) => {
 
       <ExhibitList
         :entries="exhibitEntries"
+        :initial-expanded="true"
         :always-editable="!isTerminal"
         :show-removed="true"
         :can-download="true"
         :can-remove="!isTerminal"
+        :linkable-title="true"
         :mark-fn="(id: string, v: string) => markExhibit(id, { markedValue: v })"
         :enter-fn="(id: string, v: string) => enterExhibit(id, { enteredValue: v })"
-        :description-fn="
-          (id: string, d: string) => updateExhibitDescription(id, { description: d })
-        "
+        :add-description-fn="addExhibitDescription"
         :evidence-source-fn="
           (id: string, v: string) => updateEvidenceSource(id, { evidenceSourceType: v })
         "
@@ -193,6 +216,17 @@ const removeExhibit = async (file: SubmissionFile) => {
         @preview-file="openPreview"
         @download-file="downloadFile"
         @remove-file="removeExhibit"
+        @title-click="openDetails"
+      />
+
+      <ExhibitDetailModal
+        v-if="detailResult"
+        :result="detailResult"
+        can-view-notes
+        :always-editable="!isTerminal"
+        :add-description-fn="isTerminal ? undefined : addExhibitDescription"
+        @file-updated="updateFileInSubmission"
+        @close="closeDetails"
       />
 
       <p v-if="removeError" class="remove-error">{{ removeError }}</p>

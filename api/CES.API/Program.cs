@@ -28,7 +28,8 @@ builder.Services.AddAuthorization();
 
 // ** CORS **
 var corsPolicyName = "CESCorsPolicy";
-var corsSettings = builder.Configuration.GetSection("CORS").Get<CORSSettings>();
+var corsSettings = builder.Configuration.GetSection("CORS").Get<CORSSettings>()
+    ?? throw new InvalidOperationException("Configuration section 'CORS' not found.");
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(name: corsPolicyName,
@@ -77,7 +78,8 @@ builder.Services.AddSwaggerGen(c =>
     //        });
 });
 
-var mailConfiguration = builder.Configuration.GetSection("MailConfiguration").Get<MailConfiguration>();
+var mailConfiguration = builder.Configuration.GetSection("MailConfiguration").Get<MailConfiguration>()
+    ?? throw new InvalidOperationException("Configuration section 'MailConfiguration' not found.");
 builder.Services.AddSingleton<IMailConfiguration>(mailConfiguration);
 
 var dataStoreConnectionString = builder.Configuration.GetConnectionString("CESDataStore");

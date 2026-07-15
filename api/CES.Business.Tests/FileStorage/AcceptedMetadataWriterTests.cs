@@ -52,6 +52,34 @@ public class AcceptedMetadataWriterTests
         metadata.Exhibits[0].CanonicalPath.Should().Be("loc001/room1/20260101/1/guid.mp4");
     }
 
+    // CES-42: descriptions are exported as their full append-only history, oldest first.
+    [Fact]
+    public void BuildMetadata_ExportsFullDescriptionHistory_InOrder()
+    {
+        var submission = BuildSubmission();
+        var file = submission.Files.First();
+        var firstAdded = DateTime.UtcNow.AddMinutes(-10);
+        file.Descriptions.Add(new ExhibitDescription
+        {
+            DescriptionText = "an addendum",
+            CreatedBy = "admin@test.ca",
+            CreatedAtUTC = firstAdded.AddMinutes(5),
+        });
+        file.Descriptions.Add(new ExhibitDescription
+        {
+            DescriptionText = "first description",
+            CreatedBy = "officer@test.ca",
+            CreatedAtUTC = firstAdded,
+        });
+
+        var metadata = AcceptedMetadataWriter.BuildMetadata(submission, Array.Empty<SubmissionAuditLog>());
+
+        var descriptions = metadata.Exhibits[0].Descriptions;
+        descriptions.Select(d => d.Text).Should().ContainInOrder("first description", "an addendum");
+        descriptions[0].By.Should().Be("officer@test.ca");
+        descriptions[0].AtUTC.Should().Be(firstAdded);
+    }
+
     [Fact]
     public void BuildMetadata_RecordsAllAssociatedTickets_ForDeDup()
     {

@@ -23,6 +23,7 @@ namespace CES.EF
         public DbSet<StoredFiles> StoredFiles { get; set; }
         public DbSet<SubmissionAuditLog> SubmissionAuditLogs { get; set; }
         public DbSet<ExhibitNote> ExhibitNotes { get; set; }
+        public DbSet<ExhibitDescription> ExhibitDescriptions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -105,3 +105,10 @@ $icon-size-small:        #{t.$icons-size-small}px;     // 16px
 $icon-size-medium:       #{t.$icons-size-medium}px;    // 20px
 $icon-size-large:        #{t.$icons-size-large}px;     // 24px
 $icon-size-xlarge:       #{t.$icons-size-xlarge}px;    // 32px
+
+// ExhibitList row metrics (CES-42). The chevron and status chip are fixed-width so the
+// filename — and the condensed description line indented beneath it — start at the same
+// x on every row, whatever the status label reads.
+$chevron-width:          1.75rem;
+$status-chip-width:      6.5rem;
+$row1-gap:               0.6rem;

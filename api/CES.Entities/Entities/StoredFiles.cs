@@ -28,7 +28,10 @@ namespace CES.Entities
         public DateTime? MarkedAt { get; set; }
         public string? EnteredValue { get; set; }
         public DateTime? EnteredAt { get; set; }
-        public string? Description { get; set; }
+
+        // Append-only description entries, oldest first (CES-42). Replaces the former
+        // single mutable Description string.
+        public ICollection<ExhibitDescription> Descriptions { get; set; } = new List<ExhibitDescription>();
 
         // Evidence source device — "BodyCam" / "DashCam" / "Other"; null = unset (added for CES-18)
         public string? EvidenceSourceType { get; set; }

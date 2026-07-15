@@ -10,9 +10,19 @@ namespace CES.Business.Models
         public string EnteredValue { get; set; } = string.Empty;
     }
 
-    public class ExhibitDescriptionModel
+    // One immutable description entry (CES-42). Read model returned to the client.
+    public class ExhibitDescriptionEntryModel
     {
-        public string Description { get; set; } = string.Empty;
+        public int Id { get; set; }
+        public string DescriptionText { get; set; } = string.Empty;
+        public string? CreatedBy { get; set; }
+        public DateTime CreatedAtUTC { get; set; }
+    }
+
+    // Request body for appending a description entry.
+    public class AddExhibitDescriptionModel
+    {
+        public string DescriptionText { get; set; } = string.Empty;
     }
 
     public class ExhibitEvidenceSourceModel

@@ -31,7 +31,8 @@ namespace CES.Business.Models
         public DateTime? MarkedAt { get; set; }
         public string? EnteredValue { get; set; }
         public DateTime? EnteredAt { get; set; }
-        public string? Description { get; set; }
+        // Append-only description entries, oldest → newest (CES-42).
+        public List<ExhibitDescriptionEntryModel> Descriptions { get; set; } = new();
         public string? EvidenceSourceType { get; set; }
         public DateTime? DeletedAt { get; set; }
     }

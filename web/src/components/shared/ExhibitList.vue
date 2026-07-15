@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
   CLASSIFICATION_EDIT_WINDOW_SECONDS,
-  DESCRIPTION_MAX_LENGTH,
   ENTERED_MAX,
   ENTERED_MIN,
   EVIDENCE_SOURCE_TYPES,
@@ -10,9 +9,9 @@ import {
   VIEWABLE_CONTENT_TYPE_PREFIXES,
 } from '@/constants/classification';
 import { formatDateTime } from '@/helpers/formatters';
-import type { ExhibitHistoryEntry, SubmissionFile } from '@/models/SubmissionReviewModel';
-import useSubmissionService from '@/services/SubmissionService';
-import { computed, reactive, ref, watch } from 'vue';
+import type { SubmissionFile } from '@/models/SubmissionReviewModel';
+import { computed, reactive, watch } from 'vue';
+import ExhibitDescriptionCell from './ExhibitDescriptionCell.vue';
 
 interface PriorFileEntry {
   file: SubmissionFile;
@@ -24,7 +23,8 @@ const props = defineProps<{
   entries: PriorFileEntry[];
   markFn: (fileId: string, value: string) => Promise<SubmissionFile>;
   enterFn: (fileId: string, value: string) => Promise<SubmissionFile>;
-  descriptionFn: (fileId: string, description: string) => Promise<SubmissionFile>;
+  /** Appends the first description entry. Addenda are added from the detail modal. */
+  addDescriptionFn: (fileId: string, text: string) => Promise<SubmissionFile>;
   evidenceSourceFn: (fileId: string, value: string) => Promise<SubmissionFile>;
   /** When true, all classification controls are always enabled (admin mode: no windows, no locks). */
   alwaysEditable?: boolean;
@@ -37,9 +37,13 @@ const props = defineProps<{
   /**
    * When true, the filename renders as a button that emits `titleClick`, letting the
    * parent open its own exhibit-detail view. Default: plain, non-interactive text.
-   * Detail/notes UI is intentionally owned by the parent, not this shared control.
    */
   linkableTitle?: boolean;
+  /**
+   * Row-2 (Marked/Entered/Source) state a row starts in. Condensed by default — one
+   * line per exhibit, which is what keeps a long Exhibit Search result set readable.
+   */
+  initialExpanded?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -50,58 +54,33 @@ const emit = defineEmits<{
   titleClick: [file: SubmissionFile];
 }>();
 
-const { getFileHistory } = useSubmissionService();
-
-// Exhibit change-history popup state
-const historyFile = ref<SubmissionFile | null>(null);
-const historyEntries = ref<ExhibitHistoryEntry[]>([]);
-const historyLoading = ref(false);
-const historyError = ref(false);
-
-const HISTORY_FIELD_LABELS: Record<string, string> = {
-  MarkedValue: 'Marked',
-  EnteredValue: 'Entered',
-  Description: 'Description',
-  EvidenceSourceType: 'Source',
-};
-
-const historyFieldLabel = (fieldName: string): string =>
-  HISTORY_FIELD_LABELS[fieldName] ?? fieldName;
-
-const openHistory = async (file: SubmissionFile) => {
-  historyFile.value = file;
-  historyEntries.value = [];
-  historyError.value = false;
-  historyLoading.value = true;
-  try {
-    historyEntries.value = await getFileHistory(file.id);
-  } catch {
-    historyError.value = true;
-  } finally {
-    historyLoading.value = false;
-  }
-};
-
-const closeHistory = () => {
-  historyFile.value = null;
-};
-
 const markedWindowActive = reactive<Set<string>>(new Set());
 const enteredWindowActive = reactive<Set<string>>(new Set());
 const saveIndicators = reactive<Record<string, 'success' | string | null>>({});
-const localDescriptions = reactive<Record<string, string>>({});
+
+// Per-row expansion of the classification controls. Seeded from `initialExpanded` as
+// each entry appears; toggling afterwards is purely local.
+const expandedRows = reactive<Set<string>>(new Set());
+const seenRows = reactive<Set<string>>(new Set());
 
 watch(
   () => props.entries,
   (entries) => {
     for (const entry of entries) {
-      if (!(entry.file.id in localDescriptions)) {
-        localDescriptions[entry.file.id] = entry.file.description ?? '';
-      }
+      if (seenRows.has(entry.file.id)) continue;
+      seenRows.add(entry.file.id);
+      if (props.initialExpanded) expandedRows.add(entry.file.id);
     }
   },
-  { immediate: true },
+  { immediate: true, deep: false },
 );
+
+const isExpanded = (fileId: string): boolean => expandedRows.has(fileId);
+
+const toggleRow = (fileId: string) => {
+  if (expandedRows.has(fileId)) expandedRows.delete(fileId);
+  else expandedRows.add(fileId);
+};
 
 const visibleEntries = computed(() =>
   props.showRemoved ? props.entries : props.entries.filter((e) => e.file.status !== 'Removed'),
@@ -130,6 +109,7 @@ const isEnteredEnabled = (file: SubmissionFile): boolean => {
   return enteredWindowActive.has(file.id);
 };
 
+// May *append* a description. Entered locks officers out; admin keeps the input.
 const isDescriptionEnabled = (file: SubmissionFile): boolean =>
   !!props.alwaysEditable || file.enteredValue == null;
 
@@ -141,6 +121,15 @@ const statusChipClass = (status?: string) => {
   if (status === 'Marked') return 'chip chip-marked';
   if (status === 'Removed') return 'chip chip-unclassified';
   return 'chip chip-unclassified';
+};
+
+// "Exhibit" is the JJ-facing label for the Entered state; the chip also carries the
+// assigned Marked letter / Exhibit number once one has been recorded.
+const statusChipText = (file: SubmissionFile): string => {
+  if (file.status === 'Marked') return file.markedValue ? `Marked ${file.markedValue}` : 'Marked';
+  if (file.status === 'Entered') return file.enteredValue ? `Exhibit ${file.enteredValue}` : 'Exhibit';
+  if (file.status === 'Removed') return 'Removed';
+  return 'Unclassified';
 };
 
 const formatClassificationDate = (iso?: string | null): string => {
@@ -197,16 +186,18 @@ const onEnterChange = async (file: SubmissionFile, value: string) => {
   }
 };
 
-const onDescriptionBlur = async (file: SubmissionFile) => {
-  const description = localDescriptions[file.id] ?? '';
-  if (description === (file.description ?? '')) return;
+// Adds the first description entry. Returns false so the cell keeps the draft text
+// when the save fails, rather than silently losing what was typed.
+const onDescriptionSave = async (file: SubmissionFile, text: string): Promise<boolean> => {
   try {
-    const updated = await props.descriptionFn(file.id, description);
+    const updated = await props.addDescriptionFn(file.id, text);
     emit('fileUpdated', updated);
     showSaveSuccess(file.id);
+    return true;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Failed to save description.';
     showSaveError(file.id, msg);
+    return false;
   }
 };
 
@@ -228,19 +219,26 @@ const onEvidenceSourceChange = async (file: SubmissionFile, value: string) => {
       v-for="entry in visibleEntries"
       :key="entry.file.id"
       class="prior-file-item"
-      :class="{ 'prior-file-item-removed': entry.file.status === 'Removed' }"
+      :class="{
+        'prior-file-item-removed': entry.file.status === 'Removed',
+        'prior-file-item--condensed': !isExpanded(entry.file.id),
+      }"
     >
-      <!-- Row 1: name, (date), (ticket badge), status chip, (save indicator), (actions) -->
+      <!-- Row 1 — identical in both states: chevron, status, name, date, tickets, actions -->
       <div class="prior-file-row1">
         <button
+          v-if="entry.file.status !== 'Removed'"
           type="button"
-          class="btn btn--icon btn--tertiary history-btn"
-          title="View change history"
-          aria-label="View change history"
-          @click="openHistory(entry.file)"
+          class="btn btn--icon btn--tertiary chevron-btn"
+          :aria-expanded="isExpanded(entry.file.id)"
+          :aria-controls="`exhibit-row2-${entry.file.id}`"
+          :title="isExpanded(entry.file.id) ? 'Hide classification' : 'Show classification'"
+          :aria-label="isExpanded(entry.file.id) ? 'Hide classification' : 'Show classification'"
+          @click="toggleRow(entry.file.id)"
         >
-          🕑
+          {{ isExpanded(entry.file.id) ? '▾' : '▸' }}
         </button>
+        <span :class="statusChipClass(entry.file.status)">{{ statusChipText(entry.file) }}</span>
         <button
           v-if="linkableTitle"
           type="button"
@@ -264,9 +262,6 @@ const onEvidenceSourceChange = async (file: SubmissionFile, value: string) => {
             (+{{ entry.fileNumbers.length - 1 }})</span
           >
         </span>
-        <span :class="statusChipClass(entry.file.status)">{{
-          entry.file.status ?? 'Unclassified'
-        }}</span>
 
         <!-- Save indicator and action buttons: non-Removed files only -->
         <template v-if="entry.file.status !== 'Removed'">
@@ -312,9 +307,25 @@ const onEvidenceSourceChange = async (file: SubmissionFile, value: string) => {
         </template>
       </div>
 
-      <!-- Row 2: classification controls (non-Removed files only) -->
-      <div v-if="entry.file.status !== 'Removed'" class="prior-file-row2">
-        <!-- Marked -->
+      <!-- Condensed: the description sits on its own tight line, aligned under the filename -->
+      <div
+        v-if="entry.file.status !== 'Removed' && !isExpanded(entry.file.id)"
+        class="prior-file-desc-line"
+      >
+        <ExhibitDescriptionCell
+          :file="entry.file"
+          compact
+          :disabled="!isDescriptionEnabled(entry.file)"
+          :save-fn="(text: string) => onDescriptionSave(entry.file, text)"
+        />
+      </div>
+
+      <!-- Expanded: Marked / Entered / Source / Description -->
+      <div
+        v-if="entry.file.status !== 'Removed' && isExpanded(entry.file.id)"
+        :id="`exhibit-row2-${entry.file.id}`"
+        class="prior-file-row2"
+      >
         <div class="classification-group">
           <label>Marked</label>
           <select
@@ -327,12 +338,11 @@ const onEvidenceSourceChange = async (file: SubmissionFile, value: string) => {
               {{ letter }}
             </option>
           </select>
-          <span v-if="entry.file.markedAt" class="timestamp-text">
-            {{ formatClassificationDate(entry.file.markedAt) }}
+          <span class="timestamp-text">
+            {{ entry.file.markedAt ? formatClassificationDate(entry.file.markedAt) : '' }}
           </span>
         </div>
 
-        <!-- Entered -->
         <div class="classification-group">
           <label>Entered</label>
           <select
@@ -343,12 +353,11 @@ const onEvidenceSourceChange = async (file: SubmissionFile, value: string) => {
             <option value="">—</option>
             <option v-for="num in enteredNumbers" :key="num" :value="num">{{ num }}</option>
           </select>
-          <span v-if="entry.file.enteredAt" class="timestamp-text">
-            {{ formatClassificationDate(entry.file.enteredAt) }}
+          <span class="timestamp-text">
+            {{ entry.file.enteredAt ? formatClassificationDate(entry.file.enteredAt) : '' }}
           </span>
         </div>
 
-        <!-- Evidence source type -->
         <div class="source-group">
           <label>Source</label>
           <select
@@ -363,64 +372,13 @@ const onEvidenceSourceChange = async (file: SubmissionFile, value: string) => {
           </select>
         </div>
 
-        <!-- Description -->
-        <div class="description-group">
-          <label>Description</label>
-          <input
-            type="text"
-            :disabled="!isDescriptionEnabled(entry.file)"
-            :maxlength="DESCRIPTION_MAX_LENGTH"
-            v-model="localDescriptions[entry.file.id]"
-            @blur="onDescriptionBlur(entry.file)"
-            placeholder="Optional description…"
-          />
-          <span
-            class="desc-counter"
-            :class="{
-              over: (localDescriptions[entry.file.id]?.length ?? 0) > DESCRIPTION_MAX_LENGTH,
-            }"
-          >
-            {{ DESCRIPTION_MAX_LENGTH - (localDescriptions[entry.file.id]?.length ?? 0) }} remaining
-          </span>
-        </div>
+        <!-- Description (append-only: input only until the first entry exists) -->
+        <ExhibitDescriptionCell
+          :file="entry.file"
+          :disabled="!isDescriptionEnabled(entry.file)"
+          :save-fn="(text: string) => onDescriptionSave(entry.file, text)"
+        />
       </div>
     </li>
   </ul>
-
-  <!-- Per-exhibit change history popup -->
-  <div v-if="historyFile" class="exhibit-history-overlay" @click.self="closeHistory">
-    <div class="exhibit-history-dialog" role="dialog" aria-modal="true">
-      <h3>Change History — {{ historyFile.originalFileName }}</h3>
-
-      <p v-if="historyLoading" class="history-status">Loading…</p>
-      <p v-else-if="historyError" class="history-status history-error">
-        Could not load change history. Please try again.
-      </p>
-      <table v-else-if="historyEntries.length > 0" class="exhibit-history-table">
-        <thead>
-          <tr>
-            <th>Field</th>
-            <th>From</th>
-            <th>To</th>
-            <th>Changed By</th>
-            <th>When</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(item, idx) in historyEntries" :key="idx">
-            <td>{{ historyFieldLabel(item.fieldName) }}</td>
-            <td>{{ item.oldValue ?? '—' }}</td>
-            <td>{{ item.newValue ?? '—' }}</td>
-            <td>{{ item.changedBy ?? '—' }}</td>
-            <td>{{ formatDateTime(item.changedAtUTC, true) }}</td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-else class="history-status">No changes have been recorded for this exhibit.</p>
-
-      <div class="exhibit-history-footer">
-        <button type="button" class="btn btn--secondary" @click="closeHistory">Close</button>
-      </div>
-    </div>
-  </div>
 </template>

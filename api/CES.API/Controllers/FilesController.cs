@@ -43,17 +43,19 @@ namespace CES.API.Controllers
             return Ok(result);
         }
 
-        [HttpPatch]
-        [Route("api/files/{fileId:guid}/description")]
+        // Description entries (CES-42). Append-only — there is deliberately no update
+        // or delete route, and no GET: the entries ride along on every SubmissionFile.
+        [HttpPost]
+        [Route("api/files/{fileId:guid}/descriptions")]
         [Authorize(Roles = "User,Admin")]
-        public async Task<IActionResult> UpdateDescription(Guid fileId, [FromBody] ExhibitDescriptionModel model)
+        public async Task<IActionResult> AddDescription(Guid fileId, [FromBody] AddExhibitDescriptionModel model)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
             var isAdmin = User.IsInRole("Admin");
-            var changedBy = User.FindFirstValue(ClaimTypes.UserData) ?? (isAdmin ? "Admin" : "Officer");
-            var result = await _fileService.UpdateExhibitDescriptionAsync(fileId, model.Description, changedBy, isAdmin);
+            var createdBy = User.FindFirstValue(ClaimTypes.UserData) ?? (isAdmin ? "Admin" : "Officer");
+            var result = await _fileService.AddExhibitDescriptionAsync(fileId, model.DescriptionText, createdBy, isAdmin);
             return Ok(result);
         }
 

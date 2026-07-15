@@ -1,3 +1,4 @@
+import type { ExhibitDescriptionModel } from './ExhibitDescriptionModel';
 import type { SubmissionTicketModel } from './ExhibitSubmissionModel';
 
 export type SubmissionStatus = 'Pending' | 'Accepted' | 'Rejected';
@@ -16,7 +17,8 @@ export interface SubmissionFile {
   markedAt?: string | null;
   enteredValue?: string | null;
   enteredAt?: string | null;
-  description?: string | null;
+  // Append-only description entries, oldest → newest (CES-42).
+  descriptions: ExhibitDescriptionModel[];
   evidenceSourceType?: string | null;
   deletedAt?: string | null;
 }
@@ -27,10 +29,6 @@ export interface ExhibitMarkModel {
 
 export interface ExhibitEnterModel {
   enteredValue: string;
-}
-
-export interface ExhibitDescriptionModel {
-  description: string;
 }
 
 export interface ExhibitEvidenceSourceModel {

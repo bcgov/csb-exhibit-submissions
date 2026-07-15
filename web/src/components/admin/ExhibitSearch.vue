@@ -8,7 +8,7 @@ import type { SubmissionFile } from '@/models/SubmissionReviewModel';
 import useSubmissionService from '@/services/SubmissionService';
 import type { AxiosError } from 'axios';
 import { computed, reactive, ref } from 'vue';
-import ExhibitDetailModal from './ExhibitDetailModal.vue';
+import ExhibitDetailModal from '../shared/ExhibitDetailModal.vue';
 import ExhibitList from '../shared/ExhibitList.vue';
 import FileViewer from '../shared/FileViewer.vue';
 
@@ -16,7 +16,7 @@ const {
   searchExhibits,
   markExhibit,
   enterExhibit,
-  updateExhibitDescription,
+  addExhibitDescription,
   updateEvidenceSource,
   removeFile,
 } = useSubmissionService();
@@ -66,39 +66,17 @@ const validationHint = computed(() => {
   return `Enter a file number (${FILE_NUMBER_MIN_LENGTH}+ characters) or accused name to search.`;
 });
 
-// Col-1 status chip: same class semantics as ExhibitList's statusChipClass, but the
-// label also carries the classification value (terminal status only). A Marked→Entered
-// exhibit reads "Entered {n}"; its earlier Marked letter still shows in col-2's controls.
-const statusChip = (file: SubmissionFile): { class: string; label: string } => {
-  if (file.status === 'Entered') {
-    return {
-      class: 'chip chip-entered',
-      label: file.enteredValue != null ? `Entered ${file.enteredValue}` : 'Entered',
-    };
-  }
-  if (file.status === 'Marked') {
-    return {
-      class: 'chip chip-marked',
-      label: file.markedValue != null ? `Marked ${file.markedValue}` : 'Marked',
-    };
-  }
-  return { class: 'chip chip-unclassified', label: 'Unclassified' };
-};
-
-// One table row per exhibit, preserving the backend's sorted order and excluding Removed
-// exhibits (mirrors ExhibitList's visibleEntries filter) so a Removed result never renders
-// a chip beside an empty single-exhibit list. Each row bundles the col-1 chip with the
-// PriorFileEntry ({ file, submissionDate?, fileNumbers[] }) that ExhibitList consumes.
-const resultRows = computed(() =>
+// One entry per exhibit, preserving the backend's sorted order and excluding Removed
+// exhibits (mirrors ExhibitList's visibleEntries filter). Each entry is the PriorFileEntry
+// ({ file, submissionDate?, fileNumbers[] }) that ExhibitList consumes; the status chip is
+// rendered by ExhibitList itself, so no separate column is needed here.
+const resultEntries = computed(() =>
   results.value
     .filter((r) => r.file.status !== 'Removed')
     .map((r) => ({
-      chip: statusChip(r.file),
-      entry: {
-        file: r.file,
-        submissionDate: r.submissionDate,
-        fileNumbers: r.fileNumbers,
-      },
+      file: r.file,
+      submissionDate: r.submissionDate,
+      fileNumbers: r.fileNumbers,
     })),
 );
 
@@ -188,8 +166,8 @@ const downloadFile = async (file: SubmissionFile) => {
   }
 };
 
-// Remove an (unclassified) exhibit. On success, flag it Removed in place — resultRows
-// filters Removed files out, so the row drops from the list.
+// Remove an (unclassified) exhibit. On success, flag it Removed in place — resultEntries
+// filters Removed files out, so the entry drops from the list.
 const removeExhibit = async (file: SubmissionFile) => {
   errorMessage.value = null;
   if (!window.confirm(`Remove "${file.originalFileName}"? This cannot be undone.`)) return;
@@ -261,35 +239,29 @@ const updateFileInResults = (updated: SubmissionFile) => {
     <p v-if="loading" class="loading-text">Loading…</p>
 
     <template v-else-if="searched">
-      <div v-if="resultRows.length > 0" class="exhibit-results-scroll">
-        <table class="exhibit-results-table">
-          <tbody>
-            <tr v-for="row in resultRows" :key="row.entry.file.id">
-              <td class="status-cell">
-                <span :class="row.chip.class">{{ row.chip.label }}</span>
-              </td>
-              <td class="list-cell">
-                <ExhibitList
-                  :entries="[row.entry]"
-                  :always-editable="true"
-                  :show-removed="false"
-                  :can-download="true"
-                  :can-remove="isUnclassified(row.entry.file)"
-                  :linkable-title="true"
-                  :mark-fn="(id: string, v: string) => markExhibit(id, { markedValue: v })"
-                  :enter-fn="(id: string, v: string) => enterExhibit(id, { enteredValue: v })"
-                  :description-fn="(id: string, d: string) => updateExhibitDescription(id, { description: d })"
-                  :evidence-source-fn="(id: string, v: string) => updateEvidenceSource(id, { evidenceSourceType: v })"
-                  @file-updated="updateFileInResults"
-                  @preview-file="openPreview"
-                  @download-file="downloadFile"
-                  @remove-file="removeExhibit"
-                  @title-click="openDetails"
-                />
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div v-if="resultEntries.length > 0" class="exhibit-results-scroll">
+        <!-- Not alwaysEditable: an Entered exhibit is terminal here too, so it keeps the
+             standard enteredValue-based lock (same as the officer view) instead of staying
+             editable forever. -->
+        <ExhibitList
+          v-for="entry in resultEntries"
+          :key="entry.file.id"
+          :entries="[entry]"
+          :always-editable="false"
+          :show-removed="false"
+          :can-download="true"
+          :can-remove="isUnclassified(entry.file)"
+          :linkable-title="true"
+          :mark-fn="(id: string, v: string) => markExhibit(id, { markedValue: v })"
+          :enter-fn="(id: string, v: string) => enterExhibit(id, { enteredValue: v })"
+          :add-description-fn="addExhibitDescription"
+          :evidence-source-fn="(id: string, v: string) => updateEvidenceSource(id, { evidenceSourceType: v })"
+          @file-updated="updateFileInResults"
+          @preview-file="openPreview"
+          @download-file="downloadFile"
+          @remove-file="removeExhibit"
+          @title-click="openDetails"
+        />
       </div>
       <p v-else class="empty-state">No exhibits found for this search.</p>
     </template>
@@ -313,6 +285,14 @@ const updateFileInResults = (updated: SubmissionFile) => {
     </div>
 
     <!-- Exhibit detail popup (read-only details, change history, registry notes) -->
-    <ExhibitDetailModal v-if="detailResult" :result="detailResult" @close="closeDetails" />
+    <ExhibitDetailModal
+      v-if="detailResult"
+      :result="detailResult"
+      can-view-notes
+      always-editable
+      :add-description-fn="addExhibitDescription"
+      @file-updated="updateFileInResults"
+      @close="closeDetails"
+    />
   </div>
 </template>

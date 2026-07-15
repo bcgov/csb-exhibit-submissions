@@ -6,7 +6,6 @@ import type {
 import type { ExhibitNoteModel } from '@/models/ExhibitNoteModel';
 import type { PriorSubmissionModel } from '@/models/PriorSubmissionModel';
 import type {
-  ExhibitDescriptionModel,
   ExhibitEnterModel,
   ExhibitEvidenceSourceModel,
   ExhibitHistoryEntry,
@@ -157,11 +156,15 @@ export default function useSubmissionService() {
     return result.data;
   };
 
-  const updateExhibitDescription = async (
+  // Description entries (CES-42). Append-only: this adds an immutable entry; there is
+  // no update or delete, and the entries ride along on every SubmissionFile.
+  const addExhibitDescription = async (
     fileId: string,
-    model: ExhibitDescriptionModel,
+    descriptionText: string,
   ): Promise<SubmissionFile> => {
-    const result = await api.patch<SubmissionFile>(`/files/${fileId}/description`, model);
+    const result = await api.post<SubmissionFile>(`/files/${fileId}/descriptions`, {
+      descriptionText,
+    });
     return result.data;
   };
 
@@ -202,7 +205,7 @@ export default function useSubmissionService() {
     removeFile,
     markExhibit,
     enterExhibit,
-    updateExhibitDescription,
+    addExhibitDescription,
     updateEvidenceSource,
     getFileHistory,
     getExhibitNotes,

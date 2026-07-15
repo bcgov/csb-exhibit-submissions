@@ -12,7 +12,7 @@ Admins (Judicial Justices) currently land on the **Submission Listing** ([Submis
 
 This spec introduces a new **Exhibit Search** page that becomes the admin landing view — a **one-stop shop** where the JJ enters a file number or last name (with an optional date range) and, in a single screen, can **see, view, download, and update** the exhibits for that file. The old Submission Listing and Review screens are **left in place** — routes and files untouched — but **removed from navigation** until a decision is made about whether to keep or retire them.
 
-The results list **reuses the shared [ExhibitList.vue](../web/src/components/shared/ExhibitList.vue) control** in `alwaysEditable` (admin) mode — exactly as [SubmissionReview.vue](../web/src/components/admin/SubmissionReview.vue) already drives it. That control already provides the blended row layout (filename + date + file-number badge + status chip + View/Download on one line; Marked / Entered / Description controls below), inline **auto-save** on every classification change (select `change`) and description `blur` with ✓/✕ save indicators, and the per-exhibit change-history popup. In `alwaysEditable` mode there are no officer-style edit windows or locks. **No Save/Accept button is required — edits persist automatically.**
+The results list **reuses the shared [ExhibitList.vue](../web/src/components/shared/ExhibitList.vue) control**, **not** in `alwaysEditable` mode — an Entered exhibit is terminal in Exhibit Search too, so rows keep the standard `enteredValue`-based lock (same as the officer view) rather than staying editable forever. That control already provides the blended row layout (filename + date + file-number badge + status chip + View/Download on one line; Marked / Entered / Description controls below), inline **auto-save** on every classification change (select `change`) and description `blur` with ✓/✕ save indicators, and the per-exhibit change-history popup. **No Save/Accept button is required — edits persist automatically** while an exhibit isn't yet Entered.
 
 This reuses the existing classification data model from [exhibit-classification.md](completed/exhibit-classification.md) (Marked / Entered / Description / timestamps on the shared `SubmissionFile`) and the multi-ticket retrieval groundwork from [multi-ticket-exhibit-upload.md](completed/multi-ticket-exhibit-upload.md). The classification endpoints (`/api/files/{id}/mark|enter|description|history`) already authorize `User,Admin`, so **editing requires no backend changes.**
 
@@ -49,7 +49,7 @@ Following [admin-listing-update.md](completed/admin-listing-update.md): a **Subm
 | Removed exhibits | Excluded from results (`IsDeleted`). |
 | Date range | Optional; filters on **court/appearance date** (`SubmissionTicket.AppearanceDateTime`). |
 | Sortable columns | **No** — fixed classification order, not user-sortable. |
-| Editing | Marked / Entered / Description are **editable inline** via `ExhibitList.vue` `alwaysEditable` mode, **auto-saved** (no Save button). Change-history popup available per exhibit. |
+| Editing | Marked / Entered / Description are **editable inline** via `ExhibitList.vue`, **auto-saved** (no Save button), until the exhibit is Entered — the standard `enteredValue` lock applies here too (not `alwaysEditable`). Change-history popup available per exhibit. |
 | Remove exhibit | **Not** enabled on this page (`canRemove=false`) — destructive removal stays on the Submission Review flow. See Open Questions. |
 | Navigation | New page **replaces** the old listing in nav and becomes the admin landing. Old route/files stay but are unlinked. |
 
@@ -125,7 +125,7 @@ A thin wrapper around the search form and the shared `ExhibitList.vue` control �
 - **Search form:** File-number input (placeholder `e.g. AH123456789-1`); Last-name input (label "Last name", placeholder "last name"); optional Date-from / Date-to; helper text **"Enter file number or accused name to get exhibit list"**; Search + Clear buttons.
 - **Validation:** block search unless a file number ≥ `FILE_NUMBER_MIN_LENGTH` **or** a last name is present; show an inline hint otherwise. Provide a "no results" empty state and a 400 / permission error state (pattern from `SubmissionListing.fetchListing`).
 - **Results:** map the sorted `searchExhibits` response to `ExhibitList.vue`'s `entries` (`{ file, submissionDate, fileNumbers }`), preserving backend order (Marked → Entered → Unclassified). Render **one `ExhibitList`** for the whole result set, configured like [SubmissionReview.vue](../web/src/components/admin/SubmissionReview.vue):
-  - `:always-editable="true"` (admin mode — inline Marked/Entered/Description editing, auto-saved, no locks)
+  - `:always-editable="false"` (inline Marked/Entered/Description editing, auto-saved, but locked once Entered — same `enteredValue` rule as the officer view)
   - `:can-download="true"`, `:can-remove="false"`, `:show-removed="false"`
   - `:mark-fn`, `:enter-fn`, `:description-fn` wired to `markExhibit` / `enterExhibit` / `updateExhibitDescription` from `SubmissionService`
   - handle `@file-updated` (patch the local row so the classification badge/state updates in place), `@preview-file`, `@download-file`

@@ -14,7 +14,9 @@ const mockRejectSubmission = vi.hoisted(() => vi.fn());
 const mockRemoveFile = vi.hoisted(() => vi.fn());
 const mockMarkExhibit = vi.hoisted(() => vi.fn());
 const mockEnterExhibit = vi.hoisted(() => vi.fn());
-const mockUpdateExhibitDescription = vi.hoisted(() => vi.fn());
+const mockAddExhibitDescription = vi.hoisted(() => vi.fn());
+const mockGetFileHistory = vi.hoisted(() => vi.fn());
+const mockGetExhibitNotes = vi.hoisted(() => vi.fn());
 
 vi.mock('@/services/SubmissionService', () => ({
   default: () => ({
@@ -23,8 +25,11 @@ vi.mock('@/services/SubmissionService', () => ({
     removeFile: mockRemoveFile,
     markExhibit: mockMarkExhibit,
     enterExhibit: mockEnterExhibit,
-    updateExhibitDescription: mockUpdateExhibitDescription,
+    addExhibitDescription: mockAddExhibitDescription,
     updateEvidenceSource: vi.fn(),
+    getFileHistory: mockGetFileHistory,
+    getExhibitNotes: mockGetExhibitNotes,
+    addExhibitNote: vi.fn(),
   }),
 }));
 
@@ -81,7 +86,9 @@ beforeEach(() => {
   mockRemoveFile.mockReset();
   mockMarkExhibit.mockReset();
   mockEnterExhibit.mockReset();
-  mockUpdateExhibitDescription.mockReset();
+  mockAddExhibitDescription.mockReset();
+  mockGetFileHistory.mockReset().mockResolvedValue([]);
+  mockGetExhibitNotes.mockReset().mockResolvedValue([]);
 });
 
 describe('SubmissionReview', () => {
@@ -136,14 +143,40 @@ describe('SubmissionReview', () => {
       expect(labels.some((t) => t.includes('Entered'))).toBe(true);
     });
 
-    it('shows description input for non-Removed files', async () => {
+    // CES-42: the first description is added inline; once one exists the list is read-only.
+    it('shows the description input for a non-Removed file with no description yet', async () => {
       mockRetrieveSubmission.mockResolvedValue(
         makeSubmission({ files: [makeFile({ status: 'Unclassified' })] }),
       );
       const wrapper = mountReview();
       await flushPromises();
 
-      expect(wrapper.find('input[type="text"]').exists()).toBe(true);
+      expect(wrapper.find('[data-test="desc-input"]').exists()).toBe(true);
+    });
+
+    it('renders an existing description read-only, with no input', async () => {
+      mockRetrieveSubmission.mockResolvedValue(
+        makeSubmission({
+          files: [
+            makeFile({
+              status: 'Unclassified',
+              descriptions: [
+                {
+                  id: 1,
+                  descriptionText: 'the first description',
+                  createdBy: 'officer@test.ca',
+                  createdAtUTC: '2026-07-07T09:00:00Z',
+                },
+              ],
+            }),
+          ],
+        }),
+      );
+      const wrapper = mountReview();
+      await flushPromises();
+
+      expect(wrapper.find('[data-test="desc-input"]').exists()).toBe(false);
+      expect(wrapper.find('[data-test="desc-full"]').text()).toBe('the first description');
     });
 
     it('shows Remove button for non-Removed files', async () => {
@@ -339,5 +372,22 @@ describe('SubmissionReview', () => {
 
       expect(wrapper.find('.remove-error').exists()).toBe(true);
     });
+  });
+
+  // CES-42: the per-row history button is gone; the detail modal is now the way in.
+  it('opens the exhibit detail modal from the filename', async () => {
+    mockGetFileHistory.mockResolvedValue([]);
+    mockGetExhibitNotes.mockResolvedValue([]);
+    mockRetrieveSubmission.mockResolvedValue(makeSubmission({ files: [makeFile()] }));
+    const wrapper = mountReview();
+    await flushPromises();
+
+    expect(wrapper.find('.history-btn').exists()).toBe(false);
+
+    await wrapper.find('.prior-file-name-link').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('.exhibit-detail-dialog').exists()).toBe(true);
+    expect(mockGetFileHistory).toHaveBeenCalledWith('file-uuid-1');
   });
 });

@@ -37,10 +37,18 @@ namespace CES.Business.Models
         public DateTime? MarkedAt { get; set; }
         public string? EnteredValue { get; set; }
         public DateTime? EnteredAt { get; set; }
-        public string? Description { get; set; }
+        // Full append-only description history, oldest → newest (CES-42).
+        public List<AcceptedMetadataDescription> Descriptions { get; set; } = new();
         public string? EvidenceSourceType { get; set; }
         // De-dup: one file, many tickets — the full ticket mapping for traceability.
         public List<string> AssociatedTickets { get; set; } = new();
+    }
+
+    public class AcceptedMetadataDescription
+    {
+        public string Text { get; set; } = string.Empty;
+        public string? By { get; set; }
+        public DateTime AtUTC { get; set; }
     }
 
     public class AcceptedMetadataRevision

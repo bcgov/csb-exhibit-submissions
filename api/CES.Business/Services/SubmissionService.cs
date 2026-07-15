@@ -91,6 +91,7 @@ namespace CES.Business.Services
             var entity = await _datastore.Submissions
                 .Include(s => s.Tickets)
                 .Include(s => s.Files) // include all files (including Removed) for historical view
+                    .ThenInclude(f => f.Descriptions)
                 .FirstOrDefaultAsync(s => s.Id == submissionId);
 
             if (entity == null)
@@ -108,6 +109,7 @@ namespace CES.Business.Services
             var query = _datastore.Submissions
                 .Include(s => s.Tickets)
                 .Include(s => s.Files)
+                    .ThenInclude(f => f.Descriptions)
                 .AsQueryable();
 
             if (filter.SubmissionDateFrom.HasValue)
@@ -209,6 +211,7 @@ namespace CES.Business.Services
                 .Where(s => !s.IsDeleted && s.Tickets.Any(t => t.FileNumberText == fileNumberText))
                 .Include(s => s.Tickets)
                 .Include(s => s.Files)
+                    .ThenInclude(f => f.Descriptions)
                 .OrderByDescending(s => s.UploadDate)
                 .ToListAsync();
 
@@ -237,6 +240,7 @@ namespace CES.Business.Services
             var query = _datastore.Submissions
                 .Include(s => s.Tickets)
                 .Include(s => s.Files)
+                    .ThenInclude(f => f.Descriptions)
                 .Where(s => !s.IsDeleted);
 
             if (!string.IsNullOrWhiteSpace(filter.FileNumberText))

@@ -2,6 +2,6 @@
 {
     public class CORSSettings
     {
-        public string[] AllowedOrigins { get; set; }
+        public required string[] AllowedOrigins { get; set; }
     }
 }

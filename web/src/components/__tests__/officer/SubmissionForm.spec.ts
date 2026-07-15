@@ -11,12 +11,42 @@ vi.mock('vue-router', () => ({
 
 const mockSubmitExhibits = vi.hoisted(() => vi.fn());
 const mockGetSubmissionsByFileNumber = vi.hoisted(() => vi.fn());
+const mockGetFileHistory = vi.hoisted(() => vi.fn());
+const mockGetExhibitNotes = vi.hoisted(() => vi.fn());
 vi.mock('@/services/SubmissionService', () => ({
   default: () => ({
     submitExhibits: mockSubmitExhibits,
     getSubmissionsByFileNumber: mockGetSubmissionsByFileNumber,
+    getFileHistory: mockGetFileHistory,
+    getExhibitNotes: mockGetExhibitNotes,
+    addExhibitDescription: vi.fn(),
+    markExhibit: vi.fn(),
+    enterExhibit: vi.fn(),
+    updateEvidenceSource: vi.fn(),
   }),
 }));
+
+const priorSubmission = {
+  submissionId: 5,
+  submissionDate: '2026-07-07T09:00:00Z',
+  appearanceDateTime: '2026-07-07T09:00:00',
+  location: 'Test Court',
+  room: 'Courtroom 1',
+  files: [
+    {
+      id: 'file-1',
+      originalFileName: 'exhibit.mp4',
+      storedFileName: 'stored.mp4',
+      viewUrl: '',
+      downloadUrl: '',
+      contentType: 'video/mp4',
+      fileSize: 1024,
+      storageProvider: 'Local',
+      status: 'Unclassified',
+      descriptions: [],
+    },
+  ],
+};
 
 const mockTicket: CourtFileList = {
   appearanceId: 'APP001',
@@ -57,6 +87,8 @@ beforeEach(() => {
   mockPush.mockClear();
   mockSubmitExhibits.mockReset();
   mockGetSubmissionsByFileNumber.mockReset();
+  mockGetFileHistory.mockReset().mockResolvedValue([]);
+  mockGetExhibitNotes.mockReset().mockResolvedValue([]);
 });
 
 describe('SubmissionForm', () => {
@@ -167,5 +199,25 @@ describe('SubmissionForm', () => {
 
     // After the first upload the ticket set is locked.
     expect(wrapper.findAll('.remove-btn').length).toBe(0);
+  });
+
+  // CES-42: officers get the exhibit detail modal, minus the registry-only Notes section.
+  it('opens the exhibit detail modal from the filename, without the Notes section', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    useCourtFileSelectionStore().setSelectedFiles([mockTicket]);
+    mockGetSubmissionsByFileNumber.mockResolvedValue([priorSubmission]);
+    const wrapper = mount(SubmissionForm, { global: { plugins: [pinia] } });
+    await flushPromises();
+
+    expect(wrapper.find('.exhibit-detail-dialog').exists()).toBe(false);
+
+    await wrapper.find('.prior-file-name-link').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('.exhibit-detail-dialog').exists()).toBe(true);
+    expect(wrapper.find('.descriptions-section').exists()).toBe(true);
+    expect(wrapper.find('.notes-section').exists()).toBe(false);
+    expect(mockGetExhibitNotes).not.toHaveBeenCalled();
   });
 });

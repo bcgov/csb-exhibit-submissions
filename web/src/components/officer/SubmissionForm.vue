@@ -4,12 +4,14 @@ import type {
   ExhibitSubmissionModel,
   SubmissionTicketModel,
 } from '@/models/ExhibitSubmissionModel';
+import type { ExhibitSearchResultModel } from '@/models/ExhibitSearchResultModel';
 import type { PriorSubmissionModel } from '@/models/PriorSubmissionModel';
 import type { SubmissionFile } from '@/models/SubmissionReviewModel';
 import useSubmissionService from '@/services/SubmissionService';
 import { useCourtFileSelectionStore } from '@/stores/useCourtFileSelectionStore';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import ExhibitDetailModal from '../shared/ExhibitDetailModal.vue';
 import ExhibitList from '../shared/ExhibitList.vue';
 import FileDropZone from '../shared/FileDropZone.vue';
 import FileViewer from '../shared/FileViewer.vue';
@@ -20,7 +22,7 @@ const {
   getSubmissionsByFileNumber,
   markExhibit,
   enterExhibit,
-  updateExhibitDescription,
+  addExhibitDescription,
   updateEvidenceSource,
 } = useSubmissionService();
 const selectionStore = useCourtFileSelectionStore();
@@ -41,6 +43,9 @@ const priorExhibitsError = ref(false);
 
 // Preview/view modal (officer view-only, no download)
 const previewFile = ref<SubmissionFile | null>(null);
+
+// Exhibit detail modal — the full context of the exhibit whose name was clicked.
+const detailResult = ref<ExhibitSearchResultModel | null>(null);
 
 // Tickets managed locally so the officer can remove some before submitting.
 const tickets = ref<SubmissionTicketModel[]>([]);
@@ -75,14 +80,13 @@ const removeTicket = (appearanceId: string) => {
 // Return a deduplicated list of file numbers across the current ticket set.
 const uniqueFileNumbers = computed(() => [...new Set(tickets.value.map((t) => t.fileNumberText))]);
 
-// Flat list of prior files across all queried file numbers, deduplicated by file ID.
-const flatPriorFiles = computed(() => {
+// Every prior exhibit across the queried file numbers, deduplicated by file ID and
+// keyed by it. Carries the full submission context each exhibit came from so the
+// detail modal can be opened straight from the list (CES-42).
+const exhibitContexts = computed(() => {
   const activeFileNumbers = new Set(uniqueFileNumbers.value);
   const submissionFileNumbers = new Map<number, Set<string>>();
-  const fileMap = new Map<
-    string,
-    { file: SubmissionFile; submissionDate?: string; submissionId: number }
-  >();
+  const contexts = new Map<string, ExhibitSearchResultModel>();
 
   for (const [fn, submissions] of priorExhibits.value) {
     if (!activeFileNumbers.has(fn)) continue;
@@ -94,23 +98,37 @@ const flatPriorFiles = computed(() => {
 
       for (const f of sub.files) {
         if (f.status === 'Removed') continue;
-        if (!fileMap.has(f.id)) {
-          fileMap.set(f.id, {
-            file: f,
-            submissionDate: sub.submissionDate,
-            submissionId: sub.submissionId,
-          });
-        }
+        if (contexts.has(f.id)) continue;
+        contexts.set(f.id, {
+          file: f,
+          submissionId: sub.submissionId,
+          submissionDate: sub.submissionDate,
+          appearanceDateTime: sub.appearanceDateTime,
+          location: sub.location,
+          room: sub.room,
+          // Filled in below, once every file number for this submission is known.
+          fileNumbers: [],
+          accusedName: tickets.value.find((t) => t.fileNumberText === fn)?.accusedName,
+        });
       }
     }
   }
 
-  return [...fileMap.values()].map(({ file, submissionDate, submissionId }) => ({
-    file,
-    submissionDate,
-    fileNumbers: [...(submissionFileNumbers.get(submissionId) ?? [])],
-  }));
+  for (const context of contexts.values()) {
+    context.fileNumbers = [...(submissionFileNumbers.get(context.submissionId) ?? [])];
+  }
+
+  return contexts;
 });
+
+// The PriorFileEntry shape ExhibitList consumes.
+const flatPriorFiles = computed(() =>
+  [...exhibitContexts.value.values()].map((c) => ({
+    file: c.file,
+    submissionDate: c.submissionDate,
+    fileNumbers: c.fileNumbers,
+  })),
+);
 
 const goBack = () => {
   selectionStore.clear();
@@ -150,6 +168,15 @@ const openPreview = (file: SubmissionFile) => {
 };
 const closePreview = () => {
   previewFile.value = null;
+};
+
+// Exhibit detail popup (CES-42). Officers see the same modal admins do, minus the
+// registry-only Notes section.
+const openDetails = (file: SubmissionFile) => {
+  detailResult.value = exhibitContexts.value.get(file.id) ?? null;
+};
+const closeDetails = () => {
+  detailResult.value = null;
 };
 
 onMounted(async () => {
@@ -279,14 +306,15 @@ const submitForm = async () => {
           :entries="flatPriorFiles"
           :mark-fn="(id: string, v: string) => markExhibit(id, { markedValue: v })"
           :enter-fn="(id: string, v: string) => enterExhibit(id, { enteredValue: v })"
-          :description-fn="
-            (id: string, d: string) => updateExhibitDescription(id, { description: d })
-          "
+          :add-description-fn="addExhibitDescription"
+          :initial-expanded="true"
+          :linkable-title="true"
           :evidence-source-fn="
             (id: string, v: string) => updateEvidenceSource(id, { evidenceSourceType: v })
           "
           @file-updated="updateFileInStore"
           @preview-file="openPreview"
+          @title-click="openDetails"
         />
 
         <p v-else class="prior-empty">No previous exhibits for the selected tickets.</p>
@@ -337,5 +365,14 @@ const submitForm = async () => {
         />
       </div>
     </div>
+
+    <!-- Exhibit details (description history, change history). No registry notes for officers. -->
+    <ExhibitDetailModal
+      v-if="detailResult"
+      :result="detailResult"
+      :add-description-fn="addExhibitDescription"
+      @file-updated="updateFileInStore"
+      @close="closeDetails"
+    />
   </div>
 </template>

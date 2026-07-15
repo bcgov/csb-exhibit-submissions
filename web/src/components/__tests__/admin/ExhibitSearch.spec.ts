@@ -56,7 +56,7 @@ const ExhibitListStub = {
     'linkableTitle',
     'markFn',
     'enterFn',
-    'descriptionFn',
+    'addDescriptionFn',
     'evidenceSourceFn',
   ],
   emits: ['fileUpdated', 'previewFile', 'downloadFile', 'removeFile', 'titleClick'],
@@ -147,7 +147,9 @@ describe('ExhibitSearch', () => {
     expect(entries[1].text()).toContain('second.pdf');
   });
 
-  it('passes always-editable and linkable-title to every per-row list', async () => {
+  // Not always-editable: an Entered exhibit is terminal in Exhibit Search too, so rows
+  // keep the standard enteredValue-based lock instead of staying editable forever.
+  it('keeps the standard per-exhibit lock (not always-editable) and passes linkable-title to every per-row list', async () => {
     mockSearchExhibits.mockResolvedValue([
       makeResult({ file: makeFile({ id: 'f1' }) }),
       makeResult({ file: makeFile({ id: 'f2' }) }),
@@ -160,33 +162,9 @@ describe('ExhibitSearch', () => {
     const stubs = wrapper.findAll('.exhibit-list-stub');
     expect(stubs).toHaveLength(2);
     for (const stub of stubs) {
-      expect(stub.attributes('data-editable')).toBe('true');
+      expect(stub.attributes('data-editable')).toBe('false');
       expect(stub.attributes('data-linkable')).toBe('true');
     }
-  });
-
-  it('renders a col-1 status chip with the classification value per row', async () => {
-    mockSearchExhibits.mockResolvedValue([
-      makeResult({
-        file: makeFile({ id: 'f1', status: 'Entered', markedValue: 'C', enteredValue: '12' }),
-      }),
-      makeResult({ file: makeFile({ id: 'f2', status: 'Marked', markedValue: 'A' }) }),
-      makeResult({ file: makeFile({ id: 'f3', status: 'Unclassified' }) }),
-    ]);
-    const wrapper = mountSearch();
-    await lastNameInput(wrapper).setValue('Smith');
-    await wrapper.find('.filter-panel').trigger('submit');
-    await flushPromises();
-
-    const chips = wrapper.findAll('.status-cell .chip');
-    expect(chips).toHaveLength(3);
-    // Terminal status only: an Entered exhibit shows its Entered value, not the Marked letter.
-    expect(chips[0].classes()).toContain('chip-entered');
-    expect(chips[0].text()).toBe('Entered 12');
-    expect(chips[1].classes()).toContain('chip-marked');
-    expect(chips[1].text()).toBe('Marked A');
-    expect(chips[2].classes()).toContain('chip-unclassified');
-    expect(chips[2].text()).toBe('Unclassified');
   });
 
   it('excludes Removed exhibits from the result rows', async () => {
@@ -201,7 +179,6 @@ describe('ExhibitSearch', () => {
 
     const lists = wrapper.findAll('.exhibit-list-stub');
     expect(lists).toHaveLength(1);
-    expect(wrapper.findAll('.status-cell .chip')).toHaveLength(1);
     expect(wrapper.find('.stub-entry').text()).toContain('kept.pdf');
   });
 

@@ -81,12 +81,14 @@ describe('SubmissionService', () => {
     expect(result).toBe(7);
   });
 
+  // Reads the raw multipart body as text rather than `request.formData()`: parsing a
+  // jsdom-polyfilled File through undici's multipart parser throws in this test
+  // environment (unrelated to submitExhibits itself — see docker/README or CI notes).
   it('submitExhibits includes submissionId in the form when appending to an existing submission', async () => {
-    let sentSubmissionId: FormDataEntryValue | null = null;
+    let body = '';
     server.use(
       http.post('/api/submissions/submit/', async ({ request }) => {
-        const form = await request.formData();
-        sentSubmissionId = form.get('submissionId');
+        body = await request.text();
         return HttpResponse.json({ submissionId: 7 });
       }),
     );
@@ -95,15 +97,14 @@ describe('SubmissionService', () => {
     const file = new File(['video content'], 'test.mp4', { type: 'video/mp4' });
     await submitExhibits(mockModel, [file], undefined, 7);
 
-    expect(sentSubmissionId).toBe('7');
+    expect(body).toMatch(/name="submissionId"\r?\n\r?\n7\r?\n/);
   });
 
   it('submitExhibits omits submissionId on the first upload', async () => {
-    let hasSubmissionId = true;
+    let body = '';
     server.use(
       http.post('/api/submissions/submit/', async ({ request }) => {
-        const form = await request.formData();
-        hasSubmissionId = form.has('submissionId');
+        body = await request.text();
         return HttpResponse.json({ submissionId: 7 });
       }),
     );
@@ -112,7 +113,7 @@ describe('SubmissionService', () => {
     const file = new File(['video content'], 'test.mp4', { type: 'video/mp4' });
     await submitExhibits(mockModel, [file], undefined, null);
 
-    expect(hasSubmissionId).toBe(false);
+    expect(body).not.toContain('name="submissionId"');
   });
 
   it('retrieveSubmission fetches GET /api/submissions/retrieve', async () => {
@@ -225,6 +226,7 @@ describe('SubmissionService', () => {
       storageProvider: 'Local',
       status: 'Marked',
       markedValue: 'B',
+      descriptions: [],
     };
     let capturedBody: unknown = null;
     server.use(
@@ -255,6 +257,7 @@ describe('SubmissionService', () => {
       storageProvider: 'Local',
       status: 'Entered',
       enteredValue: '5',
+      descriptions: [],
     };
     let capturedBody: unknown = null;
     server.use(
@@ -272,7 +275,7 @@ describe('SubmissionService', () => {
     expect(result.status).toBe('Entered');
   });
 
-  it('updateExhibitDescription sends PATCH /api/files/:fileId/description and returns updated file', async () => {
+  it('addExhibitDescription sends POST /api/files/:fileId/descriptions and returns updated file', async () => {
     const fileId = '550e8400-e29b-41d4-a716-446655440004';
     const mockFile: SubmissionFile = {
       id: fileId,
@@ -284,21 +287,28 @@ describe('SubmissionService', () => {
       fileSize: 1024,
       storageProvider: 'Local',
       status: 'Unclassified',
-      description: 'key piece of evidence',
+      descriptions: [
+        {
+          id: 1,
+          descriptionText: 'key piece of evidence',
+          createdBy: 'officer@test.ca',
+          createdAtUTC: '2026-07-07T09:00:00Z',
+        },
+      ],
     };
     let capturedBody: unknown = null;
     server.use(
-      http.patch(`/api/files/${fileId}/description`, async ({ request }) => {
+      http.post(`/api/files/${fileId}/descriptions`, async ({ request }) => {
         capturedBody = await request.json();
         return HttpResponse.json(mockFile);
       }),
     );
 
-    const { updateExhibitDescription } = useSubmissionService();
-    const result = await updateExhibitDescription(fileId, { description: 'key piece of evidence' });
+    const { addExhibitDescription } = useSubmissionService();
+    const result = await addExhibitDescription(fileId, 'key piece of evidence');
 
-    expect(capturedBody).toMatchObject({ description: 'key piece of evidence' });
-    expect(result.description).toBe('key piece of evidence');
+    expect(capturedBody).toMatchObject({ descriptionText: 'key piece of evidence' });
+    expect(result.descriptions[0].descriptionText).toBe('key piece of evidence');
   });
 
   it('updateEvidenceSource sends PATCH /api/files/:fileId/evidence-source and returns updated file', async () => {
@@ -314,6 +324,7 @@ describe('SubmissionService', () => {
       storageProvider: 'Local',
       status: 'Unclassified',
       evidenceSourceType: 'DashCam',
+      descriptions: [],
     };
     let capturedBody: unknown = null;
     server.use(
