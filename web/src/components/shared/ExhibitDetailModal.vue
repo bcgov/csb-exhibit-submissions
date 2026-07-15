@@ -224,7 +224,7 @@ const saveNote = async () => {
 
       <!-- Description entries (append-only; an addendum never replaces what came before) -->
       <section class="detail-section descriptions-section">
-        <h3>Descriptions</h3>
+        <h3>Exhibit Description</h3>
 
         <ul v-if="descriptions.length > 0" class="entry-list">
           <li v-for="entry in descriptions" :key="entry.id" class="entry-item">
@@ -255,12 +255,14 @@ const saveNote = async () => {
         </div>
       </section>
 
-      <!-- Registry-only notes (admin/JJ) -->
-      <section v-if="canViewNotes" class="detail-section notes-section">
-        <div class="notes-heading">
-          <h3>Notes</h3>
-          <span class="registry-badge">Registry use only</span>
-        </div>
+      <!-- Registry-only notes (admin/JJ); collapsed by default since notes are rarely used. -->
+      <details v-if="canViewNotes" class="detail-section notes-section">
+        <summary>
+          <div class="notes-heading">
+            <h3>Notes</h3>
+            <span class="registry-badge">Registry use only</span>
+          </div>
+        </summary>
 
         <p v-if="notesLoading" class="detail-status">Loading…</p>
         <p v-else-if="notesError" class="detail-status detail-error">Could not load notes.</p>
@@ -289,7 +291,7 @@ const saveNote = async () => {
           </div>
           <p v-if="saveNoteError" class="detail-status detail-error">{{ saveNoteError }}</p>
         </div>
-      </section>
+      </details>
 
       <!-- Change history -->
       <details class="detail-section">

@@ -123,6 +123,15 @@ const statusChipClass = (status?: string) => {
   return 'chip chip-unclassified';
 };
 
+// "Exhibit" is the JJ-facing label for the Entered state; the chip also carries the
+// assigned Marked letter / Exhibit number once one has been recorded.
+const statusChipText = (file: SubmissionFile): string => {
+  if (file.status === 'Marked') return file.markedValue ? `Marked ${file.markedValue}` : 'Marked';
+  if (file.status === 'Entered') return file.enteredValue ? `Exhibit ${file.enteredValue}` : 'Exhibit';
+  if (file.status === 'Removed') return 'Removed';
+  return 'Unclassified';
+};
+
 const formatClassificationDate = (iso?: string | null): string => {
   if (!iso) return '';
   return formatDateTime(iso, true);
@@ -229,9 +238,7 @@ const onEvidenceSourceChange = async (file: SubmissionFile, value: string) => {
         >
           {{ isExpanded(entry.file.id) ? '▾' : '▸' }}
         </button>
-        <span :class="statusChipClass(entry.file.status)">{{
-          entry.file.status ?? 'Unclassified'
-        }}</span>
+        <span :class="statusChipClass(entry.file.status)">{{ statusChipText(entry.file) }}</span>
         <button
           v-if="linkableTitle"
           type="button"

@@ -244,7 +244,7 @@ const updateFileInResults = (updated: SubmissionFile) => {
           v-for="entry in resultEntries"
           :key="entry.file.id"
           :entries="[entry]"
-          :always-editable="true"
+          :always-editable="false"
           :show-removed="false"
           :can-download="true"
           :can-remove="isUnclassified(entry.file)"

@@ -70,11 +70,11 @@ describe('ExhibitList — shared first row (CES-42)', () => {
 
     const condensed = mount(ExhibitList, { props: { ...baseProps(), entries } });
     expect(condensed.find('.history-btn').exists()).toBe(false);
-    expect(condensed.find('.chip').text()).toBe('Entered');
+    expect(condensed.find('.chip').text()).toBe('Exhibit 3');
 
     await condensed.find('.chevron-btn').trigger('click');
     expect(condensed.find('.history-btn').exists()).toBe(false);
-    expect(condensed.find('.chip').text()).toBe('Entered');
+    expect(condensed.find('.chip').text()).toBe('Exhibit 3');
   });
 });
 

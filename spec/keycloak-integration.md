@@ -33,7 +33,7 @@ Jasper uses Option B (backend-driven token relay, described below) with no OIDC 
 2. As an officer, I am redirected back to the application after a successful login and can use the app without further authentication steps.
 3. As an officer, clicking Logout ends my session in both the application and Keycloak.
 4. As an admin, I have access to admin routes when my IDIR account carries the `ces-admin` Keycloak realm role.
-5. As a developer, I can run the application locally with a mock login when Keycloak is not configured, so that development does not require a Keycloak client.
+5. As a developer, running `./docker/manage debug` (or any local dev environment) gives me a mock login by default, so that day-to-day development work never requires a Keycloak client or touches real IDIR/SSO.
 
 ---
 
@@ -67,7 +67,7 @@ Jasper uses Option B (backend-driven token relay, described below) with no OIDC 
 | Role strategy | Keycloak realm roles | Roles live in the realm, not in a DB; simpler for an internal tool |
 | Role names | `ces-admin`, `ces-user` | Namespaced to avoid collision with other clients on the same realm |
 | IDP hint | `kc_idp_hint=idir` | Forces login directly to IDIR without showing an IDP selector screen |
-| Dev bypass | Env-flag-controlled mock login | Allows development without a Keycloak client; matches existing pattern |
+| Dev bypass | Env-flag-controlled mock login, unchanged from today's implementation | Allows development without a Keycloak client; deliberately does **not** attempt to replicate Keycloak's token/claim shape — simplicity for local dev matters more than fidelity |
 
 ---
 
@@ -101,12 +101,13 @@ The following must be provided by the SSO/infrastructure team. Values are enviro
 | Keycloak Authority URL | Base URL of the realm, e.g. `https://dev.loginproxy.gov.bc.ca/auth/realms/standard` | `Keycloak__Authority` |
 | Client ID | The OIDC confidential client ID registered in the realm | `Keycloak__Client` |
 | Client Secret | The OIDC client secret (confidential client — Option B requires this) | `Keycloak__Secret` |
-| Audience | The expected `aud` claim value in access tokens | `Keycloak__Audience` |
 | Token Refresh Threshold | How far before expiry to refresh (e.g. `"00:01:00"` = 1 minute) | `TokenRefreshThreshold` |
+
+> **Audience deliberately omitted:** CES's Option B flow has no `JwtBearer` scheme validating incoming API tokens — the API is the OIDC client, not a resource server — so there's no `aud` validation in code for a `Keycloak:Audience` value to satisfy. Don't request an audience mapper from the SSO team; only revisit this if CES later adds a service that independently validates bearer tokens.
 
 > **Realm:** Jasper connects to `https://common-sso.justice.gov.bc.ca/auth/realms/Judiciary`. CES will likely use the same Justice Keycloak realm since it is a court-adjacent system — confirm with the SSO/infrastructure team.
 
-All config values are passed to the API container as environment variables using ASP.NET's double-underscore binding convention: `Keycloak__Authority`, `Keycloak__Client`, `Keycloak__Secret`, `Keycloak__Audience`.
+All config values are passed to the API container as environment variables using ASP.NET's double-underscore binding convention: `Keycloak__Authority`, `Keycloak__Client`, `Keycloak__Secret`.
 
 ---
 
@@ -123,7 +124,7 @@ When a user authenticates via IDIR, Keycloak includes these claims in the token.
 | `display_name` | Full display name | `Smith, John CITZ:EX` |
 | `email` | Work email | `john.smith@gov.bc.ca` |
 | `realm_access.roles` | Array of realm roles assigned to the user | `["ces-admin", "default-roles-standard"]` |
-| `groups` | Keycloak group memberships (requires `groups` scope) | `["/ces-admins"]` |
+| `groups` | Keycloak group memberships — **not currently consumed** by CES (role mapping uses `realm_access.roles` only); don't request the `groups` scope unless a future feature needs group membership | `["/ces-admins"]` |
 
 ---
 
@@ -142,7 +143,6 @@ public static IServiceCollection AddCESAuthentication(
     var authority = configuration.GetValue<string>("Keycloak:Authority")!;
     var clientId  = configuration.GetValue<string>("Keycloak:Client")!;
     var secret    = configuration.GetValue<string>("Keycloak:Secret")!;
-    var audience  = configuration.GetValue<string>("Keycloak:Audience")!;
 
     services.AddAuthentication(options =>
     {
@@ -220,7 +220,6 @@ public static IServiceCollection AddCESAuthentication(
         options.UsePkce = true;
         options.SaveTokens = true;
         options.CallbackPath = "/api/auth/signin-oidc";
-        options.Scope.Add("groups");
         options.Events = new OpenIdConnectEvents
         {
             OnTicketReceived = ctx =>
@@ -333,6 +332,10 @@ public class AuthController : ControllerBase
 }
 ```
 
+> **Logout risk — verify before assuming this works silently:** `OnTicketReceived` (above) strips `id_token` from the cookie, so `Logout()`'s call to `SignOutAsync(OpenIdConnectDefaults.AuthenticationScheme, ...)` has no `id_token_hint` to pass to Keycloak's end-session endpoint. Depending on realm configuration, missing `id_token_hint` can cause Keycloak to show a logout confirmation page instead of redirecting silently. This is not hypothetical: Jasper — the reference implementation — hit the exact same tension and worked around it by manually constructing the Keycloak logout URL (`{authority}/protocol/openid-connect/logout?post_logout_redirect_uri=...`) in `AuthController.Logout` instead of relying on the framework's `SignOutAsync`, leaving a `// TODO: add id_token_hint using id_token, currently removed` comment acknowledging the gap is unresolved even there. Verify actual behavior against the target realm during integration testing; if a confirmation screen appears and is unacceptable, switch to Jasper's manual-URL pattern.
+>
+> **`GET /api/auth/info` is only called on the real Keycloak path.** Dev bypass mode never hits this endpoint — it continues to decode the mock JWT client-side (see Dev Bypass Mode below).
+
 ---
 
 ### 3. New Configuration Class
@@ -347,7 +350,6 @@ namespace CES.API.Configuration
         public string Authority { get; set; } = string.Empty;
         public string Client    { get; set; } = string.Empty;
         public string Secret    { get; set; } = string.Empty;
-        public string Audience  { get; set; } = string.Empty;
     }
 }
 ```
@@ -358,27 +360,28 @@ Add to `appsettings.json` (empty values — overridden via environment variables
 "Keycloak": {
   "Authority": "",
   "Client": "",
-  "Secret": "",
-  "Audience": ""
+  "Secret": ""
 },
 "TokenRefreshThreshold": "00:01:00"
 ```
 
 ---
 
-### 4. Remove / Retire Login Infrastructure
+### 4. Login Infrastructure — What to Keep vs. Remove
 
 | File / Class | Disposition |
 |---|---|
-| `LoginController.cs` | Delete — replaced by `AuthController` |
+| `LoginController.cs` | **Keep, guarded by dev bypass** — this is the mock-login endpoint (`POST /api/auth/login`) that Dev Bypass Mode relies on. Do not delete while dev bypass exists; only remove it if dev bypass is retired entirely. `AuthController` is additive (new real-Keycloak endpoints), not a replacement for this controller |
 | `LocalTokenService.cs` | Keep for dev bypass only (see Dev Bypass section) |
 | `ITokenService.cs` | Keep for dev bypass; delete if dev bypass is eventually removed |
-| `AuthConfiguration.cs` (`UserAuth` section) | Delete — replaced by `KeycloakConfiguration` |
+| `AuthConfiguration.cs` (`UserAuth` section) | **Keep** — `LocalTokenService.GenerateToken()` binds directly to this class (`_config.GetSection("UserAuth").Get<AuthConfiguration>()`). Deleting it breaks dev bypass at compile time. Add `KeycloakConfiguration` alongside it; don't replace it |
 | `AuthenticationKeycloakExtensions.cs` | Delete — entirely superseded by the new `AuthenticationExtensions.cs` |
 
 ---
 
 ### 5. `Program.cs` Changes
+
+**Rename step (do this first):** today's `AddCESAuthentication(IServiceCollection, IConfiguration)` in `AuthenticationExtensions.cs` — the existing symmetric-key JWT method — must be renamed to `AddCESDevAuthentication(IServiceCollection, IConfiguration)`, with no other behavior change. This frees up the `AddCESAuthentication` name for the new Keycloak method below (which takes an extra `IWebHostEnvironment` parameter) and gives the dev-bypass branch an explicit, already-implemented method rather than one that needs to be built from scratch.
 
 ```csharp
 // Before
@@ -388,10 +391,12 @@ builder.Services.AddCESAuthentication(builder.Configuration);
 if (builder.Configuration.GetValue<bool>("Keycloak:Enabled"))
     builder.Services.AddCESAuthentication(builder.Configuration, builder.Environment);
 else
-    builder.Services.AddCESDevAuthentication(builder.Configuration); // dev bypass path
+    builder.Services.AddCESDevAuthentication(builder.Configuration); // renamed from today's AddCESAuthentication — zero behavior change
 ```
 
-Also add `app.UseAuthentication()` and `app.UseAuthorization()` in the middleware pipeline if not already present (they are required for cookie + OIDC to work).
+`Keycloak:Enabled` should be **absent (or explicitly `false`)** in `docker/.env.template`, so the dev-bypass branch is the out-of-the-box default for `./docker/manage debug` with no configuration required.
+
+`app.UseAuthentication()` and `app.UseAuthorization()` are already present and unconditional in `Program.cs` today — no change needed there. Both the dev-bypass and Keycloak schemes rely on the same two calls; only the registered scheme differs.
 
 ---
 
@@ -399,81 +404,84 @@ Also add `app.UseAuthentication()` and `app.UseAuthorization()` in the middlewar
 
 ### 1. Login / Logout Flow
 
-The frontend no longer manages tokens. The entire authentication flow becomes browser redirects to backend endpoints — matching exactly the approach in bcgov/jasper's `RedirectHandlerService`.
+**This section applies only when `VITE_DEV_AUTH_BYPASS=false` (real Keycloak).** When the flag is `true`, `AuthService.ts` keeps its current `POST /api/auth/login` mock-login implementation completely unchanged — see Dev Bypass Mode below. Add the Keycloak path alongside the existing bypass code; don't delete or restructure it.
 
-**`AuthService.ts`** — replace the current implementations:
+For the real path, the frontend no longer manages tokens. The entire authentication flow becomes browser redirects to backend endpoints — matching exactly the approach in bcgov/jasper's `RedirectHandlerService`.
+
+**`AuthService.ts`** — add these alongside the existing bypass-mode functions:
 
 ```typescript
-const login = (redirectUri: string = window.location.href) => {
+const loginViaKeycloak = (redirectUri: string = window.location.href) => {
   window.location.replace(`/api/auth/login?redirectUri=${encodeURIComponent(redirectUri)}`)
 }
 
-const logout = () => {
+const logoutViaKeycloak = () => {
   window.location.replace('/api/auth/logout?redirectUri=/')
 }
 
 const handleUnauthorized = (currentPath?: string) => {
   const authStore = useAuthStore()
   authStore.clearAuth()
-  login(currentPath ?? '/')
-  // This replaces the router.push({ name: 'Login' }) that is currently here.
-  // The comment in the current AuthService.ts anticipates exactly this change.
+  if (import.meta.env.VITE_DEV_AUTH_BYPASS === 'true') {
+    router.push({ name: 'Login', query: { redirect: currentPath } }) // existing bypass behavior, unchanged
+  } else {
+    loginViaKeycloak(currentPath ?? '/')
+  }
 }
 ```
 
-No OIDC library is needed. No callback route or token handling is needed on the frontend.
+No OIDC library is needed. No callback route or token handling is needed on the frontend for the Keycloak path.
 
 ---
 
 ### 2. AuthStore (`authStore.ts`)
 
-Replace the JWT-decode-based store with an API call to `GET /api/auth/info`.
+Both paths must populate the same `user` / `roles` shape (`Admin` / `User`) so the router guard (`meta.roles: ['Admin']` / `['User']`) and every other consumer of the store work unchanged regardless of which path is active. The Keycloak-side role mapping in `OnTokenValidated` already produces these same strings for exactly this reason.
+
+**Dev bypass (`VITE_DEV_AUTH_BYPASS=true`, the default):** keep today's implementation exactly as-is — `localStorage` token, `jwtDecode`, `setToken`, `isTokenExpired`. Don't touch this branch. This is the "simple, doesn't replicate Keycloak" path: it's a plain JWT the API already knows how to mint via `LocalTokenService`.
+
+**Keycloak path (`VITE_DEV_AUTH_BYPASS=false`):** add a `loadUser()` that calls the new claims endpoint instead of decoding a token:
 
 ```typescript
-export const useAuthStore = defineStore('auth', () => {
-  const user = ref<User | null>(null)
-  const roles = ref<string[]>([])
-  const isAuthenticated = computed(() => !!user.value)
-  const hasRole = (role: string) => roles.value.includes(role)
-
-  async function loadUser() {
-    try {
-      const response = await api.get('/auth/info')
-      user.value = {
-        id:          response.data.idirUserGuid,
-        email:       response.data.email,
-        displayName: response.data.displayName,
-        roles:       response.data.roles,
-      }
-      roles.value = response.data.roles
-    } catch {
-      clearAuth()
+async function loadUser() {
+  try {
+    const response = await api.get('/auth/info')
+    user.value = {
+      id:          response.data.idirUserGuid,
+      email:       response.data.email,
+      displayName: response.data.displayName,
+      roles:       response.data.roles,
     }
+    roles.value = response.data.roles
+  } catch {
+    clearAuth()
   }
-
-  function clearAuth() {
-    user.value = null
-    roles.value = []
-  }
-
-  return { user, roles, isAuthenticated, hasRole, loadUser, clearAuth }
-})
+}
 ```
 
-Key changes:
-- Remove `token` ref — the session cookie is managed by the browser automatically
-- Remove `localStorage` usage — no token to store client-side
-- Remove `jwtDecode` — user info comes from the API
-- Remove the `jwtDecode` / `jwt-decode` npm dependency
-- `loadUser()` is called on app startup (`App.vue` or `main.ts`) and after any navigation that requires auth
+`loadUser()` is called on app startup (`App.vue` or `main.ts`) only when `VITE_DEV_AUTH_BYPASS !== 'true'`; in bypass mode, startup continues to call the existing token-decode logic instead.
+
+Do **not** remove `token`, `localStorage`, or `jwtDecode` from the store while dev bypass exists — they're still load-bearing for that path. Only drop them (and the `jwt-decode` npm dependency) if dev bypass is retired entirely.
 
 ---
 
 ### 3. Axios Interceptor (`apiClient.ts`)
 
-The `Authorization: Bearer ...` header is removed. The browser sends the `CES` session cookie automatically on every request to the same origin.
+**Dev bypass:** the `Authorization: Bearer ${authStore.token}` request interceptor stays exactly as it is today — the mock JWT is still sent as a bearer token, since `AddCESDevAuthentication` is still a `JwtBearer` scheme.
 
-Update the response interceptor to call `handleUnauthorized` on 401 (this already exists; ensure it calls the new `login()` redirect rather than `router.push`):
+**Keycloak path:** no `Authorization` header is added; the browser sends the `CES` session cookie automatically on every request to the same origin. Gate the existing request interceptor on the flag rather than removing it:
+
+```typescript
+api.interceptors.request.use(config => {
+  if (import.meta.env.VITE_DEV_AUTH_BYPASS === 'true') {
+    const authStore = useAuthStore()
+    if (authStore.token) config.headers.Authorization = `Bearer ${authStore.token}`
+  }
+  return config
+})
+```
+
+The response interceptor's 401 handling is unchanged in shape — it already calls `handleUnauthorized`, which now branches internally on the same flag (see §1):
 
 ```typescript
 api.interceptors.response.use(
@@ -508,29 +516,31 @@ if (import.meta.env.VITE_DEV_AUTH_BYPASS === 'true') {
 Remove all `VITE_KEYCLOAK_*` variables (no frontend OIDC config needed). Add only:
 
 ```
-VITE_DEV_AUTH_BYPASS=false
+VITE_DEV_AUTH_BYPASS=true
 ```
+
+**Default is `true`.** `docker/.env.template` and `web/.env` ship with `VITE_DEV_AUTH_BYPASS=true` so `./docker/manage debug` runs against the mock login out of the box with zero setup. Set it to `false` only in environments wired to a real Keycloak client (test/prod), or locally if a developer specifically wants to exercise the real SSO flow.
 
 ---
 
 ## Dev Bypass Mode
 
-When Keycloak is not configured (local development without SSO access), the application falls back to the existing mock login. Jasper does not include a local Keycloak container; CES should follow the same approach — dev bypass mode stands in for it.
+**Design goal: this must stay exactly as simple as it is today.** Running `./docker/manage debug` should never require a developer to authenticate against real Keycloak or stand up a local IDP. Dev bypass does **not** attempt to replicate Keycloak's claim shape, role model, or token lifecycle — it is today's mock login (two hardcoded users, a locally-signed JWT), preserved unchanged behind a flag and used **by default**. Jasper doesn't include a local Keycloak container either; CES follows the same approach.
 
-**Backend** — `Program.cs` checks `Keycloak:Enabled`:
+**Backend** — `Program.cs` checks `Keycloak:Enabled` (absent/`false` by default):
 ```csharp
 if (builder.Configuration.GetValue<bool>("Keycloak:Enabled"))
     builder.Services.AddCESAuthentication(builder.Configuration, builder.Environment);
 else
-    builder.Services.AddCESDevAuthentication(builder.Configuration); // existing local JWT path
+    builder.Services.AddCESDevAuthentication(builder.Configuration); // renamed from today's AddCESAuthentication — zero behavior change
 ```
-`AddCESDevAuthentication` is a thin wrapper that keeps the current `LocalTokenService` + symmetric-key JWT behavior intact.
+`AddCESDevAuthentication` is today's `AddCESAuthentication` method, renamed and otherwise untouched: `LocalTokenService`, the symmetric-key JWT, and the `UserAuth` config section all keep working exactly as they do now. `LoginController.cs`, `LocalTokenService.cs`, `ITokenService.cs`, and `AuthConfiguration.cs` are all kept specifically to support this path (see the disposition table above) — none of them are deleted while dev bypass exists.
 
-**Frontend** — `VITE_DEV_AUTH_BYPASS=true` keeps the `/login` route active and preserves the current `POST /api/auth/login` flow in `AuthService`.
+**Frontend** — `VITE_DEV_AUTH_BYPASS=true` (the default) keeps the `/login` route active and preserves the current `POST /api/auth/login` → `localStorage` JWT → `jwtDecode` flow in `AuthService.ts` / `authStore.ts` / `apiClient.ts` completely unchanged (see Frontend Changes §1–3 above for exactly what's kept vs. added).
 
-The mock users (`admin@gov.bc.ca` / `officer@gov.bc.ca`) remain available only in bypass mode.
+The mock users (`admin@gov.bc.ca` / `officer@gov.bc.ca`) remain available only in bypass mode, unchanged from today.
 
-Docker's `.env.template` sets both flags to bypass mode by default so the project runs out of the box without a Keycloak client.
+`docker/.env.template` ships with `Keycloak:Enabled` unset (defaults to `false`) and `VITE_DEV_AUTH_BYPASS=true`, so the project runs out of the box against the mock login with no Keycloak client and no configuration required.
 
 ---
 
@@ -546,12 +556,13 @@ The following must be configured in the target Keycloak realm by the SSO team be
    - A client secret generated and securely provided to the deployment team
 
 2. **Realm roles** created:
-   - `ces-admin`
+   - `ces-clerk`
    - `ces-user`
+   - `ces-judicial`
 
-3. **`groups` scope** enabled on the client so group membership is included in the token.
+3. ~~`groups` scope~~ — **not required.** CES's role mapping uses `realm_access.roles` only; the `groups` claim isn't consumed anywhere in this design. Skip requesting this unless a future feature needs group membership (see IDIR Token Claims table).
 
-4. **Audience mapper** (likely required): a protocol mapper that adds the client ID to the `aud` claim so the API audience validation passes.
+4. ~~Audience mapper~~ — **not required.** CES's Option B flow has no `JwtBearer` scheme validating incoming API tokens (the API is the OIDC client, not a resource server), so there's no `aud` validation in code for this to satisfy. Only revisit this if CES later adds a service that independently validates bearer tokens.
 
 5. **Test IDIR accounts** assigned to `ces-admin` and `ces-user` roles for integration testing.
 
@@ -566,9 +577,15 @@ The following must be configured in the target Keycloak realm by the SSO team be
 2. **Audit trail:** The current system identifies users by email (`admin@gov.bc.ca`). After Keycloak, `idir_user_guid` is the stable identifier. Confirm whether existing audit/submission records need a migration or can tolerate a format change at cutover.
 
 3. **Session timeout UX:** When the server-side cookie refresh fails (Keycloak session has expired), the next API call returns 401 and the user is redirected to Keycloak. Define whether a "your session has expired" interstitial is needed or if a silent redirect is acceptable.
+- Silent redirect is acceptable
 
 4. **Cookie `SameSite=None`:** Required for cross-origin iframe scenarios (if any). If the app is served from the same origin as the API in all environments, `SameSite=Strict` is more secure. Confirm deployment topology.
+- 
 
 5. **Multi-tab logout:** If the user logs out in one tab, other open tabs will get 401s on their next API call and redirect to Keycloak automatically (following the Jasper pattern). Confirm this is acceptable rather than coordinating logout across tabs explicitly.
+- this is acceptable
 
 6. **`X-Forwarded-*` headers:** The `OnRedirectToIdentityProvider` handler rewrites the redirect URI when `X-Forwarded-Host` is present. Confirm that the nginx/OpenShift ingress layer forwards these headers and that `ForwardedHeaders` middleware is configured in `Program.cs`.
+
+7. **Logout confirmation screen / `id_token_hint`:** `OnTicketReceived` strips `id_token` from the cookie, and `AuthController.Logout` relies on ASP.NET's built-in `SignOutAsync(OpenIdConnectDefaults.AuthenticationScheme, ...)` to redirect to Keycloak's end-session endpoint — without an `id_token_hint`. Depending on realm configuration, this can produce a logout confirmation page instead of a silent redirect. Jasper — the reference implementation — hit this same tension and left it as an open `// TODO` in production, manually constructing the Keycloak logout URL instead of relying on the framework default. Verify actual behavior against the target realm during integration testing; if a confirmation screen appears and is unacceptable, follow Jasper's manual-URL-construction pattern instead.
+- Jasper implimentation can be considered the correct pattern

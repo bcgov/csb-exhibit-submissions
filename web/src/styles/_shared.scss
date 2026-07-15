@@ -303,6 +303,8 @@
     align-items: flex-start;
     gap: 0.6rem;
     flex-wrap: wrap;
+    // Aligned under the filename, matching .prior-file-desc-line in the condensed view.
+    padding-left: calc(#{$chevron-width} + #{$status-chip-width} + (2 * #{$row1-gap}));
   }
 
   .classification-group {
@@ -650,12 +652,25 @@ $app-bar-height: 64px;
     border: $border-width-small solid $color-border;
     border-radius: $border-radius-large;
     padding: $padding-medium;
+
+    // The card's own border-bottom under the summary would double up with the
+    // shared details.detail-section rule below — the card border is enough.
+    > summary {
+      border-bottom: none;
+      margin-bottom: 0;
+    }
+
+    &[open] > summary {
+      border-bottom: $border-width-small solid $color-border;
+      margin-bottom: $margin-small;
+    }
   }
 
   .notes-heading {
     display: flex;
     align-items: center;
     gap: $margin-small;
+    flex: 1;
 
     h3 {
       border: none;
