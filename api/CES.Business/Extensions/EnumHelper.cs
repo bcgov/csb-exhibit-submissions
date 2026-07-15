@@ -10,7 +10,7 @@ namespace CES.Business.Extensions
     public class EnumDescription
     {
         public int Id { get; set; }
-        public string Description { get; set; }
+        public required string Description { get; set; }
     }
 
     public class EnumHelper
@@ -24,7 +24,8 @@ namespace CES.Business.Extensions
 
         public static string GetEnumDescription<T>(T value) where T : Enum
         {
-            var fieldInfo = value.GetType().GetField(value.ToString());
+            // GetField always succeeds here: value.ToString() on an Enum yields one of that enum's own field names.
+            var fieldInfo = value.GetType().GetField(value.ToString())!;
 
             var descriptionAttributes = (DescriptionAttribute[])fieldInfo.GetCustomAttributes(typeof(DescriptionAttribute), false);
 

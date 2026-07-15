@@ -9,7 +9,7 @@ namespace CES.Business.Models
     public class LoggedInUserModel
     {
         public int UserId {  get; set; }
-        public string Email { get; set; }   
-        public string LastActiveRole { get; set; }
+        public required string Email { get; set; }
+        public required string LastActiveRole { get; set; }
     }
 }

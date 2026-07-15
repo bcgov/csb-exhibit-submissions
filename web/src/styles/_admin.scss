@@ -223,33 +223,13 @@
     color: $color-text-secondary;
   }
 
-  // One row per exhibit: col-1 status chip (+ value), col-2 single-exhibit ExhibitList.
+  // One single-exhibit ExhibitList per result; the status chip is rendered inside the
+  // list itself, so no separate column is needed.
   .exhibit-results-scroll {
     overflow-x: auto;
-  }
 
-  .exhibit-results-table {
-    width: 100%;
-    border-collapse: collapse;
-
-    td {
-      vertical-align: top;
-      padding: $padding-medium 0;
+    .prior-file-list + .prior-file-list {
       border-top: $border-width-small solid $color-border;
-    }
-
-    tr:first-child td {
-      border-top: none;
-    }
-
-    .status-cell {
-      width: 1%;
-      white-space: nowrap;
-      padding-right: $padding-medium;
-    }
-
-    .list-cell {
-      width: 100%;
     }
   }
 

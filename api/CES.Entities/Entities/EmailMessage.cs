@@ -12,14 +12,14 @@ namespace CES.Entities
     {
         public EmailMessageStatus Status { get; set; }
 
-        public string FromName { get; set; }
-        public string FromEmailAddress { get; set; }
+        public string FromName { get; set; } = null!;
+        public string FromEmailAddress { get; set; } = null!;
 
-        public string ToName { get; set; }
-        public string ToEmailAddress { get; set; }
+        public string ToName { get; set; } = null!;
+        public string ToEmailAddress { get; set; } = null!;
 
-        public string Subject { get; set; }
-        public string Body { get; set; }
+        public string Subject { get; set; } = null!;
+        public string Body { get; set; } = null!;
 
         public DateTime? SentDateTimeUTC { get; set; }
 
