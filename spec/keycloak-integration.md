@@ -1,7 +1,9 @@
 # Keycloak Integration
 
-**Status:** Draft  
-**Date:** 2026-05-29  
+**Status:** Superseded — see [keycloak-simplified.md](keycloak-simplified.md)
+**Date:** 2026-05-29
+
+> This spec was written against bcgov/jasper's backend-driven token relay pattern (confidential client, client secret, cookie-backed session, server-side refresh). That turned out to be more than CES needs. [keycloak-simplified.md](keycloak-simplified.md) replaces it with a frontend-driven public-client flow (PKCE, no secret) and is the current plan. Kept here for historical reference only — do not implement from this file.
 
 ---
 
@@ -98,14 +100,14 @@ The following must be provided by the SSO/infrastructure team. Values are enviro
 
 | Value | Description | Config key |
 |---|---|---|
-| Keycloak Authority URL | Base URL of the realm, e.g. `https://dev.loginproxy.gov.bc.ca/auth/realms/standard` | `Keycloak__Authority` |
+| Keycloak Authority URL | Base URL of the realm | `Keycloak__Authority` |
 | Client ID | The OIDC confidential client ID registered in the realm | `Keycloak__Client` |
 | Client Secret | The OIDC client secret (confidential client — Option B requires this) | `Keycloak__Secret` |
 | Token Refresh Threshold | How far before expiry to refresh (e.g. `"00:01:00"` = 1 minute) | `TokenRefreshThreshold` |
 
 > **Audience deliberately omitted:** CES's Option B flow has no `JwtBearer` scheme validating incoming API tokens — the API is the OIDC client, not a resource server — so there's no `aud` validation in code for a `Keycloak:Audience` value to satisfy. Don't request an audience mapper from the SSO team; only revisit this if CES later adds a service that independently validates bearer tokens.
 
-> **Realm:** Jasper connects to `https://common-sso.justice.gov.bc.ca/auth/realms/Judiciary`. CES will likely use the same Justice Keycloak realm since it is a court-adjacent system — confirm with the SSO/infrastructure team.
+> **Realm — confirmed for dev, values not recorded here:** the dev Authority URL and Client ID have been confirmed with the SSO team; they're intentionally not written into this spec (see [keycloak-simplified.md](keycloak-simplified.md) for where they actually live — `docker/.env` / `web/.env.local`, both gitignored). This is a shared BC Gov SSO realm, distinct from both the generic `standard` realm and Jasper's `Judiciary` realm. **`Keycloak__Secret` is still outstanding** — request it from the SSO team for the dev client. **Test/prod values are not yet confirmed** — whether the client ID/secret differ per environment needs confirming before those environments can be wired up.
 
 All config values are passed to the API container as environment variables using ASP.NET's double-underscore binding convention: `Keycloak__Authority`, `Keycloak__Client`, `Keycloak__Secret`.
 
@@ -295,9 +297,11 @@ public static IServiceCollection AddCESAuthentication(
 
 Replace the existing `LoginController` with a new controller that handles the three auth endpoints the frontend needs.
 
+**Logout follows Jasper's pattern** (manual Keycloak end-session URL, not the framework's `SignOutAsync(OpenIdConnectDefaults...)`) — see Open Question 7. `OnTicketReceived` strips `id_token` from the cookie, so there's no `id_token_hint` available for the framework's built-in sign-out to pass to Keycloak; Jasper's `AuthController.Logout` avoids that gap entirely by building the end-session URL itself. This requires injecting `IConfiguration` into the controller.
+
 ```csharp
 [ApiController]
-public class AuthController : ControllerBase
+public class AuthController(IConfiguration configuration) : ControllerBase
 {
     // Triggers the OIDC challenge → redirects browser to Keycloak
     [HttpGet("api/auth/login")]
@@ -307,17 +311,31 @@ public class AuthController : ControllerBase
         return Redirect(redirectUri);
     }
 
-    // Signs out of cookie + Keycloak
+    // Signs out of the cookie, then hands the browser to Keycloak's own end-session
+    // endpoint (built manually — see Open Question 7 for why this doesn't use
+    // SignOutAsync(OpenIdConnectDefaults...)).
     [HttpGet("api/auth/logout")]
     public async Task<IActionResult> Logout([FromQuery] string redirectUri = "/")
     {
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        await HttpContext.SignOutAsync(OpenIdConnectDefaults.AuthenticationScheme,
-            new AuthenticationProperties { RedirectUri = redirectUri });
-        return NoContent();
+
+        var authority = configuration.GetValue<string>("Keycloak:Authority");
+
+        var forwardedHost = Request.Headers.TryGetValue("X-Forwarded-Host", out var host)
+            ? host.ToString()
+            : Request.Host.ToString();
+        var forwardedPort = Request.Headers["X-Forwarded-Port"].ToString();
+        var baseHref = Request.Headers["X-Base-Href"].ToString();
+        var appReturnUrl = $"https://{forwardedHost}{(string.IsNullOrEmpty(forwardedPort) ? "" : $":{forwardedPort}")}{baseHref}{redirectUri}";
+
+        var keycloakLogoutUrl = $"{authority}/protocol/openid-connect/logout" +
+            $"?post_logout_redirect_uri={Uri.EscapeDataString(appReturnUrl)}";
+
+        return Redirect(keycloakLogoutUrl);
     }
 
-    // Returns user info from claims — replaces the frontend's jwtDecode pattern
+    // Returns user info from claims — replaces the frontend's jwtDecode pattern.
+    // Only called on the real Keycloak path; dev bypass decodes its mock JWT client-side instead.
     [HttpGet("api/auth/info")]
     [Authorize]
     public IActionResult GetUserInfo()
@@ -335,10 +353,6 @@ public class AuthController : ControllerBase
     }
 }
 ```
-
-> **Logout risk — verify before assuming this works silently:** `OnTicketReceived` (above) strips `id_token` from the cookie, so `Logout()`'s call to `SignOutAsync(OpenIdConnectDefaults.AuthenticationScheme, ...)` has no `id_token_hint` to pass to Keycloak's end-session endpoint. Depending on realm configuration, missing `id_token_hint` can cause Keycloak to show a logout confirmation page instead of redirecting silently. This is not hypothetical: Jasper — the reference implementation — hit the exact same tension and worked around it by manually constructing the Keycloak logout URL (`{authority}/protocol/openid-connect/logout?post_logout_redirect_uri=...`) in `AuthController.Logout` instead of relying on the framework's `SignOutAsync`, leaving a `// TODO: add id_token_hint using id_token, currently removed` comment acknowledging the gap is unresolved even there. Verify actual behavior against the target realm during integration testing; if a confirmation screen appears and is unacceptable, switch to Jasper's manual-URL pattern.
->
-> **`GET /api/auth/info` is only called on the real Keycloak path.** Dev bypass mode never hits this endpoint — it continues to decode the mock JWT client-side (see Dev Bypass Mode below).
 
 ---
 
@@ -576,7 +590,7 @@ The following must be configured in the target Keycloak realm by the SSO team be
 
 ## Open Questions / Follow-up Items
 
-1. **Keycloak realm:** Confirm whether CES will use the Justice realm (`https://common-sso.justice.gov.bc.ca/auth/realms/Judiciary`) — the same one used by Jasper — or a different BC Gov SSO realm. This affects the Authority URL and the client registration process.
+1. **Keycloak realm:** ~~Confirm whether CES will use the Justice realm...~~ **Resolved for dev** — CES uses a shared BC Gov SSO realm (value recorded outside this spec, not Jasper's `Judiciary` realm). **Still open:** confirm the equivalent Authority URL and client ID/secret for test and prod (does the realm stay the same with only the hostname prefix changing, or does it differ per environment?).
 
 2. **Audit trail:** The current system identifies users by email (`admin@gov.bc.ca`). After Keycloak, `idir_user_guid` is the stable identifier. Confirm whether existing audit/submission records need a migration or can tolerate a format change at cutover.
 
@@ -591,5 +605,5 @@ The following must be configured in the target Keycloak realm by the SSO team be
 
 6. **`X-Forwarded-*` headers:** The `OnRedirectToIdentityProvider` handler rewrites the redirect URI when `X-Forwarded-Host` is present. Confirm that the nginx/OpenShift ingress layer forwards these headers and that `ForwardedHeaders` middleware is configured in `Program.cs`.
 
-7. **Logout confirmation screen / `id_token_hint`:** `OnTicketReceived` strips `id_token` from the cookie, and `AuthController.Logout` relies on ASP.NET's built-in `SignOutAsync(OpenIdConnectDefaults.AuthenticationScheme, ...)` to redirect to Keycloak's end-session endpoint — without an `id_token_hint`. Depending on realm configuration, this can produce a logout confirmation page instead of a silent redirect. Jasper — the reference implementation — hit this same tension and left it as an open `// TODO` in production, manually constructing the Keycloak logout URL instead of relying on the framework default. Verify actual behavior against the target realm during integration testing; if a confirmation screen appears and is unacceptable, follow Jasper's manual-URL-construction pattern instead.
-- Jasper implimentation can be considered the correct pattern
+7. **Logout confirmation screen / `id_token_hint`:** ~~Verify actual behavior against the target realm...~~ **Resolved** — adopt Jasper's manual Keycloak logout-URL construction outright rather than the framework's `SignOutAsync(OpenIdConnectDefaults...)`, since `OnTicketReceived` strips `id_token` and there's no `id_token_hint` for the framework path to rely on. `AuthController.Logout` (§2 above) has been updated to match Jasper's pattern.
+- Jasper's implementation is the correct pattern to follow
