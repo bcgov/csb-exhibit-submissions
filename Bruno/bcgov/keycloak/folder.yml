@@ -1,0 +1,30 @@
+info:
+  name: keycloak
+  type: folder
+  seq: 4
+
+request:
+  auth:
+    type: oauth2
+    flow: authorization_code
+    authorizationUrl: "{{keycloakAuthority}}/protocol/openid-connect/auth"
+    accessTokenUrl: "{{keycloakAuthority}}/protocol/openid-connect/token"
+    callbackUrl: "{{keycloakRedirectUri}}"
+    credentials:
+      clientId: "{{keycloakClientId}}"
+      clientSecret: "{{keycloakClientSecret}}"
+    additionalParameters:
+      authorizationRequest:
+        - name: kc_idp_hint
+          placement: query
+          value: idir
+    scope: openid profile email
+    pkce: {}
+    tokenConfig:
+      id: keycloak-ces
+      placement:
+        header: Bearer
+      source: access_token
+    settings:
+      autoFetchToken: true
+      autoRefreshToken: true

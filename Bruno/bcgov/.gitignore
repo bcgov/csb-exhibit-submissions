@@ -1,0 +1,14 @@
+# Secrets
+.env*
+
+# Bruno environment files hold real credentials/URLs per environment - never commit them.
+# Add a tracked *.sample.yml alongside each one if you want a shared template.
+environments/*.yml
+!environments/*.sample.yml
+
+# Dependencies
+node_modules
+
+# OS files
+.DS_Store
+Thumbs.db

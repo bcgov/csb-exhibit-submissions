@@ -1,0 +1,29 @@
+info:
+  name: Locations
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: https://wsgw.test.jag.gov.bc.ca/courts/Lookup/v2/locations?returnActive=1&returnInactive=1
+  headers:
+    - name: Content-Type
+      value: application/json
+      disabled: true
+  params:
+    - name: returnActive
+      value: "1"
+      type: query
+    - name: returnInactive
+      value: "1"
+      type: query
+  auth:
+    type: basic
+    username: "{{fileServices_Username}}"
+    password: "{{fileService_Password}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

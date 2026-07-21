@@ -1,0 +1,38 @@
+info:
+  name: CES API - accepts Keycloak token
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{apiBaseUrl}}/api/users/createUser"
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  Reuses the same Keycloak access token obtained by "UserInfo (verify
+  Keycloak token)" (shared via the folder's tokenConfig.id: keycloak-ces)
+  and sends it as a Bearer token to a real [Authorize]-protected CES
+  endpoint (UserController.CreateUsers).
+
+  Only meaningful when the API is running with Keycloak__Enabled=true
+  pointed at the same realm (see "Toggling Between Dev Bypass and Real
+  Keycloak Locally" in spec/keycloak-simplified.md) - against the mock JWT
+  dev-bypass scheme this will 401, since that scheme can't validate a
+  Keycloak-issued token.
+
+  200 confirms AddCESKeycloakAuthentication's issuer/azp/signature checks
+  accept the token; 401 means either the API isn't in Keycloak mode, or
+  Keycloak__Client / Keycloak__Authority on the API don't match what this
+  request used.

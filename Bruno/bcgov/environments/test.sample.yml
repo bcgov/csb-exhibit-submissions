@@ -1,0 +1,20 @@
+name: test
+variables:
+  - secret: true
+    name: username
+  - secret: true
+    name: password
+  - secret: true
+    name: fileServices_Username
+  - secret: true
+    name: fileService_Password
+  - name: keycloakAuthority
+    value: ""
+  - name: keycloakClientId
+    value: ""
+  - secret: true
+    name: keycloakClientSecret
+  - name: keycloakRedirectUri
+    value: "http://localhost:9080/auth/callback"
+  - name: apiBaseUrl
+    value: ""
