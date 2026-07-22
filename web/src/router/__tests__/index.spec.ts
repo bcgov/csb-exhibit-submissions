@@ -65,3 +65,22 @@ describe('router role guard', () => {
     expect(router.currentRoute.value.name).toBe('AdminExhibitSearch');
   });
 });
+
+describe('Keycloak callback routes', () => {
+  // Guarding the callback would deadlock the login it exists to complete, so both of
+  // these must stay reachable with no token at all.
+  it('reaches the auth callback unauthenticated', async () => {
+    await router.push('/auth/callback?code=abc&state=xyz');
+    expect(router.currentRoute.value.name).toBe('AuthCallback');
+  });
+
+  it('reaches the auth error view unauthenticated', async () => {
+    await router.push('/auth/error');
+    expect(router.currentRoute.value.name).toBe('AuthError');
+  });
+
+  it('preserves the code and state query for the callback view to read', async () => {
+    await router.push('/auth/callback?code=abc&state=xyz');
+    expect(router.currentRoute.value.query).toMatchObject({ code: 'abc', state: 'xyz' });
+  });
+});

@@ -58,8 +58,19 @@ services:
       - Request__ApplicationCd=${Request__ApplicationCd:-SCV}
       - Request__AgencyIdentifierId=${Request__AgencyIdentifierId}
       - Request__PartId=${Request__PartId}
+      # Keycloak Configuration (Secret is never defaulted — it comes from .env only)
+      - Keycloak__Enabled=${Keycloak__Enabled:-false}
+      - Keycloak__Authority=${Keycloak__Authority}
+      - Keycloak__Client=${Keycloak__Client}
+      - Keycloak__Secret=${Keycloak__Secret}
+      - Keycloak__RedirectUri=${Keycloak__RedirectUri:-http://localhost:9080/auth/callback}
+      - Keycloak__PostLogoutRedirectUri=${Keycloak__PostLogoutRedirectUri:-http://localhost:9080/}
+      # Data Protection key ring — must survive restarts and be shared across replicas,
+      # or a restarted API cannot decrypt cookies it did not issue.
+      - DataProtection__KeyPath=${DataProtection__KeyPath:-/keys}
     volumes:
       - api-data:/data
+      - api-keys:/keys
     depends_on:
       db:
         condition: service_healthy
@@ -91,6 +102,16 @@ services:
       - Request__ApplicationCd=${Request__ApplicationCd:-SCV}
       - Request__AgencyIdentifierId=${Request__AgencyIdentifierId}
       - Request__PartId=${Request__PartId}
+      # Keycloak Configuration (Secret is never defaulted — it comes from .env only)
+      - Keycloak__Enabled=${Keycloak__Enabled:-false}
+      - Keycloak__Authority=${Keycloak__Authority}
+      - Keycloak__Client=${Keycloak__Client}
+      - Keycloak__Secret=${Keycloak__Secret}
+      - Keycloak__RedirectUri=${Keycloak__RedirectUri:-http://localhost:9080/auth/callback}
+      - Keycloak__PostLogoutRedirectUri=${Keycloak__PostLogoutRedirectUri:-http://localhost:9080/}
+      # Data Protection key ring — must survive restarts and be shared across replicas,
+      # or a restarted API cannot decrypt cookies it did not issue.
+      - DataProtection__KeyPath=${DataProtection__KeyPath:-/keys}
     networks:
       app-network:
         aliases:
@@ -101,6 +122,7 @@ services:
       - api-dev-obj:/opt/app-root/src/api/CES.API/obj
       - api-temp:/opt/app-root/src/api/CES.API/uploads
       - api-data:/data
+      - api-keys:/keys
     depends_on:
       db:
         condition: service_healthy
@@ -142,4 +164,5 @@ volumes:
   api-dev-obj:
   api-temp:
   api-data:
+  api-keys:
   postgres-data:

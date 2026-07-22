@@ -95,6 +95,19 @@ const router = createRouter({
       name: 'Forbidden',
       component: () => import('@/views/ForbiddenView.vue'),
     },
+    // Registered unconditionally and deliberately unguarded — guarding the callback
+    // would deadlock the login it exists to complete. Harmless in dev-bypass mode,
+    // where nothing ever navigates here.
+    {
+      path: '/auth/callback',
+      name: 'AuthCallback',
+      component: () => import('@/views/AuthCallbackView.vue'),
+    },
+    {
+      path: '/auth/error',
+      name: 'AuthError',
+      component: () => import('@/views/AuthErrorView.vue'),
+    },
   ],
 });
 

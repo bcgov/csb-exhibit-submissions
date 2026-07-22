@@ -8,6 +8,9 @@ const baseURL = '/api';
 const api: AxiosInstance = axios.create({
   baseURL,
   // timeout: 60000,
+  // Required so the HttpOnly auth cookies (ces.login / ces.session) are sent to the
+  // /api/auth endpoints. They are Path-scoped, so no other request carries them.
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },

@@ -10,6 +10,14 @@ using CES.API.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using CES.API.Authentication;
 using CES.Business.Infrastructure;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.IdentityModel.Protocols;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+// Aliased because Microsoft.Extensions.Configuration.ConfigurationManager is in the
+// implicit usings and would otherwise make the name ambiguous.
+using OidcConfigurationManager =
+    Microsoft.IdentityModel.Protocols.ConfigurationManager<
+        Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration>;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,8 +31,42 @@ builder.Services.Configure<StorageOptions>(
     builder.Configuration.GetSection("FileStorage"));
 
 // Authentication
+// Bearer validation stays on the mock JWT until step 5 of the Keycloak spec swaps it
+// out behind the same Keycloak:Enabled flag.
 builder.Services.AddCESAuthentication(builder.Configuration);
 builder.Services.AddAuthorization();
+
+// Keycloak. Registered unconditionally so AuthController can always be constructed;
+// every one of its endpoints returns 404 while Keycloak:Enabled is false, and nothing
+// here contacts the realm until an endpoint is actually called.
+var keycloakConfiguration = builder.Configuration.GetSection("Keycloak").Get<KeycloakConfiguration>()
+    ?? new KeycloakConfiguration();
+builder.Services.AddSingleton(keycloakConfiguration);
+
+// Discovery document is fetched once and cached here rather than on every login.
+builder.Services.AddSingleton<IConfigurationManager<OpenIdConnectConfiguration>>(
+    new OidcConfigurationManager(
+        $"{keycloakConfiguration.Authority.TrimEnd('/')}/.well-known/openid-configuration",
+        new OpenIdConnectConfigurationRetriever(),
+        new HttpDocumentRetriever { RequireHttps = true }));
+
+builder.Services.AddHttpClient<IKeycloakTokenService, KeycloakTokenService>();
+
+// Data Protection — encrypts the auth cookies (ces.login / ces.session).
+// The key path must point at a volume that survives restarts and is shared across
+// replicas; otherwise a restarted or second instance cannot decrypt a cookie it did
+// not issue, and users are silently bounced to Keycloak mid-session.
+var dataProtectionKeyPath = builder.Configuration["DataProtection:KeyPath"];
+if (string.IsNullOrWhiteSpace(dataProtectionKeyPath))
+{
+    dataProtectionKeyPath = Path.Combine(
+        builder.Environment.ContentRootPath,
+        AuthConstants.DefaultDataProtectionKeyDirectory);
+}
+
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(Directory.CreateDirectory(dataProtectionKeyPath))
+    .SetApplicationName(AuthConstants.DataProtectionApplicationName);
 
 // ** CORS **
 var corsPolicyName = "CESCorsPolicy";

@@ -22,6 +22,16 @@ export default function useAuthService() {
     }
   };
 
+  /**
+   * Starts the Keycloak flow. A full-page navigation, not an axios call: the browser
+   * has to follow the API's 302 all the way to the IDIR login screen.
+   */
+  const loginViaKeycloak = (returnUrl?: string) => {
+    const target =
+      returnUrl && returnUrl !== '/' ? `?returnUrl=${encodeURIComponent(returnUrl)}` : '';
+    window.location.assign(`/api/auth/login${target}`);
+  };
+
   const logout = () => {
     const authStore = useAuthStore();
     authStore.clearAuth();
@@ -47,6 +57,7 @@ export default function useAuthService() {
 
   return {
     login,
+    loginViaKeycloak,
     logout,
     handleUnauthorized,
   };
