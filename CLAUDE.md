@@ -171,7 +171,7 @@ Feature specifications live in [`/spec`](spec/). Read the relevant spec before i
 ## Testing
 
 - **Write tests for all new development.** Every new service method, controller action, store mutation, and service function must have corresponding tests before the work is considered complete.
-- notify user before writing any tests so they can verify functionality and completeness.
+- notify user before writing any tests so they can verify functionality and completeness. Provide validation steps for user.
 - **Update existing tests when modifying existing code.** If a change alters behavior covered by an existing test, update that test to reflect the new spec — do not delete or skip tests to make them pass.
 - Run `dotnet test api/CES.API/CES.API.sln` and `cd web && npm run test` before marking any task done. Both must pass.
 - See [spec/testing-implementation.md](spec/testing-implementation.md) for the full testing strategy, framework choices, project structure, and test case inventory.

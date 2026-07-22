@@ -94,8 +94,16 @@ namespace CES.API.Authentication
             var parameters = new Dictionary<string, string?>
             {
                 [AuthConstants.OAuth.ClientId] = _keycloak.Client,
-                [AuthConstants.OAuth.PostLogoutRedirectUri] = _keycloak.PostLogoutRedirectUri,
             };
+
+            // Only sent when configured. Keycloak validates this against the client's Valid
+            // Post Logout Redirect URIs and aborts the whole end-session request with
+            // "invalid redirect URI" if it does not match — which leaves the SSO session
+            // alive and the user silently signed back in. Leaving it blank is the safe
+            // default until the URI is registered: Keycloak then shows its own
+            // logged-out page, and the session still ends.
+            if (!string.IsNullOrWhiteSpace(_keycloak.PostLogoutRedirectUri))
+                parameters[AuthConstants.OAuth.PostLogoutRedirectUri] = _keycloak.PostLogoutRedirectUri;
 
             // Keycloak only honours post_logout_redirect_uri when it can identify the session,
             // which the id_token_hint gives it.

@@ -1,0 +1,67 @@
+info:
+  name: CES API - refresh session cookie
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{apiBaseUrl}}/api/auth/refresh"
+  auth: none
+
+headers:
+  - name: Cookie
+    value: "ces.session={{cesSessionCookie}}"
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+    - expression: res.body.accessToken
+      operator: isString
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: false
+  maxRedirects: 0
+
+docs: |-
+  Verifies cookie-based renewal and refresh-token rotation independently of
+  the browser.
+
+  This request deliberately does NOT inherit the folder's OAuth2 auth: the
+  refresh endpoint authenticates by the encrypted ces.session cookie alone,
+  never by a bearer token. Sending one would prove nothing.
+
+  Bruno cannot obtain that cookie on its own - it is issued by the CES API
+  at the end of an interactive IDIR login. Get it by hand:
+
+    1. Sign in to the app at http://localhost:9080 with Keycloak enabled.
+    2. DevTools > Application > Cookies > http://localhost:9080.
+    3. Copy the VALUE of ces.session (a long Data Protection blob, not a
+       JWT - it will not decode at jwt.io, which is the point).
+    4. Paste it into the cesSessionCookie environment variable.
+
+  Treat that value as a live credential while it is in your environment
+  file: it redeems to a refresh token. dev.yml / test.yml are gitignored,
+  and the variable is marked secret in the samples - keep it that way.
+
+  Expected results:
+    200 - renewal works. The response carries accessToken and expiresIn and
+          NO refresh token; that stays server-side. Check the response's
+          Set-Cookie header: a new ces.session value means the API wrote the
+          rotated token back, which is the behaviour that makes rotation
+          safe whether or not the realm has it enabled.
+    401 - no cookie, an unreadable cookie, or Keycloak rejected the grant
+          (expired, already rotated, revoked, or past the 8-hour max SSO
+          session). The API also clears the dead cookie on this path.
+    404 - the API is in dev-bypass mode; /api/auth/* does not exist there.
+
+  Rotation check: run this request TWICE without updating the variable. If
+  the realm has rotation enabled, the second run must 401 - the first run
+  consumed and replaced that refresh token. If both runs return 200,
+  rotation is off in the realm. Either outcome is fine and the
+  implementation handles both, but record which one it is in the
+  "Keycloak Realm Setup Requirements" section of
+  spec/keycloak-authentication.md, where it is still an open unknown.

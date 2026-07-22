@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import api from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
 import type { AuthCallbackResponse } from '@/models/AuthModels';
+import { scheduleRenewal } from '@/services/sessionService';
 
 /**
  * Landing page for the redirect URI registered with Keycloak (`/auth/callback`).
@@ -39,6 +40,8 @@ onMounted(async () => {
     // The encrypted ces.login cookie rides along and carries the PKCE verifier.
     const { data } = await api.post<AuthCallbackResponse>('/auth/callback', { code, state });
     authStore.setToken(data.accessToken);
+    // Starts the renewal loop, so a long session never lapses mid-upload.
+    scheduleRenewal();
     await router.replace(data.returnUrl || '/');
   } catch {
     await router.replace({ name: 'AuthError' });

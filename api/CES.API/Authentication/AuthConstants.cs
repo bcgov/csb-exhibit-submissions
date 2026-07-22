@@ -72,6 +72,18 @@ namespace CES.API.Authentication
         /// <inheritdoc cref="RolesClaim"/>
         public const string AuthorizedPartyClaim = "azp";
 
+        /// <summary>Identity claims read off the access token to provision the local user row.</summary>
+        public const string SubjectClaim = "sub";
+
+        /// <inheritdoc cref="SubjectClaim"/>
+        public const string EmailClaim = "email";
+
+        /// <inheritdoc cref="SubjectClaim"/>
+        public const string GivenNameClaim = "given_name";
+
+        /// <inheritdoc cref="SubjectClaim"/>
+        public const string FamilyNameClaim = "family_name";
+
         /// <summary>Identity provider hint — government staff only, skips the IDP selector.</summary>
         public const string IdpHint = "idir";
 

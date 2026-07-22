@@ -30,18 +30,22 @@ builder.Services.AddScoped<IFileStorage, LocalFileStorage>();
 builder.Services.Configure<StorageOptions>(
     builder.Configuration.GetSection("FileStorage"));
 
-// Authentication
-// Bearer validation stays on the mock JWT until step 5 of the Keycloak spec swaps it
-// out behind the same Keycloak:Enabled flag.
-builder.Services.AddCESAuthentication(builder.Configuration);
-builder.Services.AddAuthorization();
-
-// Keycloak. Registered unconditionally so AuthController can always be constructed;
-// every one of its endpoints returns 404 while Keycloak:Enabled is false, and nothing
-// here contacts the realm until an endpoint is actually called.
+// Keycloak configuration. Registered unconditionally so AuthController can always be
+// constructed; every one of its endpoints returns 404 while Keycloak:Enabled is false,
+// and nothing here contacts the realm until an endpoint is actually called.
 var keycloakConfiguration = builder.Configuration.GetSection("Keycloak").Get<KeycloakConfiguration>()
     ?? new KeycloakConfiguration();
 builder.Services.AddSingleton(keycloakConfiguration);
+
+// Authentication — exactly one bearer scheme is registered. The mock JWT and the
+// Keycloak JWKS validation are mutually exclusive by design: with both wired up, a
+// locally-signed token would be a second way in.
+if (keycloakConfiguration.Enabled)
+    builder.Services.AddCESKeycloakAuthentication(builder.Configuration);
+else
+    builder.Services.AddCESAuthentication(builder.Configuration);
+
+builder.Services.AddAuthorization();
 
 // Discovery document is fetched once and cached here rather than on every login.
 builder.Services.AddSingleton<IConfigurationManager<OpenIdConnectConfiguration>>(

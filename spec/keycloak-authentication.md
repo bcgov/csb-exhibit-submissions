@@ -624,7 +624,14 @@ For the SSO team. Items 1–3 are already confirmed working via the Bruno collec
    - `http://localhost:9080/auth/callback` — **already authorized**, unblocking local development
    - `https://<env-host>/auth/callback` per deployed environment — **still to be requested** for test and prod
    - `http://localhost:5173/auth/callback` only if developers run bare `npm run dev` rather than Docker; otherwise skip it and keep the registered surface small
-6. **Valid Post Logout Redirect URIs** — the app root per environment.
+6. **Valid Post Logout Redirect URIs** — the app root per environment. **Not yet
+   registered, and confirmed to break logout (2026-07-22).** Sending an unregistered
+   `post_logout_redirect_uri` makes Keycloak abort the *entire* end-session request with
+   "invalid redirect URI": the SSO session stays alive, and returning to the app signs the
+   user straight back in with no prompt. Until `http://localhost:9080/` is registered,
+   `Keycloak__PostLogoutRedirectUri` must be left **blank**, which omits the parameter and
+   lets Keycloak end the session and show its own logged-out page. Registering it is the
+   only thing standing between that and a clean return to the app.
 7. **Web Origins** — not required for this flow (the browser never calls Keycloak's token endpoint), but harmless if already set.
 8. **Session lifetimes** — max SSO session confirmed at **8 hours**. Still to confirm: the **idle** timeout, and whether **refresh-token rotation** is enabled. The implementation is correct either way, but both numbers should be recorded here once known so the renewal behaviour is verifiable rather than assumed.
 9. **Test IDIR accounts** assigned to each of the three client roles.
@@ -652,8 +659,9 @@ Reverting: blank `web/.env.local`, set `Keycloak__Enabled=false`, restart.
 `Bruno/bcgov/keycloak/` already exercises the flow. Once the API side is built:
 
 - `UserInfo` proves Keycloak issues a usable token for the confidential client.
-- `VerifyBearerWithApi` proves the CES API's `azp` / issuer / signature validation accepts it — only meaningful with `Keycloak__Enabled=true` pointed at the same realm.
-- Add a third request hitting `POST {{apiBaseUrl}}/api/auth/refresh` to verify cookie-based renewal and rotation independently of the browser.
+- `VerifyBearerWithApi` proves the CES API's `azp` / issuer / signature validation accepts it — only meaningful with `Keycloak__Enabled=true` pointed at the same realm. It targets a bare `[Authorize]` endpoint, so it says nothing about roles.
+- `VerifyRoleMapping` targets `[Authorize(Roles = Admin)]` and so proves the `ces-judicial` → `Admin` mapping specifically. Split from the request above because a `403` there is a *different* diagnosis from a `401` here.
+- `RefreshSession` verifies cookie-based renewal and rotation independently of the browser. It cannot inherit the folder's OAuth2 auth — the endpoint authenticates by the `ces.session` cookie alone — so the cookie value is pasted by hand into the `cesSessionCookie` environment variable. Running it twice is the check for whether the realm has rotation enabled.
 
 Environment files: keep real values in `dev.yml` / `test.yml`, which `Bruno/bcgov/.gitignore` excludes. `keycloakClientSecret` is already marked `secret: true` in both samples — keep it that way.
 

@@ -36,4 +36,32 @@ public static class JwtTokenHelper
     public static string AdminToken() => GenerateToken("admin@gov.bc.ca", "Admin");
     public static string UserToken() => GenerateToken("officer@gov.bc.ca", "User");
     public static string ClerkToken() => GenerateToken("clerk@gov.bc.ca", "Clerk");
+
+    /// <summary>
+    /// A Keycloak-shaped access token carrying the identity claims the callback upserts.
+    /// The signature is irrelevant here — AccessTokenReader parses these claims without
+    /// re-validating a token that was just returned by Keycloak over a trusted channel.
+    /// </summary>
+    public static string KeycloakIdentityToken(
+        string sub, string email, string givenName, string familyName)
+    {
+        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Key));
+        var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, sub),
+            new Claim("email", email),
+            new Claim("given_name", givenName),
+            new Claim("family_name", familyName),
+        };
+
+        var token = new JwtSecurityToken(
+            issuer: Issuer,
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(5),
+            signingCredentials: credentials);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
 }

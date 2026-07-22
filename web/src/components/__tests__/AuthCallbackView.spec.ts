@@ -160,6 +160,8 @@ describe('AuthCallbackView', () => {
     mountCallback();
     await flushPromises();
 
-    expect(JSON.stringify(useAuthStore().$state)).not.toContain('refresh');
+    // The renewal timer handle is a Node Timeout with circular refs, and holds no token.
+    const { renewalTimer: _renewalTimer, ...serializableState } = useAuthStore().$state;
+    expect(JSON.stringify(serializableState)).not.toContain('refresh');
   });
 });

@@ -12,5 +12,11 @@ variables:
     name: keycloakClientSecret
   - name: keycloakRedirectUri
     value: "http://localhost:9080/auth/callback"
+  # No trailing /api — each request adds its own /api/... path. Use the nginx port 9080
+  # for the Docker workflow (./manage debug); use http://localhost:5285 only for a bare
+  # `dotnet run`. The Keycloak flow itself must be reached on 9080 regardless, since that
+  # is the registered redirect URI.
   - name: apiBaseUrl
-    value: "http://localhost:5285"
+    value: "http://localhost:9080"
+  - secret: true
+    name: cesSessionCookie

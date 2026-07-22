@@ -288,6 +288,22 @@ public class AuthControllerDisabledTests : IClassFixture<TestWebApplicationFacto
     }
 
     [Fact]
+    public async Task Refresh_WhenKeycloakIsDisabled_Returns404()
+    {
+        var response = await _client.PostAsync("/api/auth/refresh", content: null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Logout_WhenKeycloakIsDisabled_Returns404()
+    {
+        var response = await _client.PostAsync("/api/auth/logout", content: null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task Login_WhenKeycloakIsDisabled_LeavesNoAuthCookiesBehind()
     {
         var response = await _client.GetAsync("/api/auth/login");

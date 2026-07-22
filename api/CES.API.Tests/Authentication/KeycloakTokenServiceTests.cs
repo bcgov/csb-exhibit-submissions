@@ -316,4 +316,25 @@ public class KeycloakTokenServiceTests
 
         url.Should().NotContain(ClientSecret);
     }
+
+    [Fact]
+    public async Task BuildEndSessionUrl_WhenPostLogoutUriIsBlank_OmitsThatParameter()
+    {
+        // An unregistered post_logout_redirect_uri makes Keycloak abort the whole
+        // end-session request ("invalid redirect URI"), leaving the SSO session alive. Until
+        // the URI is registered the config is left blank, and the parameter must not be sent.
+        var configuration = Configuration();
+        configuration.PostLogoutRedirectUri = string.Empty;
+        var service = new KeycloakTokenService(
+            new HttpClient(new StubHttpMessageHandler(HttpStatusCode.OK, SuccessBody)),
+            configuration,
+            Discovery().Object,
+            new CapturingLogger<KeycloakTokenService>());
+
+        var url = await service.BuildEndSessionUrlAsync("the-id-token", CancellationToken.None);
+
+        url.Should().StartWith(EndSessionEndpoint);
+        QueryHelpers.ParseQuery(new Uri(url).Query)
+            .Should().NotContainKey(AuthConstants.OAuth.PostLogoutRedirectUri);
+    }
 }

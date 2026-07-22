@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: "{{keycloakAuthority}}/protocol/openid-connect/auth"
+  url: "{{keycloakAuthority}}/protocol/openid-connect/userinfo"
   auth: inherit
 
 runtime:

@@ -28,4 +28,9 @@
     <ProjectReference Include="..\CES.EF\CES.EF.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Role-mapping helpers are internal; the test project exercises them directly. -->
+    <InternalsVisibleTo Include="CES.API.Tests" />
+  </ItemGroup>
+
 </Project>

@@ -2,6 +2,11 @@ import { createRouter, createWebHistory } from 'vue-router';
 import DevDashboard from '@/views/DevDashboardView.vue';
 import { useAuthStore } from '@/stores/authStore';
 import { ROLE_ADMIN, ROLE_USER, ROLE_CLERK } from '@/constants/roles';
+import { isDevAuthBypass } from '@/constants/auth';
+import { buildKeycloakLoginUrl } from '@/helpers/keycloakLogin';
+
+/** Routes that complete a login and so must never trigger one. */
+const AUTH_ROUTE_PREFIX = '/auth/';
 
 //TODO: Future auth guard when using keycloak
 //Copied from project: bcgov-jasper
@@ -121,15 +126,49 @@ const router = createRouter({
 //     next();
 //   }
 // });
-router.beforeEach((to, from, next) => {
+/**
+ * On the Keycloak path the access token lives in memory, so a hard reload starts with no
+ * token even when the session is live. One bootstrap `POST /api/auth/refresh` re-mints it
+ * from the HttpOnly cookie before the first guarded navigation resolves, so a reload does
+ * not flash the login screen.
+ *
+ * Run once per page load, and never on the auth routes — there is legitimately no session
+ * cookie yet at `/auth/callback`, where a 401 is the expected answer rather than a failure.
+ */
+let bootstrapPromise: Promise<unknown> | null = null;
+
+async function ensureSessionBootstrapped(path: string): Promise<void> {
+  if (isDevAuthBypass() || path.startsWith(AUTH_ROUTE_PREFIX)) return;
+
+  // Imported lazily: sessionService reaches apiClient, which reaches AuthService, which
+  // imports this module.
+  bootstrapPromise ??= import('@/services/sessionService').then((module) => module.bootstrap());
+
+  await bootstrapPromise;
+}
+
+router.beforeEach(async (to, from, next) => {
+  await ensureSessionBootstrapped(to.path);
+
   const authStore = useAuthStore();
 
   const requiresAuth = to.meta.requiresAuth as boolean | undefined;
   const requiredRoles = to.meta.roles as string[] | undefined;
-  console.log(authStore.roles);
+
+  // The mock login form only exists on the bypass path; otherwise Keycloak owns the
+  // login screen and the browser has to leave the SPA to reach it.
+  if (!isDevAuthBypass() && to.name === 'Login') {
+    window.location.assign(buildKeycloakLoginUrl(to.query.redirect as string | undefined));
+    return next(false);
+  }
 
   // Not logged in
   if (requiresAuth && !authStore.isAuthenticated) {
+    if (!isDevAuthBypass()) {
+      window.location.assign(buildKeycloakLoginUrl(to.fullPath));
+      return next(false);
+    }
+
     return next({ name: 'Login' });
   }
 

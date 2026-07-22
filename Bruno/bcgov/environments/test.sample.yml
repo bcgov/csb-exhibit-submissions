@@ -16,5 +16,8 @@ variables:
     name: keycloakClientSecret
   - name: keycloakRedirectUri
     value: "http://localhost:9080/auth/callback"
+  # No trailing /api — each request adds its own /api/... path.
   - name: apiBaseUrl
     value: ""
+  - secret: true
+    name: cesSessionCookie

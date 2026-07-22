@@ -21,18 +21,27 @@ settings:
   maxRedirects: 5
 
 docs: |-
-  Reuses the same Keycloak access token obtained by "UserInfo (verify
-  Keycloak token)" (shared via the folder's tokenConfig.id: keycloak-ces)
-  and sends it as a Bearer token to a real [Authorize]-protected CES
-  endpoint (UserController.CreateUsers).
+  Reuses the Keycloak access token obtained by "UserInfo (verify Keycloak
+  token)" (shared via the folder's tokenConfig.id: keycloak-ces) and sends
+  it as a Bearer token to a real [Authorize]-protected CES endpoint
+  (UserController.CreateUsers, a no-op that returns 200).
+
+  This is the acceptance test for AddCESKeycloakAuthentication. A 200 proves
+  the API accepted a Keycloak-issued token, which means issuer validation,
+  signature validation against the realm JWKS, and the azp check all passed.
+
+  Role mapping is NOT covered here - CreateUsers carries a bare [Authorize]
+  with no role requirement. See "CES API - maps ces-judicial to Admin" for
+  that half.
 
   Only meaningful when the API is running with Keycloak__Enabled=true
-  pointed at the same realm (see "Toggling Between Dev Bypass and Real
-  Keycloak Locally" in spec/keycloak-simplified.md) - against the mock JWT
-  dev-bypass scheme this will 401, since that scheme can't validate a
-  Keycloak-issued token.
+  pointed at the same realm (see "Local Development" in
+  spec/keycloak-authentication.md). Against the mock JWT dev-bypass scheme
+  this will 401, since that scheme cannot validate a Keycloak-issued token.
 
-  200 confirms AddCESKeycloakAuthentication's issuer/azp/signature checks
-  accept the token; 401 means either the API isn't in Keycloak mode, or
-  Keycloak__Client / Keycloak__Authority on the API don't match what this
-  request used.
+  Troubleshooting a 401:
+    - The API is in dev-bypass mode (Keycloak__Enabled=false).
+    - Keycloak__Client on the API does not match keycloakClientId here, so
+      the azp check rejects the token.
+    - Keycloak__Authority does not match keycloakAuthority, so the issuer
+      check rejects it.
