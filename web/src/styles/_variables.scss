@@ -44,16 +44,18 @@ $shadow-none:            t.$surface-shadow-none;
 $shadow-small:           t.$surface-shadow-small;
 $shadow-large:           t.$surface-shadow-large;
 
-// Border radius (tokens are unitless; px suffix added here)
-$border-radius-small:    #{t.$layout-border-radius-small}px;     // 2px
-$border-radius-default:  #{t.$layout-border-radius-medium}px;    // 4px
-$border-radius-large:    #{t.$layout-border-radius-large}px;     // 6px
-$border-radius-circular: #{t.$layout-border-radius-circular}px;  // 9999px
+// Border radius. As of @bcgov/design-tokens v5 these ship with `px` already
+// attached — do NOT re-add a suffix (interpolating one emits `4pxpx`, which
+// browsers silently discard, leaving corners square with no console error).
+$border-radius-small:    t.$layout-border-radius-small;     // 2px
+$border-radius-default:  t.$layout-border-radius-medium;    // 4px
+$border-radius-large:    t.$layout-border-radius-large;     // 6px
+$border-radius-circular: t.$layout-border-radius-circular;  // 9999px
 
-// Border width (tokens are unitless; px suffix added here)
-$border-width-small:     #{t.$layout-border-width-small}px;      // 1px
-$border-width-medium:    #{t.$layout-border-width-medium}px;     // 2px
-$border-width-large:     #{t.$layout-border-width-large}px;      // 4px
+// Border width — unit-bearing since v5; see the note above.
+$border-width-small:     t.$layout-border-width-small;      // 1px
+$border-width-medium:    t.$layout-border-width-medium;     // 2px
+$border-width-large:     t.$layout-border-width-large;      // 4px
 
 // Padding
 $padding-xsmall:         t.$layout-padding-xsmall;    // 0.25rem
@@ -99,12 +101,12 @@ $font-weight-bold:       t.$typography-font-weights-bold;      // 700
 $line-height-base:       1.5;
 $line-height-tight:      1.25;
 
-// Icon sizes (tokens are unitless; px suffix added here)
-$icon-size-xsmall:       #{t.$icons-size-xsmall}px;    // 14px
-$icon-size-small:        #{t.$icons-size-small}px;     // 16px
-$icon-size-medium:       #{t.$icons-size-medium}px;    // 20px
-$icon-size-large:        #{t.$icons-size-large}px;     // 24px
-$icon-size-xlarge:       #{t.$icons-size-xlarge}px;    // 32px
+// Icon sizes — unit-bearing since v5; see the border-radius note above.
+$icon-size-xsmall:       t.$icons-size-xsmall;    // 14px
+$icon-size-small:        t.$icons-size-small;     // 16px
+$icon-size-medium:       t.$icons-size-medium;    // 20px
+$icon-size-large:        t.$icons-size-large;     // 24px
+$icon-size-xlarge:       t.$icons-size-xlarge;    // 32px
 
 // ExhibitList row metrics (CES-42). The chevron and status chip are fixed-width so the
 // filename — and the condensed description line indented beneath it — start at the same
