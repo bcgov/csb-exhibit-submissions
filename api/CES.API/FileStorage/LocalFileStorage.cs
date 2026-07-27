@@ -1,9 +1,10 @@
+using CES.Business.Constants;
+using CES.Business.FileStorage;
 using CES.Business.Interfaces;
 using CES.Business.Models;
+using CES.Business.Services;
 using CES.Entities;
 using Microsoft.Extensions.Options;
-using System.IO.Compression;
-using System.Text.Json;
 
 namespace CES.API.FileStorage
 {
@@ -53,7 +54,7 @@ namespace CES.API.FileStorage
         public Task DeleteAsync(StoredFiles storedFile)
         {
             var path = Path.Combine(_options.LocalPath, storedFile.StoredPath, storedFile.StoredFileName);
-            
+
             if (!File.Exists(path))
                 throw new FileNotFoundException($"Stored file {storedFile.OriginalFileName} not found", path);
 
@@ -61,59 +62,86 @@ namespace CES.API.FileStorage
             return Task.CompletedTask;
         }
 
-        public async Task AcceptAsync(StoredFiles file)
+        // Copies a pending file's bytes into the submission's accepted folder once,
+        // computes SHA256, and returns the canonical location. Single-instance is
+        // structural: one submission → one folder, so an exhibit shared across N
+        // tickets is physically one file by construction.
+        public async Task<AcceptedFileResult> PromoteToAcceptedAsync(Submission submission, StoredFiles file)
         {
-            var sourcePath = Path.Combine(_options.LocalPath, file.StoredPath, file.StoredFileName);
+            var extension = Path.GetExtension(file.OriginalFileName);
+            var relativePath = AcceptedPathBuilder.BuildCanonicalRelativePath(
+                submission.LocationId, submission.RoomCode, submission.ShortDate,
+                submission.Id, file.Id, extension);
+            var acceptedFileName = AcceptedPathBuilder.BuildAcceptedFileName(file.Id, extension);
 
-            if (!File.Exists(sourcePath))
-                throw new FileNotFoundException($"Stored file {file.OriginalFileName} not found", sourcePath);
+            var destinationFullPath = AcceptedPathBuilder.ResolveAndVerifyWithinRoot(_options.AcceptedPath, relativePath);
 
-            var acceptedPath = Path.Combine(_options.AcceptedPath, file.StoredPath);
-            Directory.CreateDirectory(acceptedPath);
-
-            var zipName = $"{file.CreatedDateUTC:yyyyMMdd}_{file.Id}.zip";
-            var zipPath = Path.Combine(acceptedPath, zipName);
-
-            var hash = await CES.Business.Services.CryptographyService.ComputeSHA256Async(sourcePath);
-
-            using var zipStream = new FileStream(zipPath, FileMode.Create);
-            using var archive = new ZipArchive(zipStream, ZipArchiveMode.Create);
-
-            // Add original file
-            var fileEntry = archive.CreateEntry(file.OriginalFileName);
-
-            using (var entryStream = fileEntry.Open())
-            using (var fileStream = new FileStream(sourcePath, FileMode.Open, FileAccess.Read))
+            // Idempotent: if the canonical bytes are already present (already accepted),
+            // do not re-copy. Re-hash the canonical file so the caller can persist/verify.
+            if (File.Exists(destinationFullPath))
             {
-                await fileStream.CopyToAsync(entryStream);
-            }
-
-            // Create metadata.json
-            var metadataEntry = archive.CreateEntry("metadata.json");
-
-            var metadata = new {
-                                    Path = file.StoredPath,
-                                    File = file,
-                                    HashAlgorithm = "SHA256",
-                                    FileHash = hash
-                                };
-            using (var entryStream = metadataEntry.Open())
-            {
-                await JsonSerializer.SerializeAsync(entryStream, metadata, new JsonSerializerOptions
+                var existingHash = await CryptographyService.ComputeSHA256Async(destinationFullPath);
+                return new AcceptedFileResult
                 {
-                    WriteIndented = true
-                });
+                    CanonicalPath = relativePath,
+                    AcceptedFileName = acceptedFileName,
+                    Sha256 = existingHash,
+                };
             }
 
-            // sha256.txt
-            var hashEntry = archive.CreateEntry("sha256.txt");
+            var sourcePath = Path.Combine(_options.LocalPath, file.StoredPath, file.StoredFileName);
+            if (!File.Exists(sourcePath))
+                throw new FileNotFoundException($"Pending file {file.OriginalFileName} not found", sourcePath);
 
-            using (var entryStream = new StreamWriter(hashEntry.Open()))
+            var destinationFolder = Path.GetDirectoryName(destinationFullPath)!;
+            Directory.CreateDirectory(destinationFolder);
+
+            // Atomic byte placement: copy to {exhibitId}{ext}.tmp then rename.
+            var tempPath = destinationFullPath + AcceptedStorageConstants.TempSuffix;
+            await using (var source = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 65536, useAsync: true))
+            await using (var dest = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 65536, useAsync: true))
             {
-                await entryStream.WriteLineAsync($"File: {file.OriginalFileName}");
-                await entryStream.WriteLineAsync($"SHA256: {hash}");
+                await source.CopyToAsync(dest);
+                await dest.FlushAsync();
             }
-        
+
+            File.Move(tempPath, destinationFullPath, overwrite: true);
+
+            var hash = await CryptographyService.ComputeSHA256Async(destinationFullPath);
+
+            return new AcceptedFileResult
+            {
+                CanonicalPath = relativePath,
+                AcceptedFileName = acceptedFileName,
+                Sha256 = hash,
+            };
+        }
+
+        public async Task WriteMetadataAsync(Submission submission, IReadOnlyList<SubmissionAuditLog> auditLogs)
+        {
+            // Resolve the submission folder (loc/room/date/submissionId) within root.
+            var loc = AcceptedPathBuilder.SanitizeSegment(submission.LocationId);
+            var room = AcceptedPathBuilder.SanitizeSegment(submission.RoomCode);
+            var date = AcceptedPathBuilder.SanitizeSegment(submission.ShortDate);
+            var folderRelative = string.Join('/', loc, room, date, submission.Id.ToString());
+            var folderFullPath = AcceptedPathBuilder.ResolveAndVerifyWithinRoot(_options.AcceptedPath, folderRelative);
+
+            var metadata = AcceptedMetadataWriter.BuildMetadata(submission, auditLogs);
+            await AcceptedMetadataWriter.WriteAsync(folderFullPath, metadata);
+        }
+
+        public Task<Stream> GetAcceptedExhibitAsync(StoredFiles file)
+        {
+            if (!file.IsAccepted || string.IsNullOrEmpty(file.CanonicalPath))
+                throw new FileNotFoundException($"Exhibit {file.OriginalFileName} is not accepted.");
+
+            var fullPath = AcceptedPathBuilder.ResolveAndVerifyWithinRoot(_options.AcceptedPath, file.CanonicalPath);
+
+            if (!File.Exists(fullPath))
+                throw new FileNotFoundException($"Accepted exhibit {file.OriginalFileName} not found", fullPath);
+
+            Stream stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read);
+            return Task.FromResult(stream);
         }
     }
 }

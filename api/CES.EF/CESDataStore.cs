@@ -19,12 +19,23 @@ namespace CES.EF
         public DbSet<ApplicationUser> ApplicationUser { get; set; }
         public DbSet<UserAuthToken> UserAuthTokens { get; set; }
         public DbSet<Submission> Submissions { get; set; }
+        public DbSet<SubmissionTicket> SubmissionTickets { get; set; }
         public DbSet<StoredFiles> StoredFiles { get; set; }
-        
+        public DbSet<SubmissionAuditLog> SubmissionAuditLogs { get; set; }
+        public DbSet<ExhibitNote> ExhibitNotes { get; set; }
+        public DbSet<ExhibitDescription> ExhibitDescriptions { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
             modelBuilder.BindRelationships();
+
+            // Filtered to non-null so the existing mock/dev-bypass rows, which all have a
+            // null KeycloakSub, do not collide with each other under the unique constraint.
+            modelBuilder.Entity<ApplicationUser>()
+                .HasIndex(user => user.KeycloakSub)
+                .IsUnique()
+                .HasFilter("\"KeycloakSub\" IS NOT NULL");
         }
 
         public override int SaveChanges()

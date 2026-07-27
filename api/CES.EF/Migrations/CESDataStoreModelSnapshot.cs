@@ -50,6 +50,9 @@ namespace CES.EF.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("KeycloakSub")
+                        .HasColumnType("text");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasColumnType("text");
@@ -66,7 +69,67 @@ namespace CES.EF.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("KeycloakSub")
+                        .IsUnique()
+                        .HasFilter("\"KeycloakSub\" IS NOT NULL");
+
                     b.ToTable("ApplicationUser");
+                });
+
+            modelBuilder.Entity("CES.Entities.ExhibitDescription", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUTC")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("DescriptionText")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FileId", "CreatedAtUTC");
+
+                    b.ToTable("ExhibitDescriptions");
+                });
+
+            modelBuilder.Entity("CES.Entities.ExhibitNote", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUTC")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("NoteText")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FileId");
+
+                    b.ToTable("ExhibitNotes");
                 });
 
             modelBuilder.Entity("CES.Entities.StoredFiles", b =>
@@ -74,6 +137,15 @@ namespace CES.EF.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("AcceptedAtUTC")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("AcceptedFileName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CanonicalPath")
+                        .HasColumnType("text");
 
                     b.Property<string>("ContentType")
                         .IsRequired()
@@ -85,14 +157,38 @@ namespace CES.EF.Migrations
                     b.Property<DateTime>("CreatedDateUTC")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("DeletedAtUTC")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("EnteredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EnteredValue")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EvidenceSourceType")
+                        .HasColumnType("text");
+
                     b.Property<long>("FileSize")
                         .HasColumnType("bigint");
+
+                    b.Property<bool>("IsAccepted")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("MarkedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("MarkedValue")
+                        .HasColumnType("text");
+
                     b.Property<string>("OriginalFileName")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Sha256")
                         .HasColumnType("text");
 
                     b.Property<string>("StorageProvider")
@@ -107,7 +203,7 @@ namespace CES.EF.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int?>("SubmissionId")
+                    b.Property<int>("SubmissionId")
                         .HasColumnType("integer");
 
                     b.Property<string>("UpdatedBy")
@@ -131,20 +227,7 @@ namespace CES.EF.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AccusedDOB")
-                        .HasColumnType("text");
-
-                    b.Property<string>("AccusedName")
-                        .HasColumnType("text");
-
                     b.Property<string>("AppearanceDateTime")
-                        .HasColumnType("text");
-
-                    b.Property<string>("AppearanceID")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("CourtListType")
                         .HasColumnType("text");
 
                     b.Property<string>("CreatedBy")
@@ -152,10 +235,6 @@ namespace CES.EF.Migrations
 
                     b.Property<DateTime>("CreatedDateUTC")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("FileNumberText")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
@@ -177,6 +256,16 @@ namespace CES.EF.Migrations
                     b.Property<string>("RoomText")
                         .HasColumnType("text");
 
+                    b.Property<string>("ShortDate")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("StatusChangedDateUTC")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("UpdatedBy")
                         .HasColumnType("text");
 
@@ -189,6 +278,89 @@ namespace CES.EF.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Submissions");
+                });
+
+            modelBuilder.Entity("CES.Entities.SubmissionAuditLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("ChangedAtUTC")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ChangedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("FieldName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("FileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("NewValue")
+                        .HasColumnType("text");
+
+                    b.Property<string>("OldValue")
+                        .HasColumnType("text");
+
+                    b.Property<int>("SubmissionId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FileId");
+
+                    b.HasIndex("SubmissionId");
+
+                    b.ToTable("SubmissionAuditLogs");
+                });
+
+            modelBuilder.Entity("CES.Entities.SubmissionTicket", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AccusedDOB")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AccusedName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AppearanceDateTime")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AppearanceId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("AppearanceReasonCode")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AppearanceSequenceNumber")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CourtListType")
+                        .HasColumnType("text");
+
+                    b.Property<string>("FileNumberText")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("SubmissionId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubmissionId");
+
+                    b.ToTable("SubmissionTickets");
                 });
 
             modelBuilder.Entity("CES.Entities.UserAuthToken", b =>
@@ -237,11 +409,66 @@ namespace CES.EF.Migrations
                     b.ToTable("UserAuthTokens");
                 });
 
+            modelBuilder.Entity("CES.Entities.ExhibitDescription", b =>
+                {
+                    b.HasOne("CES.Entities.StoredFiles", "File")
+                        .WithMany("Descriptions")
+                        .HasForeignKey("FileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("File");
+                });
+
+            modelBuilder.Entity("CES.Entities.ExhibitNote", b =>
+                {
+                    b.HasOne("CES.Entities.StoredFiles", "File")
+                        .WithMany()
+                        .HasForeignKey("FileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("File");
+                });
+
             modelBuilder.Entity("CES.Entities.StoredFiles", b =>
                 {
-                    b.HasOne("CES.Entities.Submission", null)
+                    b.HasOne("CES.Entities.Submission", "Submission")
                         .WithMany("Files")
-                        .HasForeignKey("SubmissionId");
+                        .HasForeignKey("SubmissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Submission");
+                });
+
+            modelBuilder.Entity("CES.Entities.SubmissionAuditLog", b =>
+                {
+                    b.HasOne("CES.Entities.StoredFiles", "File")
+                        .WithMany()
+                        .HasForeignKey("FileId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("CES.Entities.Submission", "Submission")
+                        .WithMany()
+                        .HasForeignKey("SubmissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("File");
+
+                    b.Navigation("Submission");
+                });
+
+            modelBuilder.Entity("CES.Entities.SubmissionTicket", b =>
+                {
+                    b.HasOne("CES.Entities.Submission", "Submission")
+                        .WithMany("Tickets")
+                        .HasForeignKey("SubmissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Submission");
                 });
 
             modelBuilder.Entity("CES.Entities.UserAuthToken", b =>
@@ -255,9 +482,16 @@ namespace CES.EF.Migrations
                     b.Navigation("ApplicationUser");
                 });
 
+            modelBuilder.Entity("CES.Entities.StoredFiles", b =>
+                {
+                    b.Navigation("Descriptions");
+                });
+
             modelBuilder.Entity("CES.Entities.Submission", b =>
                 {
                     b.Navigation("Files");
+
+                    b.Navigation("Tickets");
                 });
 #pragma warning restore 612, 618
         }

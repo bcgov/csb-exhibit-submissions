@@ -4,10 +4,12 @@ namespace CES.Business.Interfaces
 {
     public interface ISubmissionService
     {
-        public Task<bool> SubmitEvidence(EvidenceSubmissionModel model);
-        public Task<SubmissionReviewModel?> RetrieveSubmission(int submissionId);
-        public Task<List<SubmissionReviewModel>> RetrieveSubmissionListing();
-        public Task<bool> AcceptSubmissions(EvidenceAcceptanceModel model);
-        public Task<bool> RejectSubmissions(EvidenceAcceptanceModel model);
+        Task<int?> SubmitEvidence(EvidenceSubmissionModel model);
+        Task<SubmissionReviewModel?> RetrieveSubmission(int submissionId);
+        Task<PagedResult<SubmissionReviewModel>> RetrieveSubmissionListing(SubmissionListFilter filter);
+        Task<(bool success, string? error)> RejectSubmissions(SubmissionActionModel model);
+        Task<List<PriorSubmissionModel>> GetSubmissionsByFileNumberAsync(string fileNumberText);
+        Task<List<ExhibitSearchResultModel>> SearchExhibitsAsync(ExhibitSearchFilter filter);
+        Task<bool> RemoveFileAsync(Guid fileId);
     }
 }

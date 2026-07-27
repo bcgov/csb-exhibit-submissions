@@ -14,6 +14,10 @@ namespace CES.Entities.Interfaces
         public DbSet<ApplicationUser> ApplicationUser { get; }
         public DbSet<UserAuthToken> UserAuthTokens { get; }
         public DbSet<Submission> Submissions { get; }
+        public DbSet<SubmissionTicket> SubmissionTickets { get; }
         public DbSet<StoredFiles> StoredFiles { get; }
+        public DbSet<SubmissionAuditLog> SubmissionAuditLogs { get; }
+        public DbSet<ExhibitNote> ExhibitNotes { get; }
+        public DbSet<ExhibitDescription> ExhibitDescriptions { get; }
     }
 }

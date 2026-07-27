@@ -1,104 +1,214 @@
-import { localDateToUtc } from '@/helpers/formatters'
-import type { ExhibitSubmissionModel } from '@/models/ExhibitSubmissionModel'
-import type { SubmissionAcceptanceModel } from '@/models/SubmissionAcceptanceModel'
-import type { SubmissionReviewModel } from '@/models/SubmissionReviewModel'
-import api from './apiClient'
+import type { ExhibitSubmissionModel } from '@/models/ExhibitSubmissionModel';
+import type {
+  ExhibitSearchFilter,
+  ExhibitSearchResultModel,
+} from '@/models/ExhibitSearchResultModel';
+import type { ExhibitNoteModel } from '@/models/ExhibitNoteModel';
+import type { PriorSubmissionModel } from '@/models/PriorSubmissionModel';
+import type {
+  ExhibitEnterModel,
+  ExhibitEvidenceSourceModel,
+  ExhibitHistoryEntry,
+  ExhibitMarkModel,
+  PagedResult,
+  SubmissionActionModel,
+  SubmissionFile,
+  SubmissionListFilter,
+  SubmissionReviewModel,
+} from '@/models/SubmissionReviewModel';
+import api from './apiClient';
 
 export default function useSubmissionService() {
   const submitExhibits = async (
     model: ExhibitSubmissionModel,
     files: File[],
     progressCallback?: (percent: number) => void,
-  ): Promise<boolean> => {
-    const url = `/submissions/submit/`
-    let retVal: boolean = false
+    submissionId?: number | null,
+  ): Promise<number | null> => {
+    const url = `/submissions/submit/`;
+    let retVal: number | null = null;
 
     try {
-      const formData = new FormData()
-      const date = localDateToUtc(model.appearanceDateTime) ?? ''
-      console.log(model.appearanceDateTime, date, 'appearance datetime')
-      // Append text fields
-      formData.append('appearanceID', model.appearanceId)
-      formData.append('appearanceDateTime', model.appearanceDateTime)
-      formData.append('shortDate', model.shortDate)
-      formData.append('appearanceSequenceNumber', model.appearanceSequenceNumber)
-      formData.append('appearanceReasonCode', model.appearanceReasonCode)
-      formData.append('courtListType', model.courtListType)
-      formData.append('fileNumberText', model.fileNumberText)
-      formData.append('locationId', model.locationId)
-      formData.append('locationNameText', model.locationNameText)
-      formData.append('roomCode', model.roomCode)
-      formData.append('roomText', model.roomText)
-      formData.append('accusedName', model.accusedName)
-      formData.append('accusedDOB', model.accusedDOB)
-      formData.append('officerNumber', model.officerNumber)
+      const formData = new FormData();
 
-      // Append files
+      formData.append('shortDate', model.shortDate);
+      formData.append('appearanceDateTime', model.appearanceDateTime);
+      formData.append('locationId', model.locationId);
+      formData.append('locationNameText', model.locationNameText);
+      formData.append('roomCode', model.roomCode);
+      formData.append('roomText', model.roomText);
+      formData.append('officerNumber', model.officerNumber);
+
+      // Append to the same submission when the officer stays on the page after a first upload.
+      if (submissionId != null) {
+        formData.append('submissionId', String(submissionId));
+      }
+
+      model.tickets.forEach((ticket, i) => {
+        formData.append(`tickets[${i}].appearanceId`, ticket.appearanceId);
+        formData.append(`tickets[${i}].appearanceDateTime`, ticket.appearanceDateTime);
+        formData.append(`tickets[${i}].appearanceSequenceNumber`, ticket.appearanceSequenceNumber);
+        formData.append(`tickets[${i}].appearanceReasonCode`, ticket.appearanceReasonCode);
+        formData.append(`tickets[${i}].courtListType`, ticket.courtListType);
+        formData.append(`tickets[${i}].fileNumberText`, ticket.fileNumberText);
+        formData.append(`tickets[${i}].accusedName`, ticket.accusedName);
+        formData.append(`tickets[${i}].accusedDOB`, ticket.accusedDOB);
+      });
+
       files.forEach((file) => {
-        formData.append('files', file)
-      })
+        formData.append('files', file);
+      });
 
-      console.log('Done Preparing files:', formData)
-
-      const apiReturn = await api.post(url, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        timeout: 0, //disabled timeouts to support larger files
+      const apiReturn = await api.post<{ submissionId: number }>(url, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 0,
         onUploadProgress: (event) => {
-          const percent = Math.round((event.loaded * 100) / (event.total ?? 1))
-
-          progressCallback?.(percent)
+          const percent = Math.round((event.loaded * 100) / (event.total ?? 1));
+          progressCallback?.(percent);
         },
-      })
+      });
 
-      //
-      // });
-      retVal = apiReturn.data ?? false
+      retVal = apiReturn.data?.submissionId ?? null;
     } catch (err) {
-      console.error(err)
+      console.error(err);
     }
 
-    return retVal
-  }
+    return retVal;
+  };
 
   const retrieveSubmission = async (fileId: number): Promise<SubmissionReviewModel | undefined> => {
-    const url = `/submissions/retrieve/`
+    const url = `/submissions/retrieve/`;
     const apiReturn = await api.get<SubmissionReviewModel>(url, {
-      params: { fileId: fileId },
-    })
+      params: { fileId },
+    });
+    return apiReturn?.data;
+  };
 
-    return apiReturn?.data
-  }
+  const retrieveSubmissionListing = async (
+    filter?: Partial<SubmissionListFilter>,
+  ): Promise<PagedResult<SubmissionReviewModel> | undefined> => {
+    const url = `/submissions/listing/`;
+    const params: Record<string, unknown> = {};
+    if (filter?.submissionDateFrom) params['submissionDateFrom'] = filter.submissionDateFrom;
+    if (filter?.submissionDateTo) params['submissionDateTo'] = filter.submissionDateTo;
+    if (filter?.fileNumberText) params['fileNumberText'] = filter.fileNumberText;
+    if (filter?.accusedName) params['accusedName'] = filter.accusedName;
+    if (filter?.status) params['status'] = filter.status;
+    if (filter?.page) params['page'] = filter.page;
+    if (filter?.pageSize) params['pageSize'] = filter.pageSize;
+    const apiReturn = await api.get<PagedResult<SubmissionReviewModel>>(url, { params });
+    return apiReturn?.data;
+  };
 
-  const retrieveSubmissionListing = async (): Promise<SubmissionReviewModel[] | undefined> => {
-    const url = `/submissions/listing/`
-    const apiReturn = await api.get<SubmissionReviewModel[]>(url)
+  // Whole-submission Accept is retired (CES-39): a submission's Accepted status is
+  // now derived from its files auto-accepting on classification, not set by a button.
+  const rejectSubmission = async (model: SubmissionActionModel): Promise<boolean> => {
+    try {
+      await api.post(`/submissions/reject/`, model);
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
-    return apiReturn?.data
-  }
+  const getSubmissionsByFileNumber = async (
+    fileNumberText: string,
+  ): Promise<PriorSubmissionModel[]> => {
+    const url = `/submissions/by-file-number`;
+    const apiReturn = await api.get<PriorSubmissionModel[]>(url, {
+      params: { fileNumberText },
+    });
+    return apiReturn?.data ?? [];
+  };
 
-  const acceptSubmissionFiles = async (model: SubmissionAcceptanceModel): Promise<boolean> => {
-    const url = `/submissions/accept/`
-    let retVal = false
-    const apiReturn = await api.post(url, model)
-    retVal = apiReturn.data ?? false
-    return retVal
-  }
+  const searchExhibits = async (
+    filter: ExhibitSearchFilter,
+  ): Promise<ExhibitSearchResultModel[]> => {
+    const url = `/submissions/exhibit-search`;
+    const params: Record<string, unknown> = {};
+    if (filter.fileNumberText) params['fileNumberText'] = filter.fileNumberText;
+    if (filter.accusedName) params['accusedName'] = filter.accusedName;
+    if (filter.appearanceDateFrom) params['appearanceDateFrom'] = filter.appearanceDateFrom;
+    if (filter.appearanceDateTo) params['appearanceDateTo'] = filter.appearanceDateTo;
+    const apiReturn = await api.get<ExhibitSearchResultModel[]>(url, { params });
+    return apiReturn?.data ?? [];
+  };
 
-  const rejectAndCloseSubmission = async (model: SubmissionAcceptanceModel): Promise<boolean> => {
-    const url = `/submissions/reject/`
-    let retVal = false
-    const apiReturn = await api.post(url, model)
-    retVal = apiReturn.data ?? false
-    return retVal
-  }
+  const removeFile = async (fileId: string): Promise<boolean> => {
+    try {
+      await api.delete(`/submissions/files/${fileId}`);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const markExhibit = async (fileId: string, model: ExhibitMarkModel): Promise<SubmissionFile> => {
+    const result = await api.post<SubmissionFile>(`/files/${fileId}/mark`, model);
+    return result.data;
+  };
+
+  const enterExhibit = async (
+    fileId: string,
+    model: ExhibitEnterModel,
+  ): Promise<SubmissionFile> => {
+    const result = await api.post<SubmissionFile>(`/files/${fileId}/enter`, model);
+    return result.data;
+  };
+
+  // Description entries (CES-42). Append-only: this adds an immutable entry; there is
+  // no update or delete, and the entries ride along on every SubmissionFile.
+  const addExhibitDescription = async (
+    fileId: string,
+    descriptionText: string,
+  ): Promise<SubmissionFile> => {
+    const result = await api.post<SubmissionFile>(`/files/${fileId}/descriptions`, {
+      descriptionText,
+    });
+    return result.data;
+  };
+
+  const updateEvidenceSource = async (
+    fileId: string,
+    model: ExhibitEvidenceSourceModel,
+  ): Promise<SubmissionFile> => {
+    const result = await api.patch<SubmissionFile>(`/files/${fileId}/evidence-source`, model);
+    return result.data;
+  };
+
+  const getFileHistory = async (fileId: string): Promise<ExhibitHistoryEntry[]> => {
+    const result = await api.get<ExhibitHistoryEntry[]>(`/files/${fileId}/history`);
+    return result?.data ?? [];
+  };
+
+  // Registry-only notes (CES-38 extension). Admin/JJ scope; append-only.
+  const getExhibitNotes = async (fileId: string): Promise<ExhibitNoteModel[]> => {
+    const result = await api.get<ExhibitNoteModel[]>(`/files/${fileId}/notes`);
+    return result?.data ?? [];
+  };
+
+  const addExhibitNote = async (
+    fileId: string,
+    noteText: string,
+  ): Promise<ExhibitNoteModel> => {
+    const result = await api.post<ExhibitNoteModel>(`/files/${fileId}/notes`, { noteText });
+    return result.data;
+  };
 
   return {
     submitExhibits,
     retrieveSubmission,
     retrieveSubmissionListing,
-    acceptSubmissionFiles,
-    rejectAndCloseSubmission,
-  }
+    rejectSubmission,
+    getSubmissionsByFileNumber,
+    searchExhibits,
+    removeFile,
+    markExhibit,
+    enterExhibit,
+    addExhibitDescription,
+    updateEvidenceSource,
+    getFileHistory,
+    getExhibitNotes,
+    addExhibitNote,
+  };
 }

@@ -1,0 +1,188 @@
+@use "sass:color";
+@use "variables" as *;
+
+// =============================================================================
+// Shared button system — BC Gov Design System "Buttons" rules.
+// Reference: spec/documents/component-rules.md (Buttons + Universal rules)
+//
+// Usage:  <button class="btn btn--primary">Save</button>
+//         <button class="btn btn--sm btn--danger-outline">Remove</button>
+//         <button class="btn btn--icon btn--tertiary" aria-label="Close">✖</button>
+//
+// One base class supplies the universal rules (semantic sizing, focus ring,
+// disabled handling); a `--variant` modifier supplies colour/hierarchy; an
+// optional `--sm` size and `--icon` shape adjust footprint without dropping
+// below the WCAG 2.5.8 minimum target.
+// =============================================================================
+
+// $btn-min-target (WCAG 2.5.8 minimum target) lives in _variables.scss — the
+// ExhibitList action column sizes its reserved slots from the same value.
+
+// BC Gov ships hover tokens for primary/secondary/tertiary/danger, but has no
+// green "success" button (green is a status colour). CES uses green for the
+// Accept/Confirm actions, so we derive its hover shade from the success token.
+$btn-success-hover-darken: 8%;
+$color-success-hover: color.adjust($color-success, $lightness: -$btn-success-hover-darken);
+
+.btn {
+  // Set explicitly rather than relying on the inherited box-sizing chain —
+  // Chromium doesn't propagate it to elements nested in a <details>, which
+  // otherwise makes min-height resolve inconsistently for buttons inside one.
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $padding-xsmall;
+  min-height: $btn-min-target;
+  min-width: $btn-min-target;
+  padding: $padding-small $padding-medium;
+  border: $border-width-small solid transparent;
+  border-radius: $border-radius-default;
+  font-family: inherit;
+  font-size: $font-size-body;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+
+  // Universal rule #2 — visible, offset focus ring (WCAG 2.4.7).
+  &:focus-visible {
+    outline: $border-width-medium solid $color-text-link;
+    outline-offset: $border-width-medium;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
+// --- Variants -----------------------------------------------------------------
+
+.btn--primary {
+  background-color: $color-primary;
+  color: $color-text-invert;
+
+  &:hover:not(:disabled) {
+    background-color: $color-primary-hover;
+  }
+  &:disabled {
+    background-color: $color-primary-disabled;
+    color: $color-text-disabled;
+  }
+}
+
+.btn--secondary {
+  background-color: $color-gray-20;
+  color: $color-text-primary;
+
+  &:hover:not(:disabled) {
+    background-color: $color-gray-30;
+  }
+  &:disabled {
+    background-color: $color-primary-disabled;
+    color: $color-text-disabled;
+  }
+}
+
+// Green confirm/accept action (see $color-success-hover note above).
+.btn--success {
+  background-color: $color-success;
+  color: $color-text-invert;
+
+  &:hover:not(:disabled) {
+    background-color: $color-success-hover;
+  }
+  &:disabled {
+    background-color: $color-primary-disabled;
+    color: $color-text-disabled;
+  }
+}
+
+.btn--danger {
+  background-color: $color-danger;
+  color: $color-text-invert;
+
+  &:hover:not(:disabled) {
+    background-color: $color-danger-hover;
+  }
+  &:disabled {
+    background-color: $color-primary-disabled;
+    color: $color-text-disabled;
+  }
+}
+
+.btn--danger-outline {
+  background: none;
+  border-color: $color-danger;
+  color: $color-danger;
+
+  &:hover:not(:disabled) {
+    background-color: $color-danger-bg;
+  }
+  &:disabled {
+    border-color: $color-border;
+    color: $color-text-disabled;
+  }
+}
+
+.btn--primary-outline {
+  background: none;
+  border-color: $color-primary;
+  color: $color-primary;
+
+  &:hover:not(:disabled) {
+    background-color: $color-bg-light-blue;
+  }
+  &:disabled {
+    border-color: $color-border;
+    color: $color-text-disabled;
+  }
+}
+
+// Low-profile / ghost button (also used for icon-only actions).
+.btn--tertiary {
+  background: none;
+  color: $color-text-secondary;
+
+  &:hover:not(:disabled) {
+    background-color: $color-gray-20;
+    color: $color-primary;
+  }
+  &:disabled {
+    color: $color-text-disabled;
+  }
+}
+
+// White button on a dark surface (e.g. the dark-blue upload bar).
+.btn--inverse {
+  background-color: white;
+  color: $color-bg-dark-blue;
+
+  &:hover:not(:disabled) {
+    background-color: $color-bg-light-blue;
+  }
+  &:disabled {
+    background-color: $color-primary-disabled;
+    color: $color-text-disabled;
+  }
+}
+
+// --- Sizes --------------------------------------------------------------------
+// Compact padding/type, but min-height keeps the 32px target (Universal rule #3).
+
+.btn--sm {
+  padding: $padding-xsmall $padding-small;
+  font-size: $font-size-small-body;
+}
+
+// --- Icon-only ----------------------------------------------------------------
+// Square footprint; always pair with an aria-label (Universal rule #6).
+
+.btn--icon {
+  padding: $padding-xsmall;
+  line-height: 1;
+}

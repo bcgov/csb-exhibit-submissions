@@ -6,6 +6,10 @@ import * as directives from 'vuetify/directives'
 import { aliases, mdi } from 'vuetify/iconsets/mdi-svg'
 import 'vuetify/styles'
 
+// BC Gov design token values for Vuetify component overrides.
+const FORM_FIELD_BG = '#D8EAFD'; // BC Gov theme-blue-20: light blue tint for VSelect / VDateInput backgrounds
+const TERTIARY_BTN_COLOR = '#013366'; // BC Gov primary blue for VBtnTertiary
+
 // https://vuetifyjs.com/en/introduction/why-vuetify/#feature-guides
 
 export default createVuetify({
@@ -42,10 +46,10 @@ export default createVuetify({
     VBtnTertiary: {
       rounded: true,
       class: 'text-none',
-      baseColor: '#183a4a',
+      baseColor: TERTIARY_BTN_COLOR,
     },
     VSelect: {
-      bgColor: '#dae5f5',
+      bgColor: FORM_FIELD_BG,
       rounded: true,
       variant: 'solo',
       clearable: true,
@@ -58,7 +62,7 @@ export default createVuetify({
     },
     VDateInput: {
       density: 'comfortable',
-      bgColor: '#dae5f5',
+      bgColor: FORM_FIELD_BG,
       variant: 'solo',
       label: 'Date',
       clearable: false,

@@ -1,4 +1,4 @@
 export interface SubmissionAcceptanceModel {
-  fileId: number
-  acceptedFiles: string[]
+  fileId: number;
+  acceptedFiles: string[];
 }

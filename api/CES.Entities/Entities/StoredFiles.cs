@@ -17,6 +17,37 @@ namespace CES.Entities
         public DateTime? UpdatedDateUTC { get; set; }
         public bool IsDeleted { get; set; } = false;
 
+        // FK to parent Submission (explicit property — EF previously managed as shadow FK)
+        public int SubmissionId { get; set; }
+        public Submission Submission { get; set; } = null!;
+
+        public DateTime? DeletedAtUTC { get; set; }
+
+        // Classification fields (added for CES-28)
+        public string? MarkedValue { get; set; }
+        public DateTime? MarkedAt { get; set; }
+        public string? EnteredValue { get; set; }
+        public DateTime? EnteredAt { get; set; }
+
+        // Append-only description entries, oldest first (CES-42). Replaces the former
+        // single mutable Description string.
+        public ICollection<ExhibitDescription> Descriptions { get; set; } = new List<ExhibitDescription>();
+
+        // Evidence source device — "BodyCam" / "DashCam" / "Other"; null = unset (added for CES-18)
+        public string? EvidenceSourceType { get; set; }
+
+        // Per-file acceptance / canonical storage (added for CES-39).
+        // The DB is the source of truth; metadata.json is a derived export.
+        public bool IsAccepted { get; set; } = false;
+        public DateTime? AcceptedAtUTC { get; set; }
+        // Path relative to StorageOptions.AcceptedPath, e.g.
+        // {locationId}/{roomCode}/{shortDate}/{submissionId}/{exhibitId}{ext}.
+        public string? CanonicalPath { get; set; }
+        // SHA256 hex captured once at acceptance — the immutability proof.
+        public string? Sha256 { get; set; }
+        // The {exhibitId}{ext} leaf under the submission folder.
+        public string? AcceptedFileName { get; set; }
+
         public StoredFiles()
         {
             CreatedDateUTC = SystemDate.UtcNow();
@@ -27,6 +58,6 @@ namespace CES.Entities
             UpdatedBy = updator;
             UpdatedDateUTC = SystemDate.UtcNow();
         }
-        
+
     }
 }

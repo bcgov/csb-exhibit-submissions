@@ -10,6 +10,14 @@ using CES.API.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using CES.API.Authentication;
 using CES.Business.Infrastructure;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.IdentityModel.Protocols;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+// Aliased because Microsoft.Extensions.Configuration.ConfigurationManager is in the
+// implicit usings and would otherwise make the name ambiguous.
+using OidcConfigurationManager =
+    Microsoft.IdentityModel.Protocols.ConfigurationManager<
+        Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration>;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,13 +30,52 @@ builder.Services.AddScoped<IFileStorage, LocalFileStorage>();
 builder.Services.Configure<StorageOptions>(
     builder.Configuration.GetSection("FileStorage"));
 
-// Authentication
-builder.Services.AddCESAuthentication(builder.Configuration);
+// Keycloak configuration. Registered unconditionally so AuthController can always be
+// constructed; every one of its endpoints returns 404 while Keycloak:Enabled is false,
+// and nothing here contacts the realm until an endpoint is actually called.
+var keycloakConfiguration = builder.Configuration.GetSection("Keycloak").Get<KeycloakConfiguration>()
+    ?? new KeycloakConfiguration();
+builder.Services.AddSingleton(keycloakConfiguration);
+
+// Authentication — exactly one bearer scheme is registered. The mock JWT and the
+// Keycloak JWKS validation are mutually exclusive by design: with both wired up, a
+// locally-signed token would be a second way in.
+if (keycloakConfiguration.Enabled)
+    builder.Services.AddCESKeycloakAuthentication(builder.Configuration);
+else
+    builder.Services.AddCESAuthentication(builder.Configuration);
+
 builder.Services.AddAuthorization();
+
+// Discovery document is fetched once and cached here rather than on every login.
+builder.Services.AddSingleton<IConfigurationManager<OpenIdConnectConfiguration>>(
+    new OidcConfigurationManager(
+        $"{keycloakConfiguration.Authority.TrimEnd('/')}/.well-known/openid-configuration",
+        new OpenIdConnectConfigurationRetriever(),
+        new HttpDocumentRetriever { RequireHttps = true }));
+
+builder.Services.AddHttpClient<IKeycloakTokenService, KeycloakTokenService>();
+
+// Data Protection — encrypts the auth cookies (ces.login / ces.session).
+// The key path must point at a volume that survives restarts and is shared across
+// replicas; otherwise a restarted or second instance cannot decrypt a cookie it did
+// not issue, and users are silently bounced to Keycloak mid-session.
+var dataProtectionKeyPath = builder.Configuration["DataProtection:KeyPath"];
+if (string.IsNullOrWhiteSpace(dataProtectionKeyPath))
+{
+    dataProtectionKeyPath = Path.Combine(
+        builder.Environment.ContentRootPath,
+        AuthConstants.DefaultDataProtectionKeyDirectory);
+}
+
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(Directory.CreateDirectory(dataProtectionKeyPath))
+    .SetApplicationName(AuthConstants.DataProtectionApplicationName);
 
 // ** CORS **
 var corsPolicyName = "CESCorsPolicy";
-var corsSettings = builder.Configuration.GetSection("CORS").Get<CORSSettings>();
+var corsSettings = builder.Configuration.GetSection("CORS").Get<CORSSettings>()
+    ?? throw new InvalidOperationException("Configuration section 'CORS' not found.");
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(name: corsPolicyName,
@@ -77,7 +124,8 @@ builder.Services.AddSwaggerGen(c =>
     //        });
 });
 
-var mailConfiguration = builder.Configuration.GetSection("MailConfiguration").Get<MailConfiguration>();
+var mailConfiguration = builder.Configuration.GetSection("MailConfiguration").Get<MailConfiguration>()
+    ?? throw new InvalidOperationException("Configuration section 'MailConfiguration' not found.");
 builder.Services.AddSingleton<IMailConfiguration>(mailConfiguration);
 
 var dataStoreConnectionString = builder.Configuration.GetConnectionString("CESDataStore");
@@ -142,10 +190,15 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<CESDataStore>();
-    db.Database.Migrate();
+    if (db.Database.IsRelational())
+        db.Database.Migrate();
+    else
+        db.Database.EnsureCreated();
     // DataSeedService.SeedDatabase(db);
 }
 // var recurringJobManager = app.Services.GetRequiredService<IRecurringJobManager>();
 // Jobs.RunAllJobs(recurringJobManager);
 
 app.Run();
+
+public partial class Program { }

@@ -1,4 +1,5 @@
 ﻿using CES.API.Authentication;
+using CES.Business.Constants;
 using CES.Business.Interfaces;
 using CES.Business.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -20,8 +21,9 @@ namespace CES.API.Controllers
         {
             var mockUsers = new Dictionary<string, (string Password, string Role)>
             {
-                { "admin@gov.bc.ca", ("pass123", "Admin") },
-                { "officer@gov.bc.ca", ("pass123", "User") }
+                { "admin@gov.bc.ca", ("pass123", RoleConstants.Admin) },
+                { "officer@gov.bc.ca", ("pass123", RoleConstants.User) },
+                { "clerk@gov.bc.ca", ("pass123", RoleConstants.Clerk) }
             };
             if (mockUsers.TryGetValue(model.Username.ToLower(), out var userRecord) && 
                 userRecord.Password == model.Password)

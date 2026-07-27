@@ -1,0 +1,137 @@
+@use "variables" as *;
+
+// --- Global base ---
+// Apply the BC Sans brand typeface site-wide. The @font-face declarations are
+// loaded via `@bcgov/bc-sans` in main.ts; this sets it as the default family so
+// all text (including elements that inherit) uses it.
+//
+// Vuetify sets `font-family: Roboto` on its `.v-application` root at plain-class
+// specificity, so `body .v-application` (higher specificity) is required to make
+// BC Sans win inside Vuetify components regardless of stylesheet load order.
+body,
+body .v-application {
+  font-family: $font-family-base;
+}
+
+body {
+  // BC Gov standard body leading.
+  line-height: $line-height-base;
+}
+
+// Headings follow the BC Gov type scale: bold (700) at 1.5 line height, sized
+// per level. Use the correct semantic level for document structure — do not pick
+// a level for its size, and never skip levels (see spec/documents/typography-rules.md).
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: $font-weight-bold;
+  line-height: $line-height-base;
+}
+
+h1 { font-size: $font-size-h1; }
+h2 { font-size: $font-size-h2; }
+h3 { font-size: $font-size-h3; }
+h4 { font-size: $font-size-h4; }
+h5 { font-size: $font-size-h5; }
+h6 { font-size: $font-size-h6; }
+
+// --- Layout helpers ---
+
+.form-group {
+  margin-bottom: $margin-medium;
+  display: flex;
+  flex-direction: column;
+}
+
+// --- Typography ---
+
+.text-monospace {
+  font-family: monospace;
+}
+
+// --- Form feedback ---
+
+.required {
+  color: $color-danger;
+}
+
+.error-text {
+  font-size: $font-size-label;
+  color: $color-danger;
+  margin-top: $margin-xsmall;
+}
+
+.success-text {
+  font-size: $font-size-label;
+  color: $color-success;
+  margin-top: $margin-xsmall;
+}
+
+// Buttons: see _buttons.scss for the shared .btn system.
+// .submit-btn keeps a small layout-only margin within its action rows.
+
+.submit-btn {
+  margin: $margin-medium 0;
+}
+
+// --- Classification status chips ---
+// Used by both officer (SubmissionForm) and admin (SubmissionReview) with
+// different class name prefixes (.chip-* vs .cl-*) to avoid template changes.
+
+%chip-base {
+  font-size: $font-size-label;
+  padding: 0.1rem $padding-small;
+  border-radius: $border-radius-circular;
+  font-weight: $font-weight-bold;
+  white-space: nowrap;
+  min-width: 88px;
+  display: inline-block;
+  text-align: center;
+}
+
+.chip,
+.cl-chip {
+  @extend %chip-base;
+}
+
+.chip-unclassified,
+.cl-unclassified {
+  background: $color-gray-20;
+  color: $color-text-secondary;
+}
+
+.chip-marked,
+.cl-marked {
+  background: $color-warning-bg;
+  color: $color-text-primary;
+}
+
+.chip-entered,
+.cl-entered {
+  background: $color-success-bg;
+  color: $color-success;
+}
+
+// --- Submission status chips (admin listing) ---
+
+.status-chip {
+  @extend %chip-base;
+}
+
+.status-pending {
+  background: $color-gray-20;
+  color: $color-text-secondary;
+}
+
+.status-accepted {
+  background: $color-success-bg;
+  color: $color-success;
+}
+
+.status-rejected {
+  background: $color-danger-bg;
+  color: $color-danger-hover;
+}

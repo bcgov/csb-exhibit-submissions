@@ -20,12 +20,17 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.4" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\CES.Business\CES.Business.csproj" />
     <ProjectReference Include="..\CES.EF\CES.EF.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Role-mapping helpers are internal; the test project exercises them directly. -->
+    <InternalsVisibleTo Include="CES.API.Tests" />
   </ItemGroup>
 
 </Project>

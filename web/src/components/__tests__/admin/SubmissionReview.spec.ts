@@ -1,0 +1,395 @@
+import { mount, flushPromises } from '@vue/test-utils';
+import { createPinia, setActivePinia } from 'pinia';
+import SubmissionReview from '@/components/admin/SubmissionReview.vue';
+import type { SubmissionFile, SubmissionReviewModel } from '@/models/SubmissionReviewModel';
+
+const mockPush = vi.hoisted(() => vi.fn());
+vi.mock('vue-router', () => ({
+  useRouter: () => ({ push: mockPush }),
+  useRoute: () => ({ params: { id: '1' } }),
+}));
+
+const mockRetrieveSubmission = vi.hoisted(() => vi.fn());
+const mockRejectSubmission = vi.hoisted(() => vi.fn());
+const mockRemoveFile = vi.hoisted(() => vi.fn());
+const mockMarkExhibit = vi.hoisted(() => vi.fn());
+const mockEnterExhibit = vi.hoisted(() => vi.fn());
+const mockAddExhibitDescription = vi.hoisted(() => vi.fn());
+const mockGetFileHistory = vi.hoisted(() => vi.fn());
+const mockGetExhibitNotes = vi.hoisted(() => vi.fn());
+
+vi.mock('@/services/SubmissionService', () => ({
+  default: () => ({
+    retrieveSubmission: mockRetrieveSubmission,
+    rejectSubmission: mockRejectSubmission,
+    removeFile: mockRemoveFile,
+    markExhibit: mockMarkExhibit,
+    enterExhibit: mockEnterExhibit,
+    addExhibitDescription: mockAddExhibitDescription,
+    updateEvidenceSource: vi.fn(),
+    getFileHistory: mockGetFileHistory,
+    getExhibitNotes: mockGetExhibitNotes,
+    addExhibitNote: vi.fn(),
+  }),
+}));
+
+const makeFile = (overrides: Partial<SubmissionFile> = {}): SubmissionFile => ({
+  id: 'file-uuid-1',
+  originalFileName: 'exhibit.mp4',
+  storedFileName: 'stored.mp4',
+  viewUrl: '/api/files/file-uuid-1/view',
+  downloadUrl: '/api/files/file-uuid-1/download',
+  contentType: 'video/mp4',
+  fileSize: 1024,
+  storageProvider: 'Local',
+  status: 'Unclassified',
+  ...overrides,
+});
+
+const makeSubmission = (overrides: Partial<SubmissionReviewModel> = {}): SubmissionReviewModel => ({
+  id: 1,
+  courtDateTime: '2026-06-01T10:00:00',
+  location: 'Test Court',
+  room: 'ROOM1',
+  locationName: 'Test Court',
+  status: 'Pending',
+  exhibitCount: 1,
+  tickets: [],
+  files: [],
+  ...overrides,
+});
+
+function mountReview() {
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  return mount(SubmissionReview, {
+    global: {
+      plugins: [pinia],
+      stubs: {
+        AppModal: {
+          template:
+            '<div class="app-modal-stub"><slot /><button class="modal-confirm" @click="$emit(\'confirm\')">Confirm</button><button class="modal-cancel" @click="$emit(\'cancel\')">Cancel</button></div>',
+          emits: ['confirm', 'cancel'],
+        },
+        FileViewer: { template: '<div class="file-viewer-stub" />' },
+      },
+    },
+  });
+}
+
+beforeEach(() => {
+  localStorage.clear();
+  setActivePinia(createPinia());
+  mockPush.mockClear();
+  mockRetrieveSubmission.mockReset();
+  mockRejectSubmission.mockReset();
+  mockRemoveFile.mockReset();
+  mockMarkExhibit.mockReset();
+  mockEnterExhibit.mockReset();
+  mockAddExhibitDescription.mockReset();
+  mockGetFileHistory.mockReset().mockResolvedValue([]);
+  mockGetExhibitNotes.mockReset().mockResolvedValue([]);
+});
+
+describe('SubmissionReview', () => {
+  describe('status display', () => {
+    it('renders Pending status chip', async () => {
+      mockRetrieveSubmission.mockResolvedValue(makeSubmission({ status: 'Pending' }));
+      const wrapper = mountReview();
+      await flushPromises();
+
+      expect(wrapper.find('.status-pending').exists()).toBe(true);
+    });
+
+    it('renders Accepted status chip', async () => {
+      mockRetrieveSubmission.mockResolvedValue(
+        makeSubmission({ status: 'Accepted', files: [makeFile({ enteredValue: '1' })] }),
+      );
+      const wrapper = mountReview();
+      await flushPromises();
+
+      expect(wrapper.find('.status-accepted').exists()).toBe(true);
+    });
+
+    it('renders Rejected status chip', async () => {
+      mockRetrieveSubmission.mockResolvedValue(makeSubmission({ status: 'Rejected' }));
+      const wrapper = mountReview();
+      await flushPromises();
+
+      expect(wrapper.find('.status-rejected').exists()).toBe(true);
+    });
+  });
+
+  describe('classification controls — Pending submission', () => {
+    it('shows Marked select for non-Removed files', async () => {
+      mockRetrieveSubmission.mockResolvedValue(
+        makeSubmission({ files: [makeFile({ status: 'Unclassified' })] }),
+      );
+      const wrapper = mountReview();
+      await flushPromises();
+
+      expect(wrapper.find('.prior-file-row2').exists()).toBe(true);
+      expect(wrapper.find('label').text()).toContain('Marked');
+    });
+
+    it('shows Entered select for non-Removed files', async () => {
+      mockRetrieveSubmission.mockResolvedValue(
+        makeSubmission({ files: [makeFile({ status: 'Unclassified' })] }),
+      );
+      const wrapper = mountReview();
+      await flushPromises();
+
+      const labels = wrapper.findAll('label').map((l) => l.text());
+      expect(labels.some((t) => t.includes('Entered'))).toBe(true);
+    });
+
+    // CES-42: the first description is added inline; once one exists the list is read-only.
+    it('shows the description input for a non-Removed file with no description yet', async () => {
+      mockRetrieveSubmission.mockResolvedValue(
+        makeSubmission({ files: [makeFile({ status: 'Unclassified' })] }),
+      );
+      const wrapper = mountReview();
+      await flushPromises();
+
+      expect(wrapper.find('[data-test="desc-input"]').exists()).toBe(true);
+    });
+
+    it('renders an existing description read-only, with no input', async () => {
+      mockRetrieveSubmission.mockResolvedValue(
+        makeSubmission({
+          files: [
+            makeFile({
+              status: 'Unclassified',
+              descriptions: [
+                {
+                  id: 1,
+                  descriptionText: 'the first description',
+                  createdBy: 'officer@test.ca',
+                  createdAtUTC: '2026-07-07T09:00:00Z',
+                },
+              ],
+            }),
+          ],
+        }),
+      );
+      const wrapper = mountReview();
+      await flushPromises();
+
+      expect(wrapper.find('[data-test="desc-input"]').exists()).toBe(false);
+      expect(wrapper.find('[data-test="desc-full"]').text()).toBe('the first description');
+    });
+
+    it('shows Remove button for non-Removed files', async () => {
+      mockRetrieveSubmission.mockResolvedValue(makeSubmission({ files: [makeFile()] }));
+      const wrapper = mountReview();
+      await flushPromises();
+
+      expect(wrapper.find('.rm-btn').exists()).toBe(true);
+    });
+  });
+
+  describe('Removed exhibits', () => {
+    it('applies prior-file-item-removed class to Removed files', async () => {
+      mockRetrieveSubmission.mockResolvedValue(
+        makeSubmission({
+          files: [makeFile({ status: 'Removed', deletedAt: '2026-06-01T12:00:00Z' })],
+        }),
+      );
+      const wrapper = mountReview();
+      await flushPromises();
+
+      expect(wrapper.find('.prior-file-item-removed').exists()).toBe(true);
+    });
+
+    it('does not show classification controls for Removed files', async () => {
+      mockRetrieveSubmission.mockResolvedValue(
+        makeSubmission({
+          files: [makeFile({ status: 'Removed', deletedAt: '2026-06-01T12:00:00Z' })],
+        }),
+      );
+      const wrapper = mountReview();
+      await flushPromises();
+
+      expect(wrapper.find('.prior-file-row2').exists()).toBe(false);
+    });
+
+    it('does not show Remove button for Removed files', async () => {
+      mockRetrieveSubmission.mockResolvedValue(
+        makeSubmission({
+          files: [makeFile({ status: 'Removed', deletedAt: '2026-06-01T12:00:00Z' })],
+        }),
+      );
+      const wrapper = mountReview();
+      await flushPromises();
+
+      expect(wrapper.find('.rm-btn').exists()).toBe(false);
+    });
+  });
+
+  describe('terminal submission (Rejected)', () => {
+    it('disables classification controls when submission is Rejected', async () => {
+      mockRetrieveSubmission.mockResolvedValue(
+        makeSubmission({
+          status: 'Rejected',
+          files: [makeFile({ status: 'Entered', enteredValue: '1' })],
+        }),
+      );
+      const wrapper = mountReview();
+      await flushPromises();
+
+      const row2 = wrapper.find('.prior-file-row2');
+      expect(row2.exists()).toBe(true);
+      expect(row2.find('select').attributes('disabled')).toBeDefined();
+    });
+
+    it('hides the Reject action when submission is Rejected', async () => {
+      mockRetrieveSubmission.mockResolvedValue(makeSubmission({ status: 'Rejected', files: [] }));
+      const wrapper = mountReview();
+      await flushPromises();
+
+      expect(wrapper.find('.actions-main').exists()).toBe(false);
+    });
+
+    it('shows View/Download for retained files on a terminal submission', async () => {
+      mockRetrieveSubmission.mockResolvedValue(
+        makeSubmission({
+          status: 'Rejected',
+          files: [makeFile({ status: 'Entered', enteredValue: '1', contentType: 'video/mp4' })],
+        }),
+      );
+      const wrapper = mountReview();
+      await flushPromises();
+
+      const actions = wrapper.find('.view-container');
+      expect(actions.exists()).toBe(true);
+      // Icon-only buttons: the accessible name is the assertion, not visible text.
+      expect(actions.find('.view-btn').attributes('aria-label')).toBe('View exhibit.mp4');
+      expect(actions.find('.dl-btn').attributes('aria-label')).toBe('Download exhibit.mp4');
+    });
+  });
+
+  describe('derived Accepted status (whole-submission Accept retired)', () => {
+    it('does not render a whole-submission Accept button', async () => {
+      mockRetrieveSubmission.mockResolvedValue(
+        makeSubmission({ files: [makeFile({ status: 'Entered', enteredValue: '1' })] }),
+      );
+      const wrapper = mountReview();
+      await flushPromises();
+
+      expect(wrapper.find('button.accept').exists()).toBe(false);
+    });
+
+    it('keeps the review editable and rejectable while Accepted', async () => {
+      // Accepted is a derived, reversible state — controls stay enabled and Reject
+      // remains available (only Rejected is terminal).
+      mockRetrieveSubmission.mockResolvedValue(
+        makeSubmission({
+          status: 'Accepted',
+          files: [makeFile({ status: 'Marked', markedValue: 'A' })],
+        }),
+      );
+      const wrapper = mountReview();
+      await flushPromises();
+
+      const row2 = wrapper.find('.prior-file-row2');
+      expect(row2.exists()).toBe(true);
+      expect(row2.find('select').attributes('disabled')).toBeUndefined();
+      expect(wrapper.find('button.remove').exists()).toBe(true);
+    });
+  });
+
+  describe('Reject confirmation modal', () => {
+    it('shows reject modal when Reject button is clicked', async () => {
+      mockRetrieveSubmission.mockResolvedValue(makeSubmission());
+      const wrapper = mountReview();
+      await flushPromises();
+
+      await wrapper.find('button.remove').trigger('click');
+
+      expect(wrapper.find('.app-modal-stub').exists()).toBe(true);
+    });
+
+    it('modal contains destructive warning text', async () => {
+      mockRetrieveSubmission.mockResolvedValue(makeSubmission());
+      const wrapper = mountReview();
+      await flushPromises();
+
+      await wrapper.find('button.remove').trigger('click');
+
+      expect(wrapper.find('.app-modal-stub').text()).toContain('permanently deletes');
+      expect(wrapper.find('.app-modal-stub').text()).toContain('unretrievable');
+    });
+
+    it('calls rejectSubmission and redirects when modal confirmed', async () => {
+      mockRetrieveSubmission.mockResolvedValue(makeSubmission());
+      mockRejectSubmission.mockResolvedValue(true);
+      const wrapper = mountReview();
+      await flushPromises();
+
+      await wrapper.find('button.remove').trigger('click');
+      await wrapper.find('.modal-confirm').trigger('click');
+      await flushPromises();
+
+      expect(mockRejectSubmission).toHaveBeenCalledWith({ submissionId: 1 });
+      expect(mockPush).toHaveBeenCalledWith('/admin/list');
+    });
+
+    it('hides modal when cancelled without calling rejectSubmission', async () => {
+      mockRetrieveSubmission.mockResolvedValue(makeSubmission());
+      const wrapper = mountReview();
+      await flushPromises();
+
+      await wrapper.find('button.remove').trigger('click');
+      await wrapper.find('.modal-cancel').trigger('click');
+
+      expect(mockRejectSubmission).not.toHaveBeenCalled();
+      expect(wrapper.find('.app-modal-stub').exists()).toBe(false);
+    });
+  });
+
+  describe('Remove exhibit', () => {
+    it('marks file as Removed in the list after successful removeFile', async () => {
+      mockRetrieveSubmission.mockResolvedValue(
+        makeSubmission({ files: [makeFile({ id: 'file-uuid-1', status: 'Unclassified' })] }),
+      );
+      mockRemoveFile.mockResolvedValue(true);
+      const wrapper = mountReview();
+      await flushPromises();
+
+      await wrapper.find('.rm-btn').trigger('click');
+      await flushPromises();
+
+      expect(wrapper.find('.prior-file-item-removed').exists()).toBe(true);
+      expect(wrapper.find('.rm-btn').exists()).toBe(false);
+    });
+
+    it('shows remove error when removeFile fails', async () => {
+      mockRetrieveSubmission.mockResolvedValue(makeSubmission({ files: [makeFile()] }));
+      mockRemoveFile.mockResolvedValue(false);
+      const wrapper = mountReview();
+      await flushPromises();
+
+      await wrapper.find('.rm-btn').trigger('click');
+      await flushPromises();
+
+      expect(wrapper.find('.remove-error').exists()).toBe(true);
+    });
+  });
+
+  // CES-42: the per-row history button is gone; the detail modal is now the way in.
+  it('opens the exhibit detail modal from the filename', async () => {
+    mockGetFileHistory.mockResolvedValue([]);
+    mockGetExhibitNotes.mockResolvedValue([]);
+    mockRetrieveSubmission.mockResolvedValue(makeSubmission({ files: [makeFile()] }));
+    const wrapper = mountReview();
+    await flushPromises();
+
+    expect(wrapper.find('.history-btn').exists()).toBe(false);
+
+    await wrapper.find('.prior-file-name-link').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('.exhibit-detail-dialog').exists()).toBe(true);
+    expect(mockGetFileHistory).toHaveBeenCalledWith('file-uuid-1');
+  });
+});

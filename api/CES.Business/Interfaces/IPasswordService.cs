@@ -8,7 +8,7 @@ namespace CES.Business.Interfaces
 {
     public interface IPasswordService
     {
-        public string HashPasword(string password);
+        public string HashPassword(string password);
         public bool VerifyPassword(string password, string hashedPassword);
     }
 }

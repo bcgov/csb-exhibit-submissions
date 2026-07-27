@@ -16,7 +16,7 @@ public class Location
     public string LocationId { get; set; } = string.Empty;
     public string AgencyIdentifierCd { get; set; } = string.Empty;
     public bool? Active { get; set; }
-    public Uri InfoLink => ParseCourtLocationUrl(Name);
+    public Uri? InfoLink => ParseCourtLocationUrl(Name);
     public ICollection<CourtRoom> CourtRooms { get; set; } = new List<CourtRoom>();
     public string RegionCd { get; set; } = string.Empty;
 
@@ -58,7 +58,7 @@ public class Location
             };
     }
 
-    private static Uri ParseCourtLocationUrl(string locationName)
+    private static Uri? ParseCourtLocationUrl(string locationName)
     {
         if (string.IsNullOrEmpty(locationName))
         {

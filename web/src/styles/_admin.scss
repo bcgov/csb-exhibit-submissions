@@ -1,0 +1,449 @@
+@use "variables" as *;
+
+// --- SubmissionListing ---
+
+.submission-list-page {
+  padding: $padding-xlarge;
+  max-width: 1280px;
+  margin: auto;
+
+  h1 {
+    margin-bottom: $margin-large;
+  }
+
+  // --- Filter panel ---
+
+  .filter-panel {
+    background: $color-bg-light;
+    border: $border-width-small solid $color-border;
+    border-radius: $border-radius-large;
+    padding: $padding-medium;
+    margin-bottom: $margin-large;
+  }
+
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $margin-medium;
+    margin-bottom: $margin-medium;
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: $margin-xsmall;
+      font-size: $font-size-small-body;
+      font-weight: $font-weight-bold;
+      color: $color-text-secondary;
+    }
+
+    input,
+    select {
+      // WCAG 2.5.8: text field ≥ 32px target (component-rules.md → Text field).
+      min-height: 2rem;
+      padding: $padding-small;
+      font-size: $font-size-body;
+      font-weight: $font-weight-regular;
+      color: $color-text-primary;
+      border: $border-width-small solid $color-border-medium;
+      border-radius: $border-radius-default;
+      background: white;
+
+      // Universal rule #2: offset focus ring — never strip the outline.
+      &:focus-visible {
+        outline: $border-width-medium solid $color-text-link;
+        outline-offset: 1px;
+      }
+
+      &:hover {
+        border-color: $color-border-dark;
+      }
+    }
+
+    // Select carries a larger 40px minimum target (component-rules.md → Select).
+    select {
+      min-height: 2.5rem;
+    }
+  }
+
+  .filter-actions {
+    display: flex;
+    gap: $margin-small;
+  }
+
+  // --- Listing table ---
+
+  .loading-text {
+    color: $color-text-secondary;
+  }
+
+  .submission-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: $margin-medium;
+    border: $border-width-small solid $color-border;
+    border-radius: $border-radius-large;
+    overflow: hidden;
+    font-size: $font-size-body;
+
+    thead {
+      background: $color-bg-dark-blue;
+
+      th {
+        padding: 0.75rem;
+        text-align: left;
+        color: $color-text-invert;
+        font-weight: $font-weight-bold;
+        white-space: nowrap;
+      }
+    }
+
+    tbody td {
+      padding: 0.7rem 0.75rem;
+      border-top: $border-width-small solid $color-border;
+      color: $color-text-primary;
+    }
+
+    tbody tr {
+      cursor: pointer;
+      transition: background-color 0.1s ease;
+
+      &:nth-child(even) {
+        background-color: $color-bg-light;
+      }
+
+      &:hover {
+        background-color: $color-menus-hover;
+      }
+
+      &.row-rejected td {
+        color: $color-text-secondary;
+      }
+
+      &.selected,
+      &.selected:hover {
+        background-color: $color-bg-light-blue;
+        box-shadow: inset $border-width-large 0 0 0 $color-primary;
+      }
+    }
+  }
+
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: $margin-medium;
+    color: $color-text-secondary;
+    font-size: $font-size-small-body;
+  }
+}
+
+// --- ExhibitSearch (CES-38) ---
+// Reuses the SubmissionListing filter-panel look and the SubmissionReview preview modal.
+
+.exhibit-search-page {
+  padding: $padding-xlarge;
+  max-width: 1280px;
+  margin: auto;
+
+  h1 {
+    margin-bottom: $margin-large;
+  }
+
+  .filter-panel {
+    background: $color-bg-light;
+    border: $border-width-small solid $color-border;
+    border-radius: $border-radius-large;
+    padding: $padding-medium;
+    margin-bottom: $margin-large;
+  }
+
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $margin-medium;
+    margin-bottom: $margin-small;
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: $margin-xsmall;
+      font-size: $font-size-small-body;
+      font-weight: $font-weight-bold;
+      color: $color-text-secondary;
+    }
+
+    input {
+      // WCAG 2.5.8: text field ≥ 32px target (component-rules.md → Text field).
+      min-height: 2rem;
+      padding: $padding-small;
+      font-size: $font-size-body;
+      font-weight: $font-weight-regular;
+      color: $color-text-primary;
+      border: $border-width-small solid $color-border-medium;
+      border-radius: $border-radius-default;
+      background: white;
+
+      &:focus-visible {
+        outline: $border-width-medium solid $color-text-link;
+        outline-offset: 1px;
+      }
+
+      &:hover {
+        border-color: $color-border-dark;
+      }
+    }
+  }
+
+  .helper-text {
+    font-size: $font-size-body;
+    color: $color-text-secondary;
+    margin-bottom: $margin-medium;
+  }
+
+  .filter-actions {
+    display: flex;
+    gap: $margin-small;
+  }
+
+  .validation-hint {
+    margin-top: $margin-small;
+    font-size: $font-size-small-body;
+    color: $color-text-secondary;
+    // Reserve one line of height so toggling the hint text doesn't shift layout
+    min-height: 1lh;
+  }
+
+  .loading-text {
+    color: $color-text-secondary;
+  }
+
+  .empty-state {
+    padding: $padding-large;
+    text-align: center;
+    color: $color-text-secondary;
+  }
+
+  // One single-exhibit ExhibitList per result; the status chip is rendered inside the
+  // list itself, so no separate column is needed.
+  .exhibit-results-scroll {
+    overflow-x: auto;
+
+    .prior-file-list + .prior-file-list {
+      border-top: $border-width-small solid $color-border;
+    }
+  }
+
+  .preview-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: $color-overlay;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      max-width: 1000px;
+      width: 90%;
+      max-height: 90vh;
+      position: relative;
+
+      img,
+      video,
+      iframe {
+        max-width: 100%;
+        max-height: 70vh;
+      }
+    }
+
+    .close {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+    }
+  }
+}
+
+// --- SubmissionReview ---
+
+.review-page {
+  padding: $padding-xlarge;
+  max-width: 960px;
+  margin: auto;
+
+  .back-button {
+    margin-bottom: $margin-medium;
+    padding-left: 0;
+  }
+
+  .details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(275px, 1fr));
+    gap: 10px;
+    margin-bottom: 30px;
+  }
+
+  .status-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+
+    .download-package {
+      padding-top: 0.25rem;
+      padding-bottom: 0.25rem;
+    }
+  }
+
+  .package-error {
+    margin-bottom: 30px;
+    color: $color-danger;
+    font-size: $font-size-small-body;
+  }
+
+  .ticket-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: $margin-large;
+
+    th,
+    td {
+      border: $border-width-small solid $color-border;
+      padding: 0.6rem 0.75rem;
+      font-size: $font-size-body;
+    }
+
+    thead {
+      background: $color-bg-light;
+    }
+  }
+
+  .icon {
+    font-size: $icon-size-large;
+    width: 26px;
+    text-align: center;
+  }
+
+  .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .actions-main {
+    margin-top: 30px;
+    display: flex;
+    gap: 10px;
+  }
+
+  .file-list {
+    border: $border-width-small solid $color-border;
+    border-radius: $border-radius-large;
+
+    .file-row {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      border-bottom: $border-width-small solid $color-border;
+      column-gap: 14px;
+      flex-wrap: wrap;
+
+      &:hover {
+        background: $color-bg-light;
+      }
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    .file-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .file-size {
+      white-space: nowrap;
+      font-size: $font-size-small-body;
+      color: $color-text-secondary;
+    }
+
+    .classification-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      flex: 2;
+      min-width: 0;
+    }
+
+    .cl-field {
+      font-size: $font-size-label;
+      color: $color-text-secondary;
+      white-space: nowrap;
+    }
+
+    .cl-desc {
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: help;
+    }
+
+    .file-actions {
+      display: flex;
+      gap: 6px;
+    }
+  }
+
+  .remove-error,
+  .accept-error {
+    margin-top: 8px;
+    color: $color-danger;
+    font-size: $font-size-small-body;
+  }
+
+  .preview-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: $color-overlay;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      max-width: 1000px;
+      width: 90%;
+      max-height: 90vh;
+      position: relative;
+
+      img,
+      video,
+      iframe {
+        max-width: 100%;
+        max-height: 70vh;
+      }
+    }
+
+    .close {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+    }
+  }
+}
+
+// --- ExhibitDetailModal (CES-38 extension) ---

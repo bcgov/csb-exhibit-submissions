@@ -3,90 +3,79 @@
     <h1>Development Dashboard</h1>
 
     <div class="tools-grid">
-      <div
-        v-for="tool in tools"
-        :key="tool.name"
-        class="tool-card"
-      >
-        <h3>{{ tool.name }}</h3>
+      <div v-for="tool in tools" :key="tool.name" class="tool-card">
+        <h2>{{ tool.name }}</h2>
         <p>{{ tool.description }}</p>
 
         <button
           v-if="tool.action"
+          class="btn btn--primary"
           @click="tool.action"
           :disabled="loading"
         >
           {{ loading ? 'Working...' : tool.buttonLabel }}
         </button>
 
-        <router-link
-          v-if="tool.route"
-          :to="tool.route"
-          class="link"
-        >
-          Open
-        </router-link>
+        <router-link v-if="tool.route" :to="tool.route" class="link"> Open </router-link>
       </div>
     </div>
 
-    <div v-if="error" class="error">
-      ❌ {{ error }}
-    </div>
+    <div v-if="error" class="error">❌ {{ error }}</div>
 
-    <pre v-if="response" class="response">
-{{ response }}
+    <pre v-if="response" class="response"
+      >{{ response }}
     </pre>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { getHealth } from '@/services/devService'
+import { ref } from 'vue';
+import { getHealth } from '@/services/devService';
 
 interface DevTool {
-  name: string
-  description: string
-  buttonLabel?: string
-  action?: () => Promise<void>
-  route?: string
+  name: string;
+  description: string;
+  buttonLabel?: string;
+  action?: () => Promise<void>;
+  route?: string;
 }
 
-const loading = ref(false)
-const response = ref<string | null>(null)
-const error = ref<string | null>(null)
+const loading = ref(false);
+const response = ref<string | null>(null);
+const error = ref<string | null>(null);
 
 const testApi = async () => {
-  loading.value = true
-  error.value = null
-  response.value = null
+  loading.value = true;
+  error.value = null;
+  response.value = null;
 
   try {
-    const data: boolean = await getHealth()
-    response.value = JSON.stringify(data, null, 2)
+    const data: boolean = await getHealth();
+    response.value = JSON.stringify(data, null, 2);
   } catch (err: unknown) {
     if (err instanceof Error) {
-      error.value = err.message
+      error.value = err.message;
     } else {
-      error.value = 'Unexpected error occurred'
+      error.value = 'Unexpected error occurred';
     }
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const tools: DevTool[] = [
   {
     name: 'Test API',
     description: 'Calls the backend health endpoint.',
     buttonLabel: 'Test API',
-    action: testApi
+    action: testApi,
   },
   {
     name: 'Router Example',
     description: 'Navigate to test route.',
-    route: '/dev/test-page'
-  }
-]
+    route: '/dev/test-page',
+  },
+];
 </script>
 
 <style scoped>

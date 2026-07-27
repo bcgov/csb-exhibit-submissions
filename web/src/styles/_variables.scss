@@ -1,0 +1,129 @@
+@use "@bcgov/design-tokens/scss/variables" as t;
+
+// Convenience aliases over bcgov design tokens for use across all style partials.
+// Raw token variables are available via `t.$<token-name>` if a specific alias isn't defined here.
+
+$color-primary:          t.$surface-color-primary-button-default;   // #013366
+$color-primary-hover:    t.$surface-color-primary-button-hover;     // #1E5189
+$color-primary-disabled: t.$surface-color-primary-button-disabled;  // #EDEBE9
+$color-danger:           t.$surface-color-primary-danger-button-default; // #CE3E39
+$color-danger-hover:     t.$surface-color-primary-danger-button-hover;   // #A2312D
+$color-success:          t.$support-border-color-success;            // #42814A
+$color-border:           t.$surface-color-border-default;            // #D8D8D8
+$color-border-medium:    t.$surface-color-border-medium;             // #898785
+$color-bg-light:         t.$surface-color-background-light-gray;     // #FAF9F8
+$color-bg-light-blue:    t.$surface-color-background-light-blue;     // #F1F8FE
+$color-bg-dark-blue:     t.$surface-color-background-dark-blue;      // #053662
+$color-overlay:          t.$surface-color-overlay-default;           // rgba(0,0,0,0.45)
+$color-disabled-bg:      t.$surface-color-primary-disabled;          // #EDEBE9
+$shadow-medium:          t.$surface-shadow-medium;
+
+// Typography colors
+$color-text-primary:     t.$typography-color-primary;           // #2D2D2D
+$color-text-secondary:   t.$typography-color-secondary;         // #474543
+$color-text-disabled:    t.$typography-color-disabled;          // #9F9D9C
+$color-text-link:        t.$typography-color-link;              // #255A90
+$color-text-invert:      t.$typography-color-primary-invert;    // #FFFFFF
+
+// Support / status colors
+$color-danger-bg:        t.$support-surface-color-danger;       // #F4E1E2
+$color-success-bg:       t.$support-surface-color-success;      // #F6FFF8
+$color-warning-bg:       t.$support-surface-color-warning;      // #FEF1D8
+$color-warning-border:   t.$support-border-color-warning;       // #F8BB47
+$color-info-bg:          t.$support-surface-color-info;         // #F7F9FC
+$color-info-border:      t.$support-border-color-info;          // #053662
+
+// Gray scale
+$color-gray-20:          t.$theme-gray-20;                      // #F3F2F1
+$color-gray-30:          t.$theme-gray-30;                      // #ECEAE8
+$color-menus-hover:      t.$surface-color-menus-hover;          // #EDEBE9
+$color-border-dark:      t.$surface-color-border-dark;          // #353433
+
+// Shadows
+$shadow-none:            t.$surface-shadow-none;
+$shadow-small:           t.$surface-shadow-small;
+$shadow-large:           t.$surface-shadow-large;
+
+// Border radius. As of @bcgov/design-tokens v5 these ship with `px` already
+// attached — do NOT re-add a suffix (interpolating one emits `4pxpx`, which
+// browsers silently discard, leaving corners square with no console error).
+$border-radius-small:    t.$layout-border-radius-small;     // 2px
+$border-radius-default:  t.$layout-border-radius-medium;    // 4px
+$border-radius-large:    t.$layout-border-radius-large;     // 6px
+$border-radius-circular: t.$layout-border-radius-circular;  // 9999px
+
+// Border width — unit-bearing since v5; see the note above.
+$border-width-small:     t.$layout-border-width-small;      // 1px
+$border-width-medium:    t.$layout-border-width-medium;     // 2px
+$border-width-large:     t.$layout-border-width-large;      // 4px
+
+// Padding
+$padding-xsmall:         t.$layout-padding-xsmall;    // 0.25rem
+$padding-small:          t.$layout-padding-small;     // 0.5rem
+$padding-medium:         t.$layout-padding-medium;    // 1rem
+$padding-large:          t.$layout-padding-large;     // 1.5rem
+$padding-xlarge:         t.$layout-padding-xlarge;    // 2rem
+
+// Margin
+$margin-xsmall:          t.$layout-margin-xsmall;     // 0.25rem
+$margin-small:           t.$layout-margin-small;      // 0.5rem
+$margin-medium:          t.$layout-margin-medium;     // 1rem
+$margin-large:           t.$layout-margin-large;      // 1.5rem
+$margin-xlarge:          t.$layout-margin-xlarge;     // 2rem
+
+// Typography — font family
+// BC Sans is the BC Gov brand typeface (loaded via `@bcgov/bc-sans` in main.ts).
+// Fallback stack matches the BC Gov design system recommendation.
+$font-family-base:       "BC Sans", "Noto Sans", Verdana, Arial, sans-serif;
+
+// Typography — body/label font sizes (BC Gov type scale)
+$font-size-label:        t.$typography-font-size-label;        // 0.75rem  / 12px
+$font-size-small-body:   t.$typography-font-size-small-body;   // 0.875rem / 14px
+$font-size-body:         t.$typography-font-size-body;         // 1rem     / 16px
+$font-size-large-body:   t.$typography-font-size-large-body;   // 1.125rem / 18px
+
+// Typography — heading font sizes (BC Gov type scale; all rendered at font-weight 700)
+$font-size-h1:           t.$typography-font-size-h1;   // 2.25rem  / 36px
+$font-size-h2:           t.$typography-font-size-h2;   // 2rem     / 32px
+$font-size-h3:           t.$typography-font-size-h3;   // 1.75rem  / 28px
+$font-size-h4:           t.$typography-font-size-h4;   // 1.5rem   / 24px
+$font-size-h5:           t.$typography-font-size-h5;   // 1.25rem  / 20px
+// H6 has no dedicated token; per the BC Gov scale it shares Large Body's 1.125rem.
+$font-size-h6:           t.$typography-font-size-large-body;   // 1.125rem / 18px
+
+// Typography — font weights. BC Sans ships only Regular (400) and Bold (700);
+// never use 500/600 (the browser fakes them and rendering is inconsistent).
+$font-weight-regular:    t.$typography-font-weights-regular;   // 400
+$font-weight-bold:       t.$typography-font-weights-bold;      // 700
+
+// Typography — line heights (BC Gov standard: 1.5 for body/headings, 1.25 for
+// small-body/label). Tokens are unitless multipliers; no unit suffix.
+$line-height-base:       1.5;
+$line-height-tight:      1.25;
+
+// Icon sizes — unit-bearing since v5; see the border-radius note above.
+$icon-size-xsmall:       t.$icons-size-xsmall;    // 14px
+$icon-size-small:        t.$icons-size-small;     // 16px
+$icon-size-medium:       t.$icons-size-medium;    // 20px
+$icon-size-large:        t.$icons-size-large;     // 24px
+$icon-size-xlarge:       t.$icons-size-xlarge;    // 32px
+
+// ExhibitList row metrics (CES-42). The chevron and status chip are fixed-width so the
+// filename — and the condensed description line indented beneath it — start at the same
+// x on every row, whatever the status label reads.
+$chevron-width:          1.75rem;
+$status-chip-width:      6.5rem;
+$row1-gap:               0.6rem;
+
+// WCAG 2.5.8 (AA) minimum interactive target size for buttons. Consumed by the .btn
+// system in _buttons.scss and by the ExhibitList action slots below.
+$btn-min-target:         2rem;    // 32px
+
+// ExhibitList action column. Every row reserves one fixed slot per action (View /
+// Download / Remove) whether or not that action applies to the file, so the date and
+// ticket chips to its left land at the same x on every row. Icon-only buttons make each
+// slot a uniform WCAG-minimum square, which is what keeps the reserved column small.
+$action-slot-gap:        0.3rem;
+$action-slot-count:      3;
+$action-column-width:    ($action-slot-count * $btn-min-target) +
+                         (($action-slot-count - 1) * $action-slot-gap);   // 6.6rem

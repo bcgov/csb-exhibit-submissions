@@ -1,6 +1,5 @@
-
 export interface CourtFileList {
-  appearanceID: string;
+  appearanceId: string;
   appearanceDateTime: string;
   appearanceSequenceNumber: string;
   appearanceReasonCode: string;
@@ -12,7 +11,7 @@ export interface CourtFileList {
   roomText: string;
   accusedName: string;
   accusedDOB: string;
-  appearanceDetails: [AppearanceDetails]
+  appearanceDetails: AppearanceDetails[];
 }
 
 export interface AppearanceDetails {

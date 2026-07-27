@@ -1,316 +1,278 @@
 <script setup lang="ts">
-import { convertUtcToLocal, formatDateTime, formatFileSize, shortenString, splitDateTimeForDisplay } from '@/helpers/formatters'
-import type { SubmissionAcceptanceModel } from '@/models/SubmissionAcceptanceModel'
-import type { SubmissionFile, SubmissionReviewModel } from '@/models/SubmissionReviewModel'
-import useSubmissionService from '@/services/SubmissionService'
-import { onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import FileViewer from '../shared/FileViewer.vue'
+import { convertUtcToLocal, formatDateTime, splitDateTimeForDisplay } from '@/helpers/formatters';
+import type { ExhibitSearchResultModel } from '@/models/ExhibitSearchResultModel';
+import type {
+  SubmissionActionModel,
+  SubmissionFile,
+  SubmissionReviewModel,
+} from '@/models/SubmissionReviewModel';
+import useSubmissionService from '@/services/SubmissionService';
+import { computed, onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import AppModal from '../shared/AppModal.vue';
+import ExhibitDetailModal from '../shared/ExhibitDetailModal.vue';
+import ExhibitList from '../shared/ExhibitList.vue';
+import FileViewer from '../shared/FileViewer.vue';
 
-const route = useRoute()
-const router = useRouter()
+const route = useRoute();
+const router = useRouter();
 
-const submissionId = Number(route.params.id)
+const submissionId = Number(route.params.id);
 
-const previewFile = ref<SubmissionFile | null>(null)
+const {
+  retrieveSubmission,
+  rejectSubmission,
+  removeFile,
+  markExhibit,
+  enterExhibit,
+  addExhibitDescription,
+  updateEvidenceSource,
+} = useSubmissionService();
 
-const { retrieveSubmission, acceptSubmissionFiles, rejectAndCloseSubmission } = useSubmissionService()
+const submission = ref<SubmissionReviewModel | undefined>(undefined);
+const showRejectModal = ref(false);
+const removeError = ref<string | null>(null);
+const previewFile = ref<SubmissionFile | null>(null);
 
-const submission = ref<SubmissionReviewModel | undefined>(undefined)
-const selectedFiles = ref<string[]>([])
+// Exhibit detail popup — the only path to an exhibit's change history now that the
+// per-row history button is gone (CES-42).
+const detailResult = ref<ExhibitSearchResultModel | null>(null);
 
-const getFileUrl = (fileId: string, action: 'view' | 'download') => `/api/files/${fileId}/${action}`
+const getFileUrl = (fileId: string, action: 'view' | 'download') =>
+  `/api/files/${fileId}/${action}`;
+
+const exhibitEntries = computed(() =>
+  (submission.value?.files ?? []).map((f) => ({ file: f, fileNumbers: [] as string[] })),
+);
+
+// Only Rejected is truly terminal. Accepted is now a derived, reversible state
+// (adding a file reopens it, and per-file Entered-locking guards immutability),
+// so the review stays editable/rejectable while Accepted (CES-39).
+const isTerminal = computed(() => submission.value?.status === 'Rejected');
 
 onMounted(async () => {
-  const data = await retrieveSubmission(submissionId)
-  if (!data) return
+  const data = await retrieveSubmission(submissionId);
+  if (!data) return;
 
   submission.value = {
     ...data,
     files: data.files.map((f: SubmissionFile) => ({
       ...f,
       viewUrl: getFileUrl(f.id, 'view'),
-      downloadUrl: getFileUrl(f.id, 'download')
-    }))
-  }
+      downloadUrl: getFileUrl(f.id, 'download'),
+    })),
+  };
+});
 
-  selectedFiles.value = submission.value.files.map(f => f.id)
-})
+const openDetails = (file: SubmissionFile) => {
+  if (!submission.value) return;
+  detailResult.value = {
+    file,
+    submissionId: submission.value.id,
+    submissionDate: submission.value.submissionDate,
+    appearanceDateTime: submission.value.courtDateTime,
+    location: submission.value.location,
+    room: submission.value.room,
+    fileNumbers: submission.value.tickets.map((t) => t.fileNumberText),
+    accusedName: submission.value.tickets[0]?.accusedName,
+  };
+};
+const closeDetails = () => {
+  detailResult.value = null;
+};
 
 const openPreview = (file: SubmissionFile) => {
-  previewFile.value = file
-}
-
+  previewFile.value = file;
+};
 const closePreview = () => {
-  previewFile.value = null
-}
+  previewFile.value = null;
+};
 
 const downloadFile = async (file: SubmissionFile) => {
   try {
-    const response = await fetch(file.downloadUrl)
-
-    if (response.status === 404) {
-      console.warn("File not found")
-      return
-    }
-
-    if (!response.ok) {
-      console.error(`File not found (${response.status})`)
-      // throw new Error(`Download failed (${response.status})`)
-      return
-    }
-
-    const blob = await response.blob()
-    const url = window.URL.createObjectURL(blob)
-
-    const a = document.createElement('a')
-    a.href = url
-    a.download = file.originalFileName
-
-    document.body.appendChild(a)
-    a.click()
-
-    a.remove()
-    window.URL.revokeObjectURL(url)
+    const response = await fetch(file.downloadUrl);
+    if (!response.ok) return;
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.originalFileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
   } catch (err) {
-    console.error("Download error:", err)
+    console.error('Download error:', err);
   }
-}
+};
 
-const acceptSubmission = async () => {
+const updateFileInSubmission = (updated: SubmissionFile) => {
+  if (!submission.value) return;
+  submission.value = {
+    ...submission.value,
+    files: submission.value.files.map((f) =>
+      f.id === updated.id
+        ? { ...f, ...updated, viewUrl: f.viewUrl, downloadUrl: f.downloadUrl }
+        : f,
+    ),
+  };
+};
 
-  if (selectedFiles.value.length === 0) {
-    alert('Please select at least one file.')
-    return
+const doRejectSubmission = async () => {
+  const payload: SubmissionActionModel = { submissionId };
+  await rejectSubmission(payload);
+  router.push('/admin/list');
+};
+
+const removeExhibit = async (file: SubmissionFile) => {
+  removeError.value = null;
+  const success = await removeFile(file.id);
+  if (success && submission.value) {
+    // Mark as removed in place (keep in list, greyed out)
+    submission.value = {
+      ...submission.value,
+      files: submission.value.files.map((f) =>
+        f.id === file.id ? { ...f, status: 'Removed', deletedAt: new Date().toISOString() } : f,
+      ),
+    };
+  } else if (!success) {
+    removeError.value = 'Could not remove exhibit.';
   }
-
-  // if (!confirm('Accept selected files?')) return
-
-  const payload: SubmissionAcceptanceModel = {
-    fileId: submissionId,
-    acceptedFiles: selectedFiles.value
-  }
-
-  console.log(payload)
-
-  const returnvalue = await acceptSubmissionFiles(payload)
-  console.log(returnvalue, "return value")
-  router.push('/admin/list')
-}
-
-const removeSubmission = async () => {
-  if (!confirm('Reject and delete this submission? Any unaccepted submissions will be removed!')) return
-  const payload: SubmissionAcceptanceModel = {
-    fileId: submissionId,
-    acceptedFiles: selectedFiles.value
-  }
-  await rejectAndCloseSubmission(payload);
-  router.push('/admin/list')
-}
-
-const fileIcon = (type: string) => {
-  if (type.startsWith('image')) return '🖼'
-  if (type.startsWith('video')) return '🎬'
-  if (type.includes('pdf')) return '📄'
-  return '📁'
-}
-
+};
 </script>
 
 <template>
   <div class="review-page">
+    <button class="btn btn--tertiary back-button" @click="router.push('/admin/list')">
+      ← Back to Submissions
+    </button>
+
     <h1>Submission Review</h1>
 
     <div v-if="submission">
       <div class="details-grid">
-        <div><strong>Court Date:</strong> {{ splitDateTimeForDisplay(submission.courtDateTime).date }}</div>
-        <div><strong>Court Time:</strong> {{ splitDateTimeForDisplay(submission.courtDateTime).time }}</div>
+        <div>
+          <strong>Court Date:</strong> {{ splitDateTimeForDisplay(submission.courtDateTime).date }}
+        </div>
+        <div>
+          <strong>Court Time:</strong> {{ splitDateTimeForDisplay(submission.courtDateTime).time }}
+        </div>
         <div><strong>Location:</strong> {{ submission.location }}</div>
         <div><strong>Room:</strong> {{ submission.room }}</div>
-        <div><strong>Ticket #:</strong> {{ submission.fileNumber }}</div>
-        <div><strong>Disputant:</strong> {{ submission.accusedName }}</div>
-        <div><strong>Submission Date:</strong> {{ submission.submissionDate ?
-          formatDateTime(convertUtcToLocal(submission.submissionDate), true) : "" }}</div>
-      </div>
-
-      <h3>Submitted Evidence</h3>
-
-      <div class="file-list">
-        <div class="file-row" v-for="file in submission.files" :key="file.id">
-
-          <div class="file-accept">
-            <input type="checkbox" :value="file.id" v-model="selectedFiles">
-          </div>
-          <div class="file-left">
-            <span class="icon">{{ fileIcon(file.contentType) }}</span>
-
-            <span class="name">
-              {{ shortenString(file.originalFileName) }}
-            </span>
-          </div>
-
-          <div class="file-size">
-            {{ formatFileSize(file.fileSize) }}
-          </div>
-          <div class="file-actions">
-            <button @click="openPreview(file)">View</button>
-            <button @click="downloadFile(file)">Download</button>
-          </div>
-
+        <div>
+          <strong>Submission Date:</strong>
+          {{
+            submission.submissionDate
+              ? formatDateTime(convertUtcToLocal(submission.submissionDate), true)
+              : ''
+          }}
+        </div>
+        <div class="status-cell">
+          <strong>Status:</strong>
+          <span :class="`status-chip status-${submission.status.toLowerCase()}`">{{
+            submission.status
+          }}</span>
         </div>
       </div>
 
-      <div class="actions-main">
-        <button class="accept" @click="acceptSubmission">Accept Selected</button>
+      <!-- Tickets section -->
+      <h2>Tickets ({{ submission.tickets?.length ?? 0 }})</h2>
+      <table class="ticket-table">
+        <thead>
+          <tr>
+            <th>File #</th>
+            <th>Accused Name</th>
+            <th>Appearance Time</th>
+            <th>Appearance Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="ticket in submission.tickets" :key="ticket.appearanceId">
+            <td class="text-monospace">{{ ticket.fileNumberText }}</td>
+            <td>{{ ticket.accusedName }}</td>
+            <td>{{ ticket.appearanceDateTime?.split(/[T ]/)[1]?.slice(0, 5) ?? '' }}</td>
+            <td>{{ ticket.appearanceReasonCode }}</td>
+          </tr>
+        </tbody>
+      </table>
 
-        <button class="remove" @click="removeSubmission">Reject / Delete All</button>
-      </div>
+      <h2>Submitted Evidence</h2>
+
+      <ExhibitList
+        :entries="exhibitEntries"
+        :initial-expanded="true"
+        :always-editable="!isTerminal"
+        :show-removed="true"
+        :can-download="true"
+        :can-remove="!isTerminal"
+        :linkable-title="true"
+        :mark-fn="(id: string, v: string) => markExhibit(id, { markedValue: v })"
+        :enter-fn="(id: string, v: string) => enterExhibit(id, { enteredValue: v })"
+        :add-description-fn="addExhibitDescription"
+        :evidence-source-fn="
+          (id: string, v: string) => updateEvidenceSource(id, { evidenceSourceType: v })
+        "
+        @file-updated="updateFileInSubmission"
+        @preview-file="openPreview"
+        @download-file="downloadFile"
+        @remove-file="removeExhibit"
+        @title-click="openDetails"
+      />
+
+      <ExhibitDetailModal
+        v-if="detailResult"
+        :result="detailResult"
+        can-view-notes
+        :always-editable="!isTerminal"
+        :add-description-fn="isTerminal ? undefined : addExhibitDescription"
+        @file-updated="updateFileInSubmission"
+        @close="closeDetails"
+      />
+
+      <p v-if="removeError" class="remove-error">{{ removeError }}</p>
+
+      <!-- Actions: reject is available until the submission is terminally Rejected.
+           Whole-submission Accept is retired — status derives from per-file acceptance. -->
+      <template v-if="!isTerminal">
+        <div class="actions-main">
+          <button class="btn btn--danger remove" @click="showRejectModal = true">
+            Reject Submission
+          </button>
+        </div>
+      </template>
     </div>
+
+    <!-- Reject confirmation modal -->
+    <AppModal
+      v-if="showRejectModal"
+      title="Reject Submission"
+      confirm-label="Reject Submission"
+      :confirm-danger="true"
+      @confirm="
+        showRejectModal = false;
+        doRejectSubmission();
+      "
+      @cancel="showRejectModal = false"
+    >
+      Rejecting this submission permanently deletes <strong>all</strong> associated files. This
+      cannot be undone and the files are unretrievable.
+    </AppModal>
 
     <div v-if="previewFile" class="preview-modal">
       <div class="modal-content">
-
-        <button class="close" @click="closePreview">✖</button>
-
-        <FileViewer :fileUrl="previewFile.viewUrl" :download-url="previewFile.downloadUrl"
-          :mimeType="previewFile.contentType" />
-
+        <button
+          class="btn btn--icon btn--tertiary close"
+          aria-label="Close preview"
+          @click="closePreview"
+        >
+          ✖
+        </button>
+        <FileViewer
+          :fileUrl="previewFile.viewUrl"
+          :download-url="previewFile.downloadUrl"
+          :mimeType="previewFile.contentType"
+        />
       </div>
     </div>
   </div>
 </template>
-
-<style scoped>
-.review-page {
-  padding: 2rem;
-  max-width: 900px;
-  margin: auto;
-}
-
-.details-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(275px, 1fr));
-  gap: 10px;
-  margin-bottom: 30px;
-}
-
-.icon {
-  font-size: 40px;
-  margin-bottom: 5px;
-}
-
-.name {
-  font-size: 0.9rem;
-  margin-bottom: 8px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.actions button {
-  margin: 3px;
-}
-
-.actions-main {
-  margin-top: 30px;
-  display: flex;
-  gap: 10px;
-}
-
-.accept {
-  background: #4caf50;
-  color: white;
-}
-
-.remove {
-  background: #e53935;
-  color: white;
-}
-
-.preview-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-content {
-  background: white;
-  padding: 20px;
-  max-width: 1000px;
-  width: 90%;
-  max-height: 90vh;
-  position: relative;
-}
-
-.modal-content img,
-.modal-content video,
-.modal-content iframe {
-  max-width: 100%;
-  max-height: 70vh;
-}
-
-.close {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-}
-
-.file-list {
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  /* overflow: hidden; */
-}
-
-.file-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-bottom: 1px solid #eee;
-  column-gap: 20px;
-}
-
-.file-row:hover {
-  background: #f7f7f7;
-}
-
-.file-row:last-child {
-  border-bottom: none;
-}
-
-.file-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
-}
-
-.icon {
-  font-size: 22px;
-  width: 26px;
-  text-align: center;
-}
-
-.name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.file-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.file-actions button {
-  padding: 4px 10px;
-  font-size: 0.85rem;
-}
-</style>

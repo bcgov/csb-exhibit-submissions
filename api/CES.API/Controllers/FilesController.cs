@@ -1,94 +1,153 @@
+using CES.Business.Constants;
 using CES.Business.Interfaces;
 using CES.Business.Models;
-using CES.Entities.Interfaces;
-using CES.Business.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace CES.API.Controllers
 {
     public class FilesController : Controller
     {
+        private readonly IFileService _fileService;
 
-        private readonly IFileStorage _fileStorage;
-        private IFileService _fileService;
-
-        public FilesController(IFileStorage fileStorage, IFileService fileService)
+        public FilesController(IFileService fileService)
         {
-            _fileStorage = fileStorage;
             _fileService = fileService;
+        }
+
+        // Admin and Clerk can both edit a classification past its normal Entered lock
+        // (Officer cannot); this drives the isAdminOverride flag on IFileService.
+        private static bool HasClassificationOverride(ClaimsPrincipal user) =>
+            user.IsInRole(RoleConstants.Admin) || user.IsInRole(RoleConstants.Clerk);
+
+        private static string ResolveActorLabel(ClaimsPrincipal user, string? userData) =>
+            userData ?? (user.IsInRole(RoleConstants.Admin) ? "Admin"
+                : user.IsInRole(RoleConstants.Clerk) ? "Clerk" : "Officer");
+
+        [HttpPost]
+        [Route("api/files/{fileId:guid}/mark")]
+        [Authorize(Roles = RoleConstants.UserAdminOrClerk)]
+        public async Task<IActionResult> MarkExhibit(Guid fileId, [FromBody] ExhibitMarkModel model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var isOverride = HasClassificationOverride(User);
+            var changedBy = ResolveActorLabel(User, User.FindFirstValue(ClaimTypes.UserData));
+            var result = await _fileService.MarkExhibitAsync(fileId, model.MarkedValue, changedBy, isOverride);
+            return Ok(result);
+        }
+
+        [HttpPost]
+        [Route("api/files/{fileId:guid}/enter")]
+        [Authorize(Roles = RoleConstants.UserAdminOrClerk)]
+        public async Task<IActionResult> EnterExhibit(Guid fileId, [FromBody] ExhibitEnterModel model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var isOverride = HasClassificationOverride(User);
+            var changedBy = ResolveActorLabel(User, User.FindFirstValue(ClaimTypes.UserData));
+            var result = await _fileService.EnterExhibitAsync(fileId, model.EnteredValue, changedBy, isOverride);
+            return Ok(result);
+        }
+
+        // Description entries (CES-42). Append-only — there is deliberately no update
+        // or delete route, and no GET: the entries ride along on every SubmissionFile.
+        [HttpPost]
+        [Route("api/files/{fileId:guid}/descriptions")]
+        [Authorize(Roles = RoleConstants.UserAdminOrClerk)]
+        public async Task<IActionResult> AddDescription(Guid fileId, [FromBody] AddExhibitDescriptionModel model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var isOverride = HasClassificationOverride(User);
+            var createdBy = ResolveActorLabel(User, User.FindFirstValue(ClaimTypes.UserData));
+            var result = await _fileService.AddExhibitDescriptionAsync(fileId, model.DescriptionText, createdBy, isOverride);
+            return Ok(result);
+        }
+
+        [HttpPatch]
+        [Route("api/files/{fileId:guid}/evidence-source")]
+        [Authorize(Roles = RoleConstants.UserAdminOrClerk)]
+        public async Task<IActionResult> UpdateEvidenceSource(Guid fileId, [FromBody] ExhibitEvidenceSourceModel model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var isOverride = HasClassificationOverride(User);
+            var changedBy = ResolveActorLabel(User, User.FindFirstValue(ClaimTypes.UserData));
+            var result = await _fileService.UpdateExhibitEvidenceSourceAsync(fileId, model.EvidenceSourceType, changedBy, isOverride);
+            return Ok(result);
+        }
+
+        [HttpGet]
+        [Route("api/files/{fileId:guid}/history")]
+        [Authorize(Roles = RoleConstants.UserAdminOrClerk)]
+        public async Task<IActionResult> GetHistory(Guid fileId)
+        {
+            var result = await _fileService.GetExhibitHistoryAsync(fileId);
+            return Ok(result);
+        }
+
+        // Registry-only notes (CES-38 extension). Admin (JJ) and Clerk (registry) only —
+        // these are protected and never exposed to officers.
+        [HttpGet]
+        [Route("api/files/{fileId:guid}/notes")]
+        [Authorize(Roles = RoleConstants.AdminOrClerk)]
+        public async Task<IActionResult> GetNotes(Guid fileId)
+        {
+            var result = await _fileService.GetExhibitNotesAsync(fileId);
+            return Ok(result);
+        }
+
+        [HttpPost]
+        [Route("api/files/{fileId:guid}/notes")]
+        [Authorize(Roles = RoleConstants.AdminOrClerk)]
+        public async Task<IActionResult> AddNote(Guid fileId, [FromBody] AddExhibitNoteModel model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var createdBy = User.FindFirstValue(ClaimTypes.UserData)
+                ?? (User.IsInRole(RoleConstants.Clerk) ? "Clerk" : "Admin");
+            var result = await _fileService.AddExhibitNoteAsync(fileId, model.NoteText, createdBy);
+            return Ok(result);
         }
 
         [HttpGet]
         [Route("api/files/{fileId}/view")]
-        // [Authorize(Roles = "Admin")]
+        // NOTE: intentionally left open — the frontend loads previews via a raw
+        // <video>/<img>/<iframe> src that cannot carry the JWT Bearer token. Re-enable
+        // [Authorize(Roles = "User,Admin")] once authenticated blob or signed-URL
+        // streaming is wired up on the client (CES-39, deferred).
+        // [Authorize(Roles = "User,Admin")]
         public async Task<IActionResult> View(Guid fileId)
         {
-            var file = await _fileService.RetrieveFileMetaData(fileId);
+            var (stream, _, contentType, error) = await _fileService.GetExhibitContentAsync(fileId);
 
-            if (file == null)
-                return NotFound();
+            if (stream == null)
+                return NotFound(error);
 
-            var stream = await _fileStorage.GetAsync(file);
-
-            // return File(stream, file.ContentType, enableRangeProcessing: true);
-            return new FileStreamResult(stream, file.ContentType) { EnableRangeProcessing = true };
+            return new FileStreamResult(stream, contentType ?? "application/octet-stream") { EnableRangeProcessing = true };
         }
 
         [HttpGet]
         [Route("api/files/{fileId}/download")]
-        // [Authorize(Roles = "Admin")]
+        // NOTE: intentionally left open — see the View endpoint above. The admin
+        // download uses a bare fetch() without the Bearer token. Re-enable
+        // [Authorize(Roles = "User,Admin")] alongside the client-side auth fix.
+        // [Authorize(Roles = "User,Admin")]
         public async Task<IActionResult> Download(Guid fileId)
         {
-            var file = await _fileService.RetrieveFileMetaData(fileId);
+            var (stream, fileName, contentType, error) = await _fileService.GetExhibitContentAsync(fileId);
 
-            if (file == null)
-                return NotFound();
+            if (stream == null)
+                return NotFound(error);
 
-            var stream = await _fileStorage.GetAsync(file);
-
-            return File(stream, file.ContentType, file.OriginalFileName);
+            return File(stream, contentType ?? "application/octet-stream", fileName);
         }
-
-
-/*
-    WIP: To secure the file view and downloading so that users have to be authorized.
-    current /view and /download links are not secure if someone knows/guesses the file GUID
-*/
-        // [Authorize]
-        // [HttpGet("{id}/stream-url")]
-        // public async Task<IActionResult> GetStreamUrl(Guid fileId)
-        // {
-        //     var file = await _fileService.RetrieveFileMetaData(fileId);
-        //     if (file == null)
-        //         return NotFound();
-
-        //     // expires in 2 minutes
-        //     var expires = DateTime.UtcNow.AddMinutes(2);
-
-        //     var token = await CES.Business.Services.CryptographyService.GenerateVideoViewToken(file.Id, expires);
-
-        //     var url = $"{Request.Scheme}://{Request.Host}/api/files/stream/{file.Id}?token={token}";
-
-        //     return Ok(new { url });
-        // }
-
-        // [AllowAnonymous]
-        // [HttpGet("stream/{id}")]
-        // public async Task<IActionResult> Stream(Guid fileId, string token)
-        // {
-        //     var isTokenValid = await CES.Business.Services.CryptographyService.ValidateVideoToken(fileId, token);
-        //     if (!isTokenValid)
-        //         return Unauthorized();
-
-        //     var file = await _fileService.RetrieveFileMetaData(fileId);
-        //     if (file == null)
-        //         return NotFound();
-
-        //     var stream = await _fileStorage.GetAsync(file);
-
-        //     // return File(stream, file.ContentType, enableRangeProcessing: true);
-        //     return new FileStreamResult(stream, file.ContentType) { EnableRangeProcessing = true };
-        // }
     }
 }

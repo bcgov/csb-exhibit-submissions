@@ -10,8 +10,8 @@ namespace CES.Business.Models
     public class CESLoginModel
     {
         
-        public string Username { get; set; }
-        public string Password { get; set; }
+        public required string Username { get; set; }
+        public required string Password { get; set; }
         public bool RememberMe { get; set; } = false;
     }
 }

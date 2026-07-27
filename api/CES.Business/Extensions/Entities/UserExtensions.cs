@@ -57,10 +57,12 @@ namespace CES.Business.Extensions.Entities
         {
             var email = user.Claims.FirstOrDefault(cl => cl.Type == ClaimTypes.UserData)?.Value.ToString() ?? "";
             var role = user.Claims.FirstOrDefault(cl => cl.Type == ClaimTypes.Role)?.Value.ToString() ?? "";
+            var userIdClaim = user.Claims.FirstOrDefault(cl => cl.Type == ClaimTypes.Name)?.Value
+                ?? throw new InvalidOperationException("Missing Name claim.");
 
             return new LoggedInUserModel
             {
-                UserId = int.Parse(user.Identity.Name),
+                UserId = int.Parse(userIdClaim),
                 Email = email,
                 LastActiveRole = role
             };

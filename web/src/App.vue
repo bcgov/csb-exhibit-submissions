@@ -1,18 +1,19 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
- import { mdiAccountCircle, mdiLogout } from '@mdi/js';
+import { RouterLink, RouterView } from 'vue-router';
+import { mdiAccountCircle, mdiLogout } from '@mdi/js';
 import { ref } from 'vue';
-import logo from './assets/bc-logo.svg?url'
+import logo from './assets/bc-logo.svg?url';
 import useAuthService from './services/AuthService';
 import { useAuthStore } from './stores/authStore';
+import { ROLE_ADMIN, ROLE_USER, ROLE_CLERK } from './constants/roles';
 
-const selectedTab = ref('/officer/court-list')
-const {logout} = useAuthService();
+const selectedTab = ref('/officer/court-list');
+const { logout } = useAuthService();
 const handleLogout = () => {
-  console.log('Logging out...')
-  logout()  
-}
-  const authStore = useAuthStore();
+  console.log('Logging out...');
+  logout();
+};
+const authStore = useAuthStore();
 </script>
 
 <template>
@@ -25,20 +26,25 @@ const handleLogout = () => {
           </router-link>
         </v-app-bar-title>
         <v-tabs align-tabs="start" v-model="selectedTab">
-          <v-tab value="admin-list" to="/admin/list" v-if="authStore.hasRole('Admin')">Admin Listing</v-tab>
-          <v-tab value="court-list" to="/officer/court-list" v-if="authStore.hasRole('User')">Court list</v-tab>
-          
+          <v-tab
+            value="admin-exhibit-search"
+            to="/admin/exhibit-search"
+            v-if="authStore.hasRole(ROLE_ADMIN)"
+            >Exhibit Search</v-tab
+          >
+          <v-tab value="admin-list" to="/admin/list" v-if="authStore.hasRole(ROLE_CLERK)"
+            >Submission Listing</v-tab
+          >
+          <v-tab value="court-list" to="/officer/court-list" v-if="authStore.hasRole(ROLE_USER)"
+            >Court list</v-tab
+          >
+
           <v-spacer></v-spacer>
           <div class="d-flex align-center mr-4">
             <v-menu min-width="200px" rounded>
               <template v-slot:activator="{ props }">
-                <v-btn
-                  v-bind="props"
-                  size="x-large"
-                  class="text-subtitle-1"
-                  variant="text"
-                >
-                  <span class="mr-2">{{ authStore.user?.id }}</span>
+                <v-btn v-bind="props" size="x-large" class="text-subtitle-1" variant="text">
+                  <span class="mr-2">{{ authStore.user?.displayName }}</span>
                   <v-icon :icon="mdiAccountCircle" size="32" />
                 </v-btn>
               </template>
@@ -55,80 +61,10 @@ const handleLogout = () => {
           </div>
         </v-tabs>
       </v-app-bar>
-      
+
       <v-main>
         <router-view />
       </v-main>
-      </v-app>
-      </v-theme-provider>
-
+    </v-app>
+  </v-theme-provider>
 </template>
-
-<style scoped>
-header {
-  line-height: 1.5;
-  max-height: 100vh;
-}
-
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
-}
-
-nav {
-  width: 100%;
-  font-size: 12px;
-  text-align: center;
-  margin-top: 2rem;
-}
-
-nav a.router-link-exact-active {
-  color: var(--color-text);
-}
-
-nav a.router-link-exact-active:hover {
-  background-color: transparent;
-}
-
-nav a {
-  display: inline-block;
-  padding: 0 1rem;
-  border-left: 1px solid var(--color-border);
-}
-
-nav a:first-of-type {
-  border: 0;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-    height: 100%;
-    width: 300px;
-  }
-
-  nav {
-    text-align: left;
-    margin-left: -1rem;
-    font-size: 1rem;
-
-    padding: 1rem 0;
-    margin-top: 1rem;
-
-    display: flex;
-    flex-direction: column;
-  }
-}
-</style>

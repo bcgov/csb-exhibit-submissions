@@ -5,14 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "run-p type-check \"build-only {@}\" --",
+    "build": "run-p type-check check:scss \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
+    "check:scss": "sass --load-path=node_modules --no-source-map src/styles/main.scss:/dev/null",
     "lint": "run-s lint:*",
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache",
-    "format": "prettier --write --experimental-cli src/"
+    "format": "prettier --write --experimental-cli src/",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@bcgov/bc-sans": "^2.1.0",
@@ -33,6 +37,8 @@
     "@vitejs/plugin-vue": "^6.0.7",
     "@vitejs/plugin-vue-jsx": "^5.1.6",
     "@vue/eslint-config-typescript": "^14.9.0",
+    "@vue/test-utils": "^2.4.10",
+    "@vitest/coverage-v8": "^4.1.7",
     "@vue/tsconfig": "^0.9.1",
     "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",
@@ -43,12 +49,18 @@
     "oxlint": "~1.71.0",
     "prettier": "3.9.0",
     "sass-embedded": "^1.100.0",
+    "jsdom": "^29.1.1",
+    "msw": "^2.14.6",
     "typescript": "~6.0.3",
-    "vite": "^8.1.0",
     "vite-plugin-vue-devtools": "^8.1.4",
-    "vue-tsc": "^3.3.5"
+    "vue-tsc": "^3.3.5",
+    "vite": "^8.1.5",
+    "vitest": "^4.1.7"
+  },
+  "overrides": {
+    "minimatch": "^10.2.4"
   },
   "engines": {
-    "node": "^20.19.0 || >=22.12.0"
+    "node": "^20.19.0 || >=22.13.0"
   }
 }

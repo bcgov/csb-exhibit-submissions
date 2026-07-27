@@ -1,0 +1,221 @@
+@use "variables" as *;
+
+// --- CourtListing ---
+
+.search-container {
+  max-width: 500px;
+  margin: 0 auto;
+
+  input[type="text"],
+  select {
+    padding: $padding-small;
+    font-size: $font-size-body;
+    border: $border-width-small solid $color-border-medium;
+    border-radius: $border-radius-default;
+  }
+
+  .autocomplete-wrapper {
+    margin-bottom: 0;
+  }
+}
+
+.court-results {
+  .submission-table {
+    width: 100%;
+    border-collapse: collapse;
+
+    th,
+    td {
+      border: $border-width-small solid $color-border;
+      padding: 0.75rem;
+    }
+
+    .checkbox-col {
+      width: 40px;
+      text-align: center;
+    }
+
+    tr:hover {
+      background-color: $color-bg-light;
+      cursor: pointer;
+    }
+
+    .selected {
+      background-color: $color-bg-light-blue;
+    }
+  }
+
+  .offence-list {
+    font-size: $font-size-label;
+  }
+}
+
+.floating-upload-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: $color-bg-dark-blue;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem $padding-large;
+  z-index: 100;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.25);
+
+  .selected-count {
+    font-size: $font-size-body;
+  }
+
+  .upload-btn {
+    font-weight: $font-weight-bold;
+  }
+}
+
+// --- SubmissionForm ---
+
+.exhibit-page {
+  padding: $padding-xlarge;
+  max-width: 1280px;
+  margin: auto;
+
+  .shared-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: $margin-medium;
+    margin-bottom: $margin-large;
+  }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+
+    input {
+      padding: $padding-small;
+    }
+  }
+
+  .ticket-panel {
+    border: $border-width-small solid $color-border;
+    border-radius: $border-radius-large;
+    margin-bottom: $margin-large;
+
+    .ticket-panel-header {
+      padding: 0.6rem 1rem;
+      background: $color-bg-light;
+      font-weight: $font-weight-bold;
+      border-bottom: $border-width-small solid $color-border;
+      border-radius: $border-radius-large $border-radius-large 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .ticket-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid $color-border;
+      gap: 1rem;
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    .ticket-info {
+      flex: 1;
+      font-size: $font-size-small-body;
+    }
+
+    .ticket-file-num {
+      font-weight: $font-weight-bold;
+      font-family: monospace;
+    }
+
+    .ticket-detail {
+      color: $color-text-secondary;
+      font-size: $font-size-label;
+    }
+
+    .remove-btn {
+      white-space: nowrap;
+    }
+  }
+
+  .prior-exhibits-section {
+    margin-bottom: $margin-large;
+
+    // Semantically an h2 (page subsection under the "Exhibit Upload" h1). Kept
+    // compact with an on-scale token — same pattern as `.modal-title` — since a
+    // full 32px heading is too heavy for this in-form label.
+    h2 {
+      margin-bottom: $margin-small;
+      font-size: $font-size-large-body;
+    }
+  }
+
+  .prior-empty {
+    font-size: $font-size-small-body;
+    color: $color-text-disabled;
+    font-style: italic;
+  }
+
+  .prior-error {
+    font-size: $font-size-small-body;
+    color: $color-danger;
+  }
+
+  .officer-field {
+    margin-bottom: $margin-large;
+    display: flex;
+    flex-direction: column;
+    max-width: 250px;
+  }
+
+  .dropzone {
+    margin-top: $margin-medium;
+  }
+
+  .actions {
+    margin-top: $margin-large;
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  .upload-progress {
+    width: 100%;
+    margin-top: $margin-medium;
+  }
+}
+
+// --- Officer overlays (file preview) ---
+
+.preview-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.preview-dialog {
+  background: white;
+  padding: 20px;
+  max-width: 1000px;
+  width: 90%;
+  max-height: 90vh;
+  position: relative;
+  overflow-y: auto;
+
+  .close-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+  }
+}

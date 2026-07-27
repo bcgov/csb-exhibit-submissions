@@ -9,8 +9,8 @@ namespace CES.Entities
 {
     public class UserAuthToken:BaseEntity
     {
-        public ApplicationUser ApplicationUser { get; set; }
-        public string AuthToken { get; set; }
+        public ApplicationUser ApplicationUser { get; set; } = null!;
+        public string AuthToken { get; set; } = null!;
         public DateTime TokenExpiryDateUTC { get; set; }
         public bool? IsRevoked { get; set; }
         public DateTime? RevokedDateUTC { get; set; }
