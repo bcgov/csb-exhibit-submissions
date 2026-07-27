@@ -29,6 +29,13 @@ namespace CES.EF
         {
             base.OnModelCreating(modelBuilder);
             modelBuilder.BindRelationships();
+
+            // Filtered to non-null so the existing mock/dev-bypass rows, which all have a
+            // null KeycloakSub, do not collide with each other under the unique constraint.
+            modelBuilder.Entity<ApplicationUser>()
+                .HasIndex(user => user.KeycloakSub)
+                .IsUnique()
+                .HasFilter("\"KeycloakSub\" IS NOT NULL");
         }
 
         public override int SaveChanges()

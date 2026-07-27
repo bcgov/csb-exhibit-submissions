@@ -1,6 +1,6 @@
 # Keycloak Integration (Simplified)
 
-**Status:** Draft
+**Status:** Rejected - Do not use!
 **Date:** 2026-07-16
 **Supersedes:** [keycloak-integration.md](keycloak-integration.md)
 

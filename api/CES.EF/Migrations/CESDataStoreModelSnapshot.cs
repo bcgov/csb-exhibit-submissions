@@ -50,6 +50,9 @@ namespace CES.EF.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("KeycloakSub")
+                        .HasColumnType("text");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasColumnType("text");
@@ -65,6 +68,10 @@ namespace CES.EF.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("KeycloakSub")
+                        .IsUnique()
+                        .HasFilter("\"KeycloakSub\" IS NOT NULL");
 
                     b.ToTable("ApplicationUser");
                 });

@@ -480,16 +480,24 @@
   }
 
   .view-container {
+    // Fixed reserve (see $action-column-width) — constant on every row so the chips and
+    // date to the left never shift; flex-end pins the rendered buttons to the row's right
+    // edge, and any unused slots show up as leading whitespace. min-width rather than
+    // width so the column grows instead of overflowing if an action is ever added.
     display: flex;
-    gap: 0.3rem;
+    justify-content: flex-end;
     align-items: center;
-    min-width: 50px;
+    gap: $action-slot-gap;
+    flex: 0 0 auto;
+    min-width: $action-column-width;
   }
 
-  .view-btn,
-  .dl-btn,
-  .rm-btn {
-    white-space: nowrap;
+  // MDI paths are 24×24; sized here from the icon token, coloured from the button variant.
+  .action-icon {
+    display: block;
+    width: $icon-size-medium;
+    height: $icon-size-medium;
+    fill: currentColor;
   }
 }
 

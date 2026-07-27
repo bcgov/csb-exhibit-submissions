@@ -241,8 +241,7 @@ describe('ExhibitList — description entries (CES-42)', () => {
 });
 
 describe('ExhibitList — evidence source dropdown', () => {
-  const sourceSelect = (wrapper: ReturnType<typeof mount>) =>
-    wrapper.find('.source-group select');
+  const sourceSelect = (wrapper: ReturnType<typeof mount>) => wrapper.find('.source-group select');
 
   it('renders a blank option plus the three source types', () => {
     const wrapper = mount(ExhibitList, { props: expandedProps() });
@@ -298,5 +297,54 @@ describe('ExhibitList — evidence source dropdown', () => {
     });
 
     expect(sourceSelect(wrapper).attributes('disabled')).toBeUndefined();
+  });
+});
+
+describe('ExhibitList — row action column', () => {
+  it('names each icon-only action button after its file', () => {
+    const wrapper = mount(ExhibitList, {
+      props: { ...baseProps(), canDownload: true, canRemove: true },
+    });
+
+    expect(wrapper.find('.view-btn').attributes('aria-label')).toBe('View exhibit.mp4');
+    expect(wrapper.find('.dl-btn').attributes('aria-label')).toBe('Download exhibit.mp4');
+    expect(wrapper.find('.rm-btn').attributes('aria-label')).toBe('Remove exhibit.mp4');
+    // The graphic itself must not be announced or focusable.
+    expect(wrapper.find('.view-btn .action-icon').attributes('aria-hidden')).toBe('true');
+  });
+
+  // The column is reserved on every row — that fixed width is what keeps the date and
+  // ticket chips aligned when a file supports fewer actions than its neighbours.
+  it('renders the action column even when the file has no viewable preview', () => {
+    const wrapper = mount(ExhibitList, {
+      props: {
+        ...baseProps(),
+        entries: [
+          {
+            file: makeFile({ contentType: 'application/zip', originalFileName: 'files.zip' }),
+            fileNumbers: [],
+          },
+        ],
+      },
+    });
+
+    expect(wrapper.find('.view-container').exists()).toBe(true);
+    expect(wrapper.find('.view-btn').exists()).toBe(false);
+  });
+
+  it('renders an empty action column for a Removed row', () => {
+    const wrapper = mount(ExhibitList, {
+      props: {
+        ...baseProps(),
+        showRemoved: true,
+        canDownload: true,
+        canRemove: true,
+        entries: [{ file: makeFile({ status: 'Removed' }), fileNumbers: [] }],
+      },
+    });
+
+    const column = wrapper.find('.view-container');
+    expect(column.exists()).toBe(true);
+    expect(column.findAll('button')).toHaveLength(0);
   });
 });

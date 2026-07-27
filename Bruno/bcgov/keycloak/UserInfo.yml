@@ -1,0 +1,38 @@
+info:
+  name: UserInfo (verify Keycloak token)
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{keycloakAuthority}}/protocol/openid-connect/userinfo"
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+    - expression: res.body.sub
+      operator: isString
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  Runs the Authorization Code + PKCE flow against the dev Keycloak realm
+  (see spec/keycloak-simplified.md) and calls Keycloak's own `/userinfo`
+  endpoint with the resulting access token.
+
+  Auto-fetch is enabled on the folder's auth config, so just hitting Send
+  opens the system browser to log in via IDIR the first time. A 200 with
+  `sub` / `roles` / `email` claims in the body confirms Keycloak is issuing
+  a usable bearer token end-to-end.
+
+  Requires `keycloakAuthority`, `keycloakClientId`, and `keycloakRedirectUri`
+  to be set on the active environment (copy environments/dev.sample.yml or
+  test.sample.yml to dev.yml / test.yml and fill in the real values - they're
+  gitignored, ask the team for the dev realm's Authority/Client ID).

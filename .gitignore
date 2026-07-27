@@ -44,3 +44,6 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# Data Protection key ring (local fallback path — key material, never commit)
+keys/

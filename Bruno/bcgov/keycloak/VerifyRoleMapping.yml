@@ -1,0 +1,51 @@
+info:
+  name: CES API - maps ces-judicial to Admin
+  type: http
+  seq: 3
+
+http:
+  method: GET
+  url: "{{apiBaseUrl}}/api/submissions/exhibit-search?fileNumberText=00000"
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  The other half of "CES API - accepts Keycloak token": that request proves
+  the token is trusted, this one proves the Keycloak client roles were
+  actually mapped onto CES roles.
+
+  /api/submissions/exhibit-search carries [Authorize(Roles = Admin)], and
+  nothing in the token says "Admin" - it says "ces-judicial". Reaching this
+  endpoint at all means MapKeycloakRoles read the role claim and translated
+  it, so a 200 exercises the whole chain.
+
+  Read the result by status, not by body:
+    200 - the signed-in IDIR account holds ces-judicial and it mapped to
+          Admin. An empty result list is still a pass; the file number is a
+          placeholder (5 chars, the minimum the endpoint accepts) that is
+          not expected to match anything.
+    403 - authenticated but not authorized. Either the account is not
+          assigned ces-judicial in Keycloak, or the roles did not survive
+          mapping. Decode the access token at jwt.io and check: a flat
+          top-level "roles" array should contain ces-judicial. If the flat
+          claim is missing entirely, the realm's roles protocol mapper is
+          gone and the backend fell through to its resource_access
+          fallback - confirm resource_access.<clientId>.roles instead.
+    401 - the token was not accepted at all. Debug that with "CES API -
+          accepts Keycloak token" first; this request cannot tell you
+          anything until that one passes.
+
+  To check the negative case, sign in as an account holding only ces-user
+  and re-run: a 403 is then the correct answer, and proves unknown/unmapped
+  roles are not silently granting access.

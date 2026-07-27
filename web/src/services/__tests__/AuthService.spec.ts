@@ -55,6 +55,45 @@ describe('AuthService', () => {
     await expect(login('bad@user.com', 'wrong')).rejects.toThrow();
   });
 
+  describe('loginViaKeycloak', () => {
+    // A full-page navigation, not an axios call: the browser has to follow the API's
+    // 302 all the way to the IDIR login screen.
+    let assignMock: ReturnType<typeof vi.fn>;
+    let originalLocation: Location;
+
+    beforeEach(() => {
+      assignMock = vi.fn();
+      originalLocation = window.location;
+      vi.stubGlobal('location', { ...window.location, assign: assignMock, pathname: '/' });
+    });
+
+    afterEach(() => {
+      // Restore only location — vi.unstubAllGlobals() would also tear down the shared
+      // localStorage stub that test/setup.ts installs for the whole suite.
+      vi.stubGlobal('location', originalLocation);
+    });
+
+    it('navigates to the API login endpoint', () => {
+      useAuthService().loginViaKeycloak();
+
+      expect(assignMock).toHaveBeenCalledWith('/api/auth/login');
+    });
+
+    it('passes the current path as an encoded returnUrl', () => {
+      useAuthService().loginViaKeycloak('/officer/court-list');
+
+      expect(assignMock).toHaveBeenCalledWith(
+        '/api/auth/login?returnUrl=%2Fofficer%2Fcourt-list',
+      );
+    });
+
+    it('omits the returnUrl when it is already the app root', () => {
+      useAuthService().loginViaKeycloak('/');
+
+      expect(assignMock).toHaveBeenCalledWith('/api/auth/login');
+    });
+  });
+
   it('logout clears authStore', () => {
     const authStore = useAuthStore();
     authStore.setToken('some-token');

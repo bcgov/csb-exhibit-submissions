@@ -1,0 +1,18 @@
+info:
+  name: Rooms
+  type: http
+  seq: 3
+
+http:
+  method: GET
+  url: https://wsgw.test.jag.gov.bc.ca/courts/Lookup/v2/locations/rooms
+  auth:
+    type: basic
+    username: "{{fileServices_Username"
+    password: "{{fileService_Password}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
