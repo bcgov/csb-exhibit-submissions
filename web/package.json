@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@bcgov/bc-sans": "^2.1.0",
-    "@bcgov/design-tokens": "^4.0.0",
+    "@bcgov/design-tokens": "^5.0.0",
     "@mdi/js": "^7.4.47",
     "axios": "^1.18.1",
     "bootstrap": "^5.3.8",
