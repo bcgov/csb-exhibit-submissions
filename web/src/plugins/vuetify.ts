@@ -1,10 +1,10 @@
-import { createVuetify } from 'vuetify';
-import * as components from 'vuetify/components';
-import { VBtn } from 'vuetify/components';
-import * as directives from 'vuetify/directives';
-import { aliases, mdi } from 'vuetify/iconsets/mdi-svg';
-import { VDateInput } from 'vuetify/labs/VDateInput';
-import 'vuetify/styles';
+import { createVuetify } from 'vuetify'
+import * as components from 'vuetify/components'
+import { VBtn } from 'vuetify/components'
+import { VDateInput } from 'vuetify/components/VDateInput'
+import * as directives from 'vuetify/directives'
+import { aliases, mdi } from 'vuetify/iconsets/mdi-svg'
+import 'vuetify/styles'
 
 // BC Gov design token values for Vuetify component overrides.
 const FORM_FIELD_BG = '#D8EAFD'; // BC Gov theme-blue-20: light blue tint for VSelect / VDateInput backgrounds
@@ -77,4 +77,4 @@ export default createVuetify({
       hover: true,
     },
   },
-});
+})
