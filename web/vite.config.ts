@@ -37,17 +37,18 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
-    // Building a fresh jsdom per test file dominates the run (the tests themselves
-    // are ~1.5s of it). Reusing one environment per worker cuts the wall-clock by
-    // roughly 4×. Safe here because no test mutates shared module state that the
-    // per-file setup does not already reset (MSW handlers reset in afterEach).
-    isolate: false,
+    // Must stay true. `isolate: false` shares one module registry across every
+    // test file in a worker, so the first file to import a module wins and later
+    // files' `vi.mock` factories silently never apply — apiClient.retry.spec and
+    // ExhibitDetailModal.spec both fail that way, and which files collide depends
+    // on how the scheduler packs them. Isolation costs ~8s of wall-clock here;
+    // pay it.
+    isolate: true,
     // The devcontainer reports 16 cores but has ~2GB of usable RAM, so 16 jsdom
     // workers thrash and time out on startup — which silently dropped whole test
     // files from the run. Cap the pool to what memory can actually carry.
-    poolOptions: {
-      forks: { maxForks: 4 },
-    },
+    // (Vitest 4 renamed this; it was `poolOptions.forks.maxForks` under v3.)
+    maxWorkers: 4,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
