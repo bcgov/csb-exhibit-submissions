@@ -10,6 +10,7 @@ import {
 } from '@/constants/classification';
 import { formatDateTime } from '@/helpers/formatters';
 import type { SubmissionFile } from '@/models/SubmissionReviewModel';
+import { mdiEyeOutline, mdiTrashCanOutline, mdiTrayArrowDown } from '@mdi/js';
 import { computed, reactive, watch } from 'vue';
 import ExhibitDescriptionCell from './ExhibitDescriptionCell.vue';
 
@@ -127,7 +128,8 @@ const statusChipClass = (status?: string) => {
 // assigned Marked letter / Exhibit number once one has been recorded.
 const statusChipText = (file: SubmissionFile): string => {
   if (file.status === 'Marked') return file.markedValue ? `Marked ${file.markedValue}` : 'Marked';
-  if (file.status === 'Entered') return file.enteredValue ? `Exhibit ${file.enteredValue}` : 'Exhibit';
+  if (file.status === 'Entered')
+    return file.enteredValue ? `Exhibit ${file.enteredValue}` : 'Exhibit';
   if (file.status === 'Removed') return 'Removed';
   return 'Unclassified';
 };
@@ -263,7 +265,7 @@ const onEvidenceSourceChange = async (file: SubmissionFile, value: string) => {
           >
         </span>
 
-        <!-- Save indicator and action buttons: non-Removed files only -->
+        <!-- Save indicator: non-Removed files only -->
         <template v-if="entry.file.status !== 'Removed'">
           <span
             v-if="saveIndicators[entry.file.id] === 'success'"
@@ -277,34 +279,52 @@ const onEvidenceSourceChange = async (file: SubmissionFile, value: string) => {
             :title="saveIndicators[entry.file.id] as string"
             >✕</span
           >
+        </template>
 
-          <div class="view-container">
+        <!-- Action column: always rendered, even for Removed rows and files with no
+             applicable action. Its fixed width is what keeps the date and ticket chips
+             to its left aligned down the whole list. Icons carry the filename in their
+             aria-label — rows repeat, so a bare "Download" would be ambiguous. -->
+        <div class="view-container">
+          <template v-if="entry.file.status !== 'Removed'">
             <button
               v-if="isViewable(entry.file.contentType)"
               type="button"
-              class="btn btn--sm btn--primary-outline view-btn"
+              class="btn btn--icon btn--primary-outline view-btn"
+              :aria-label="`View ${entry.file.originalFileName}`"
+              title="View"
               @click="emit('previewFile', entry.file)"
             >
-              View
+              <svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path :d="mdiEyeOutline" />
+              </svg>
             </button>
             <button
               v-if="canDownload"
               type="button"
-              class="btn btn--sm btn--primary-outline dl-btn"
+              class="btn btn--icon btn--primary-outline dl-btn"
+              :aria-label="`Download ${entry.file.originalFileName}`"
+              title="Download"
               @click="emit('downloadFile', entry.file)"
             >
-              Download
+              <svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path :d="mdiTrayArrowDown" />
+              </svg>
             </button>
             <button
               v-if="canRemove"
               type="button"
-              class="btn btn--sm btn--danger-outline rm-btn"
+              class="btn btn--icon btn--danger-outline rm-btn"
+              :aria-label="`Remove ${entry.file.originalFileName}`"
+              title="Remove"
               @click="emit('removeFile', entry.file)"
             >
-              Remove
+              <svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path :d="mdiTrashCanOutline" />
+              </svg>
             </button>
-          </div>
-        </template>
+          </template>
+        </div>
       </div>
 
       <!-- Condensed: the description sits on its own tight line, aligned under the filename -->

@@ -44,7 +44,7 @@ const authStore = useAuthStore();
             <v-menu min-width="200px" rounded>
               <template v-slot:activator="{ props }">
                 <v-btn v-bind="props" size="x-large" class="text-subtitle-1" variant="text">
-                  <span class="mr-2">{{ authStore.user?.id }}</span>
+                  <span class="mr-2">{{ authStore.user?.displayName }}</span>
                   <v-icon :icon="mdiAccountCircle" size="32" />
                 </v-btn>
               </template>

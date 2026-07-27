@@ -262,7 +262,9 @@ describe('SubmissionReview', () => {
 
       const actions = wrapper.find('.view-container');
       expect(actions.exists()).toBe(true);
-      expect(actions.text()).toContain('Download');
+      // Icon-only buttons: the accessible name is the assertion, not visible text.
+      expect(actions.find('.view-btn').attributes('aria-label')).toBe('View exhibit.mp4');
+      expect(actions.find('.dl-btn').attributes('aria-label')).toBe('Download exhibit.mp4');
     });
   });
 

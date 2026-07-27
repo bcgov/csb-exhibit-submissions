@@ -15,8 +15,8 @@
 // below the WCAG 2.5.8 minimum target.
 // =============================================================================
 
-// WCAG 2.5.8 (AA) minimum interactive target size for buttons.
-$btn-min-target: 2rem; // 32px
+// $btn-min-target (WCAG 2.5.8 minimum target) lives in _variables.scss — the
+// ExhibitList action column sizes its reserved slots from the same value.
 
 // BC Gov ships hover tokens for primary/secondary/tertiary/danger, but has no
 // green "success" button (green is a status colour). CES uses green for the
