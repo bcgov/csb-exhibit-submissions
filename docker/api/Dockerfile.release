@@ -2,20 +2,12 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-# Copy project files and restore dependencies
-COPY api/CES.API/CES.API.csproj ./api/CES.API/
-COPY api/CES.Business/CES.Business.csproj ./api/CES.Business/
-COPY api/CES.EF/CES.EF.csproj ./api/CES.EF/
-COPY api/CES.Entities/CES.Entities.csproj ./api/CES.Entities/
-COPY api/jc-interface-client/jc-interface-client.csproj ./api/jc-interface-client/
-RUN dotnet restore ./api/CES.API/CES.API.csproj
-
-# Copy source code
+# Copy all source code
 COPY api/ ./api/
 
 # Build and publish
 WORKDIR /src/api/CES.API
-RUN dotnet publish -c Release -o /app/publish --no-restore
+RUN dotnet publish -c Release -o /app/publish
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime

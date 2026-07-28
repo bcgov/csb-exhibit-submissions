@@ -10,11 +10,6 @@ RUN curl -sSL https://aka.ms/getvsdbgsh | /bin/sh /dev/stdin -v latest -l /vsdbg
 RUN dotnet tool install --global dotnet-ef
 ENV PATH="$PATH:/root/.dotnet/tools"
 
-# Copy project files and restore NuGet packages
+# Copy all source code and restore NuGet packages
 WORKDIR /opt/app-root/src
-COPY ../api/CES.API/CES.API.csproj ./api/CES.API/
-COPY ../api/CES.Business/CES.Business.csproj ./api/CES.Business/
-COPY ../api/CES.EF/CES.EF.csproj ./api/CES.EF/
-COPY ../api/CES.Entities/CES.Entities.csproj ./api/CES.Entities/
-COPY ../api/jc-interface-client/jc-interface-client.csproj ./api/jc-interface-client/
-RUN dotnet restore ./api/CES.API/CES.API.csproj
+COPY ../api ./api
