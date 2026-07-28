@@ -9,17 +9,15 @@ ARG NPM_INSTALL_ARGS=""
 ###################################################################################
 # 1. Build web-runtime
 ###################################################################################
-# Use the offical nginx (based on debian)
-FROM nginx:stable AS runtime
+# Use the official nginx (based on Alpine)
+FROM nginx:stable-alpine AS runtime
 ARG NGINX_RUNTIME_SRC
 ARG VUE_ON_NGINX_SRC
 
 ENV STI_SCRIPTS_PATH=/usr/libexec/s2i
 
 # Required for HTTP Basic feature
-RUN apt-get update -y && \
-	apt-get install -y openssl ca-certificates && \
-	rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache openssl ca-certificates
 
 # Copy our OpenShift s2i scripts over to default location
 COPY ${VUE_ON_NGINX_SRC}/s2i/bin/ /usr/libexec/s2i/
