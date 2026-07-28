@@ -30,7 +30,8 @@ updates:
     rebase-strategy: "auto"
 
   - package-ecosystem: "nuget"
-    directory: "/api"
+    directories:
+      - "/api/*"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -55,7 +56,8 @@ updates:
     rebase-strategy: "auto"
 
   - package-ecosystem: "docker"
-    directory: "/docker"
+    directories:
+      - "/docker/*"
     schedule:
       interval: "weekly"
       day: "monday"
