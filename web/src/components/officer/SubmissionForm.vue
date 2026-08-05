@@ -244,6 +244,8 @@ const submitForm = async () => {
 
 <template>
   <div class="exhibit-page">
+    <button type="button" class="back-link" @click="goBack">&larr; Return to Room Search</button>
+
     <h1>Exhibit Upload</h1>
 
     <form @submit.prevent="submitForm">

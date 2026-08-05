@@ -80,6 +80,30 @@
   max-width: 1280px;
   margin: auto;
 
+  // Plain text link back to the court/room search. Same treatment as the filename
+  // links in ExhibitList — a button (it clears the selection store on the way out)
+  // rendered as a link.
+  .back-link {
+    display: inline-block;
+    margin-bottom: $margin-small;
+    padding: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: $font-size-small-body;
+    color: $color-text-link;
+    text-decoration: underline;
+
+    &:hover {
+      color: $color-primary;
+    }
+
+    &:focus-visible {
+      outline: $border-width-medium solid $color-text-link;
+      outline-offset: 2px;
+    }
+  }
+
   .shared-fields {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
