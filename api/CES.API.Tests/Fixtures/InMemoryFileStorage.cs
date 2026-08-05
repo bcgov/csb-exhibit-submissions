@@ -76,4 +76,27 @@ public class InMemoryFileStorage : IFileStorage
 
         return Task.FromResult<Stream>(new MemoryStream(bytes));
     }
+
+    public Task<PendingCleanupResult> DeletePendingCopyAsync(StoredFiles file)
+    {
+        // Mirrors LocalFileStorage: the pending copy only goes away once the accepted
+        // copy is present and its bytes match the hash recorded at acceptance.
+        if (!file.IsAccepted || string.IsNullOrEmpty(file.Sha256) || !_accepted.TryGetValue(file.Id, out var accepted))
+            return Task.FromResult(PendingCleanupResult.VerificationFailed);
+
+        if (!_store.TryGetValue(file.Id, out var pending))
+            return Task.FromResult(PendingCleanupResult.AlreadyRemoved);
+
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        var acceptedHash = Convert.ToHexString(sha.ComputeHash(accepted));
+
+        if (!string.Equals(acceptedHash, file.Sha256, StringComparison.OrdinalIgnoreCase)
+            || !accepted.AsSpan().SequenceEqual(pending))
+        {
+            return Task.FromResult(PendingCleanupResult.VerificationFailed);
+        }
+
+        _store.Remove(file.Id);
+        return Task.FromResult(PendingCleanupResult.Deleted);
+    }
 }

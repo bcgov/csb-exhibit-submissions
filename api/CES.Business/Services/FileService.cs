@@ -6,6 +6,7 @@ using CES.Entities;
 using CES.Entities.Infrastructure;
 using CES.Entities.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace CES.Business.Services
 {
@@ -13,11 +14,13 @@ namespace CES.Business.Services
     {
         private readonly ICESDataStore _dataStore;
         private readonly IFileStorage _fileStorage;
+        private readonly ILogger<FileService> _logger;
 
-        public FileService(ICESDataStore dataStore, IFileStorage fileStorage)
+        public FileService(ICESDataStore dataStore, IFileStorage fileStorage, ILogger<FileService> logger)
         {
             _dataStore = dataStore;
             _fileStorage = fileStorage;
+            _logger = logger;
         }
 
         public async Task<StoredFiles?> RetrieveFileMetaData(Guid fileId)
@@ -243,6 +246,43 @@ namespace CES.Business.Services
                     .Where(l => l.SubmissionId == file.SubmissionId)
                     .ToListAsync();
                 await _fileStorage.WriteMetadataAsync(file.Submission, auditLogs);
+
+                await CleanupPendingCopyAsync(file);
+            }
+        }
+
+        // The pending upload is redundant once the exhibit is in the accepted store, so
+        // it is removed — but strictly last, after the DB has committed the canonical
+        // path and hash the storage layer re-verifies against. Ordering it here means a
+        // crash or failure at any earlier point leaves a harmless orphan in uploads
+        // rather than an exhibit with nowhere to read its bytes from.
+        //
+        // Runs on every finalize (not just the promoting one) so an exhibit accepted
+        // before this cleanup existed has its original swept up the next time it is
+        // touched.
+        private async Task CleanupPendingCopyAsync(StoredFiles file)
+        {
+            try
+            {
+                var result = await _fileStorage.DeletePendingCopyAsync(file);
+
+                if (result == PendingCleanupResult.VerificationFailed)
+                {
+                    // The accepted copy could not be confirmed against the hash recorded
+                    // at acceptance. The pending original is intentionally kept as the
+                    // surviving source of the bytes — this needs a human.
+                    _logger.LogError(
+                        "Pending copy of exhibit {FileId} (submission {SubmissionId}) retained: the accepted copy at {CanonicalPath} failed verification.",
+                        file.Id, file.SubmissionId, file.CanonicalPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Cleanup is best-effort. Acceptance has already succeeded and committed,
+                // so a failure to delete must not surface as a failed request.
+                _logger.LogError(ex,
+                    "Failed to remove the pending copy of exhibit {FileId} (submission {SubmissionId}) after acceptance.",
+                    file.Id, file.SubmissionId);
             }
         }
 

@@ -22,5 +22,11 @@ namespace CES.Business.Interfaces
         // Opens an accepted exhibit by its canonical path (resolved + verified within
         // root). Throws if the canonical file is missing (fail safe).
         Task<Stream> GetAcceptedExhibitAsync(StoredFiles file);
+
+        // Removes the pending (uploads) copy of an accepted file — but only after
+        // re-verifying that the canonical copy exists and that its bytes still hash to
+        // the value captured at acceptance. Reports the outcome instead of throwing on
+        // a failed verification, so the pending bytes are never dropped on a doubt.
+        Task<PendingCleanupResult> DeletePendingCopyAsync(StoredFiles file);
     }
 }

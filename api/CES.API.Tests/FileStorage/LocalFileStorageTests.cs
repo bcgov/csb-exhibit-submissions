@@ -3,6 +3,7 @@ using System.Text;
 using CES.API;
 using CES.API.FileStorage;
 using CES.Business.FileStorage;
+using CES.Business.Models;
 using CES.Entities;
 using FluentAssertions;
 using Microsoft.Extensions.Options;
@@ -63,6 +64,24 @@ public class LocalFileStorageTests : IDisposable
     {
         using var sha = SHA256.Create();
         return Convert.ToHexString(sha.ComputeHash(bytes));
+    }
+
+    private string CanonicalFullPath(string canonicalPath)
+        => Path.Combine(_options.AcceptedPath, canonicalPath.Replace('/', Path.DirectorySeparatorChar));
+
+    private string PendingFullPath(StoredFiles file)
+        => Path.Combine(_options.LocalPath, file.StoredPath, file.StoredFileName);
+
+    // Promotes and records on the entity exactly what the DB holds after acceptance —
+    // that record is what DeletePendingCopyAsync re-verifies against.
+    private async Task<StoredFiles> AcceptAsync(Submission submission, StoredFiles file)
+    {
+        var result = await _storage.PromoteToAcceptedAsync(submission, file);
+        file.IsAccepted = true;
+        file.CanonicalPath = result.CanonicalPath;
+        file.AcceptedFileName = result.AcceptedFileName;
+        file.Sha256 = result.Sha256;
+        return file;
     }
 
     [Fact]
@@ -165,5 +184,149 @@ public class LocalFileStorageTests : IDisposable
 
         var folder = Path.Combine(_options.AcceptedPath, "loc001", "room1", "20260101", "7");
         File.Exists(Path.Combine(folder, "metadata.json")).Should().BeTrue();
+    }
+
+    // ── Pending cleanup after acceptance ──────────────────────────────────
+    // The pending original is the only surviving copy until the accepted one is
+    // proven good, so every one of these asserts on which bytes are left on disk.
+
+    [Fact]
+    public async Task PromoteToAccepted_LeavesPendingCopyInPlace_AndNoTempFile()
+    {
+        // Promotion never deletes: removing the original is a separate step the
+        // caller only takes once the acceptance is committed to the DB.
+        var content = Encoding.UTF8.GetBytes("exhibit bytes");
+        var (submission, file) = SeedPendingFile(content);
+
+        await _storage.PromoteToAcceptedAsync(submission, file);
+
+        File.Exists(PendingFullPath(file)).Should().BeTrue();
+        var folder = Path.Combine(_options.AcceptedPath, "loc001", "room1", "20260101", "7");
+        Directory.GetFiles(folder, "*.tmp").Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task DeletePendingCopy_RemovesOriginal_WhenCanonicalVerifies()
+    {
+        var content = Encoding.UTF8.GetBytes("exhibit bytes");
+        var (submission, file) = SeedPendingFile(content);
+        await AcceptAsync(submission, file);
+
+        var result = await _storage.DeletePendingCopyAsync(file);
+
+        result.Should().Be(PendingCleanupResult.Deleted);
+        File.Exists(PendingFullPath(file)).Should().BeFalse();
+
+        // The exhibit survives the cleanup intact and still streams from canonical.
+        (await File.ReadAllBytesAsync(CanonicalFullPath(file.CanonicalPath!))).Should().Equal(content);
+        await using var stream = await _storage.GetAcceptedExhibitAsync(file);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        ms.ToArray().Should().Equal(content);
+    }
+
+    [Fact]
+    public async Task DeletePendingCopy_ReturnsAlreadyRemoved_OnSecondCall()
+    {
+        var content = Encoding.UTF8.GetBytes("exhibit bytes");
+        var (submission, file) = SeedPendingFile(content);
+        await AcceptAsync(submission, file);
+
+        await _storage.DeletePendingCopyAsync(file);
+        var second = await _storage.DeletePendingCopyAsync(file);
+
+        second.Should().Be(PendingCleanupResult.AlreadyRemoved);
+        File.Exists(CanonicalFullPath(file.CanonicalPath!)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DeletePendingCopy_KeepsOriginal_WhenCanonicalFileMissing()
+    {
+        var content = Encoding.UTF8.GetBytes("exhibit bytes");
+        var (submission, file) = SeedPendingFile(content);
+        await AcceptAsync(submission, file);
+        File.Delete(CanonicalFullPath(file.CanonicalPath!));
+
+        var result = await _storage.DeletePendingCopyAsync(file);
+
+        result.Should().Be(PendingCleanupResult.VerificationFailed);
+        (await File.ReadAllBytesAsync(PendingFullPath(file))).Should().Equal(content);
+    }
+
+    [Fact]
+    public async Task DeletePendingCopy_KeepsOriginal_WhenCanonicalBytesTamperedWith()
+    {
+        var content = Encoding.UTF8.GetBytes("exhibit bytes");
+        var (submission, file) = SeedPendingFile(content);
+        await AcceptAsync(submission, file);
+
+        // Same length, different bytes — only the hash catches this.
+        await File.WriteAllBytesAsync(CanonicalFullPath(file.CanonicalPath!), Encoding.UTF8.GetBytes("EXHIBIT BYTES"));
+
+        var result = await _storage.DeletePendingCopyAsync(file);
+
+        result.Should().Be(PendingCleanupResult.VerificationFailed);
+        (await File.ReadAllBytesAsync(PendingFullPath(file))).Should().Equal(content);
+    }
+
+    [Fact]
+    public async Task DeletePendingCopy_KeepsOriginal_WhenCanonicalCopyIsTruncated()
+    {
+        var content = Encoding.UTF8.GetBytes("exhibit bytes");
+        var (submission, file) = SeedPendingFile(content);
+        await AcceptAsync(submission, file);
+
+        await File.WriteAllBytesAsync(CanonicalFullPath(file.CanonicalPath!), content[..4]);
+
+        var result = await _storage.DeletePendingCopyAsync(file);
+
+        result.Should().Be(PendingCleanupResult.VerificationFailed);
+        (await File.ReadAllBytesAsync(PendingFullPath(file))).Should().Equal(content);
+    }
+
+    [Fact]
+    public async Task DeletePendingCopy_KeepsOriginal_WhenPendingBytesNoLongerMatchCanonical()
+    {
+        // The pending copy diverging from the accepted one means the two files are not
+        // the same exhibit; deleting would destroy bytes nothing else holds.
+        var content = Encoding.UTF8.GetBytes("exhibit bytes");
+        var (submission, file) = SeedPendingFile(content);
+        await AcceptAsync(submission, file);
+
+        var replacement = Encoding.UTF8.GetBytes("EXHIBIT BYTES");
+        await File.WriteAllBytesAsync(PendingFullPath(file), replacement);
+
+        var result = await _storage.DeletePendingCopyAsync(file);
+
+        result.Should().Be(PendingCleanupResult.VerificationFailed);
+        (await File.ReadAllBytesAsync(PendingFullPath(file))).Should().Equal(replacement);
+    }
+
+    [Fact]
+    public async Task DeletePendingCopy_KeepsOriginal_WhenFileIsNotAccepted()
+    {
+        var content = Encoding.UTF8.GetBytes("exhibit bytes");
+        var (_, file) = SeedPendingFile(content);
+
+        var result = await _storage.DeletePendingCopyAsync(file);
+
+        result.Should().Be(PendingCleanupResult.VerificationFailed);
+        File.Exists(PendingFullPath(file)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DeletePendingCopy_KeepsOriginal_WhenNoHashWasRecorded()
+    {
+        // Flagged accepted but with no hash to verify against — there is nothing to
+        // prove the canonical copy is the right one, so nothing gets deleted.
+        var content = Encoding.UTF8.GetBytes("exhibit bytes");
+        var (submission, file) = SeedPendingFile(content);
+        await AcceptAsync(submission, file);
+        file.Sha256 = null;
+
+        var result = await _storage.DeletePendingCopyAsync(file);
+
+        result.Should().Be(PendingCleanupResult.VerificationFailed);
+        File.Exists(PendingFullPath(file)).Should().BeTrue();
     }
 }

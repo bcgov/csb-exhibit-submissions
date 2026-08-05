@@ -9,6 +9,7 @@ using CES.Entities.Enums;
 using CES.Entities.Infrastructure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace CES.Business.Tests.Services;
 
@@ -53,8 +54,13 @@ public class FileServiceTests : IDisposable
         _fileStorageMock
             .Setup(s => s.WriteMetadataAsync(It.IsAny<Submission>(), It.IsAny<IReadOnlyList<SubmissionAuditLog>>()))
             .Returns(Task.CompletedTask);
+        // The storage layer verifies the canonical copy itself; the happy path here is
+        // "verified and removed".
+        _fileStorageMock
+            .Setup(s => s.DeletePendingCopyAsync(It.IsAny<StoredFiles>()))
+            .ReturnsAsync(PendingCleanupResult.Deleted);
 
-        _service = new FileService(_db, _fileStorageMock.Object);
+        _service = new FileService(_db, _fileStorageMock.Object, NullLogger<FileService>.Instance);
     }
 
     public void Dispose() => _db.Dispose();
@@ -579,6 +585,104 @@ public class FileServiceTests : IDisposable
         _db.StoredFiles.Find(file.Id)!.IsAccepted.Should().BeFalse();
         _fileStorageMock.Verify(s => s.PromoteToAcceptedAsync(It.IsAny<Submission>(), It.IsAny<StoredFiles>()), Times.Never);
         _fileStorageMock.Verify(s => s.WriteMetadataAsync(It.IsAny<Submission>(), It.IsAny<IReadOnlyList<SubmissionAuditLog>>()), Times.Never);
+    }
+
+    // ── Pending cleanup after acceptance ──────────────────────────────────
+
+    [Fact]
+    public async Task MarkExhibit_DeletesPendingCopy_OnlyAfterAcceptanceIsPersisted()
+    {
+        var file = SeedFile();
+
+        // Capture the state the storage layer sees at the moment cleanup is invoked:
+        // the canonical path/hash it verifies against must already be committed, or a
+        // crash mid-request could leave the exhibit with no readable copy.
+        bool acceptedAtCleanup = false, hadUncommittedChanges = true;
+        string? canonicalPathAtCleanup = null, shaAtCleanup = null;
+        _fileStorageMock
+            .Setup(s => s.DeletePendingCopyAsync(It.IsAny<StoredFiles>()))
+            .ReturnsAsync((StoredFiles f) =>
+            {
+                acceptedAtCleanup = f.IsAccepted;
+                canonicalPathAtCleanup = f.CanonicalPath;
+                shaAtCleanup = f.Sha256;
+                hadUncommittedChanges = _db.ChangeTracker.HasChanges();
+                return PendingCleanupResult.Deleted;
+            });
+
+        await _service.MarkExhibitAsync(file.Id, "A", _officerUserId);
+
+        _fileStorageMock.Verify(s => s.DeletePendingCopyAsync(It.Is<StoredFiles>(f => f.Id == file.Id)), Times.Once);
+        acceptedAtCleanup.Should().BeTrue();
+        canonicalPathAtCleanup.Should().NotBeNullOrEmpty();
+        shaAtCleanup.Should().Be("DEADBEEF");
+        hadUncommittedChanges.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task EnterExhibit_DeletesPendingCopy_OnAutoAccept()
+    {
+        var file = SeedFile();
+
+        await _service.EnterExhibitAsync(file.Id, "5", _officerUserId);
+
+        _fileStorageMock.Verify(s => s.DeletePendingCopyAsync(It.Is<StoredFiles>(f => f.Id == file.Id)), Times.Once);
+    }
+
+    [Fact]
+    public async Task AddDescription_OnAcceptedFile_SweepsPendingCopy()
+    {
+        // Cleanup runs on every finalize, not just the promoting one, so an exhibit
+        // accepted before this step existed has its original swept up when next touched.
+        var file = SeedFile();
+        await _service.MarkExhibitAsync(file.Id, "A", _officerUserId);
+        _fileStorageMock.Invocations.Clear();
+
+        await _service.AddExhibitDescriptionAsync(file.Id, "a note", _officerUserId);
+
+        _fileStorageMock.Verify(s => s.DeletePendingCopyAsync(It.Is<StoredFiles>(f => f.Id == file.Id)), Times.Once);
+    }
+
+    [Fact]
+    public async Task AddDescription_OnUnacceptedFile_DoesNotTouchPendingCopy()
+    {
+        var file = SeedFile();
+
+        await _service.AddExhibitDescriptionAsync(file.Id, "a note", _officerUserId);
+
+        _fileStorageMock.Verify(s => s.DeletePendingCopyAsync(It.IsAny<StoredFiles>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task MarkExhibit_StillSucceeds_WhenPendingCleanupThrows()
+    {
+        // Acceptance has already committed by then — a failed delete leaves an orphan
+        // in uploads, which must not surface as a failed classification.
+        var file = SeedFile();
+        _fileStorageMock
+            .Setup(s => s.DeletePendingCopyAsync(It.IsAny<StoredFiles>()))
+            .ThrowsAsync(new IOException("uploads volume unavailable"));
+
+        var result = await _service.MarkExhibitAsync(file.Id, "A", _officerUserId);
+
+        result.MarkedValue.Should().Be("A");
+        _db.StoredFiles.Find(file.Id)!.IsAccepted.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task MarkExhibit_StillSucceeds_WhenPendingCopyFailsVerification()
+    {
+        // The original is deliberately retained in this case; the acceptance itself
+        // stands and the operator is told through the error log.
+        var file = SeedFile();
+        _fileStorageMock
+            .Setup(s => s.DeletePendingCopyAsync(It.IsAny<StoredFiles>()))
+            .ReturnsAsync(PendingCleanupResult.VerificationFailed);
+
+        var result = await _service.MarkExhibitAsync(file.Id, "A", _officerUserId);
+
+        result.MarkedValue.Should().Be("A");
+        _db.StoredFiles.Find(file.Id)!.IsAccepted.Should().BeTrue();
     }
 
     // ── GetExhibitContentAsync (download branch) ──────────────────────────
