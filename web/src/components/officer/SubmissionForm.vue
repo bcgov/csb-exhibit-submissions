@@ -309,6 +309,7 @@ const submitForm = async () => {
           :add-description-fn="addExhibitDescription"
           :initial-expanded="true"
           :linkable-title="true"
+          :sort-by-classification="true"
           :evidence-source-fn="
             (id: string, v: string) => updateEvidenceSource(id, { evidenceSourceType: v })
           "
