@@ -1,7 +1,7 @@
 # Officer Number — Stored on the User Profile
 
 **Ticket:** CES-27
-**Status:** Draft — for review
+**Status:** Implemented
 **Depends on:** [keycloak-authentication.md](keycloak-authentication.md), [multi-ticket-exhibit-upload.md](completed/multi-ticket-exhibit-upload.md)
 
 ---
@@ -75,10 +75,12 @@ public string? OfficerNumber { get; set; }
 
 ### EF — `CES.EF`
 
-- Column configuration in `ModelConfiguration` (alongside the existing `KeycloakSub` config):
-  `HasMaxLength(UserConstants.OfficerNumberMaxLength)`, nullable, no index (never queried by).
-- Migration **`ApplicationUserOfficerNumber`** — a single `AddColumn<string>` on `ApplicationUsers`,
-  `nullable: true`, `maxLength: 30`.
+- No `OnModelCreating` configuration and no index (the column is never queried by). Length is enforced
+  in the service layer only — every string column in this schema is an unconstrained Postgres `text`,
+  and `CES.EF` cannot reference `CES.Business.Constants` anyway, so a `HasMaxLength` here would mean
+  duplicating the literal.
+- Migration **`ApplicationUserOfficerNumber`** — a single nullable `AddColumn<string>` on
+  `ApplicationUser` (the table is singular, matching the `DbSet` name).
 
 ---
 
@@ -125,8 +127,10 @@ public class OfficerNumberUpdateModel
 | `Task<UserProfileModel?> GetProfileAsync(string? keycloakSub, string? email)` | Resolves the local row by subject then email (reusing the existing `ResolveUserIdAsync` lookup order) and projects it. Null when no row exists. |
 | `Task<UserProfileModel> SetOfficerNumberAsync(int userId, string? officerNumber)` | Trims, validates, persists, stamps `SetUpdateBy(userId)`, returns the updated profile. |
 
-`SetOfficerNumberAsync` validation (all → `ArgumentException` → `400`, per the
-[`ApiExceptionMiddleware`](../CLAUDE.md) mapping):
+Validation lives in **one** place, `OfficerNumberExtensions.NormalizeOfficerNumberOrThrow`
+(`api/CES.Business/Extensions/`), shared by `SetOfficerNumberAsync` and the submission create so the
+two can never disagree about what the client may send. It trims, then throws `ArgumentException`
+→ `400` (per the [`ApiExceptionMiddleware`](../CLAUDE.md) mapping) on:
 
 - null/whitespace → `"An officer number is required."`
 - length > `OfficerNumberMaxLength` → `"An officer number cannot exceed 30 characters."`
@@ -195,16 +199,16 @@ loadProfile()                           // single-flight; no-op once loaded
 - `loadProfile` is single-flight (same guard style as `sessionService.refresh`) and swallows failures —
   a profile fetch that fails must not break an authenticated session; the officer is simply re-prompted.
 
-### Hydration points
+### Hydration point
 
-| Path | Where |
-|---|---|
-| Keycloak — first login | `AuthCallbackView` after `setToken` |
-| Keycloak — reload | `sessionService.performRefresh`, guarded so only the **first** refresh of a page load fetches (subsequent renewals no-op via `profileLoaded`) |
-| Dev bypass | `AuthService.login` after `setToken` |
+A single call in the router's `beforeEach`, after the session bootstrap resolves and gated on
+`authStore.isAuthenticated`. This is the one point every route into the app passes through, so it
+covers all four cases with one call site: Keycloak first login, Keycloak reload, dev-bypass login,
+and a **dev-bypass reload** — which restores its token from storage and mints nothing, so hanging
+the fetch off `setToken`/`performRefresh` would have missed it entirely.
 
-Awaiting the profile is never a precondition for navigation — the modal simply appears once the fetch
-lands.
+Not awaited: navigation never waits on the profile, and `loadProfile` is a no-op once loaded, so the
+per-navigation call costs nothing. The modal simply appears when the fetch lands.
 
 ### Component — `web/src/components/officer/OfficerNumberModal.vue` (new)
 
@@ -266,9 +270,13 @@ posting `OFF001`, which stays valid under the allowlist.
 - `OfficerNumberModal`: Save disabled when empty; emits `saved` on success; stays open and shows the
   message on API failure; Cancel emits `close` without a request.
 - `SubmissionForm`: prefills from the store; Upload disabled with no stored number.
+- `CourtListing`: prompts an officer with no number, not one who has it, not an admin, and not before
+  the profile has loaded; stays dismissed for the visit; closes when a number reaches the store.
 
-Existing `SubmissionService.spec.ts` and the submission form tests are updated for the new source of the
-field — not deleted.
+Existing submission-form tests are updated for the new source of the field — not deleted.
+
+**As built:** 389 backend (183 `CES.Business.Tests` + 206 `CES.API.Tests`) and 229 frontend across
+25 files, all passing.
 
 ---
 

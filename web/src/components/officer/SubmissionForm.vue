@@ -8,6 +8,7 @@ import type { ExhibitSearchResultModel } from '@/models/ExhibitSearchResultModel
 import type { PriorSubmissionModel } from '@/models/PriorSubmissionModel';
 import type { SubmissionFile } from '@/models/SubmissionReviewModel';
 import useSubmissionService from '@/services/SubmissionService';
+import { useAuthStore } from '@/stores/authStore';
 import { useCourtFileSelectionStore } from '@/stores/useCourtFileSelectionStore';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -15,6 +16,7 @@ import ExhibitDetailModal from '../shared/ExhibitDetailModal.vue';
 import ExhibitList from '../shared/ExhibitList.vue';
 import FileDropZone from '../shared/FileDropZone.vue';
 import FileViewer from '../shared/FileViewer.vue';
+import OfficerNumberModal from './OfficerNumberModal.vue';
 
 const router = useRouter();
 const {
@@ -26,13 +28,18 @@ const {
   updateEvidenceSource,
 } = useSubmissionService();
 const selectionStore = useCourtFileSelectionStore();
+const authStore = useAuthStore();
 
 const uploading = ref(false);
 const errorMessage = ref('');
 const successMessage = ref('');
 const uploadProgress = ref<number>(0);
-const officerNumber = ref('');
 const dropZoneRef = ref<InstanceType<typeof FileDropZone> | null>(null);
+
+// Read from the profile, never typed here: the stored value is the single source of truth,
+// so an accidental keystroke cannot change what is recorded against a submission.
+const officerNumber = computed(() => authStore.officerNumber ?? '');
+const showOfficerNumberModal = ref(false);
 
 // Active submission for this page session. Set after the first successful upload so that
 // subsequent uploads append to the same submission. Reset on reload/search/Back (component state).
@@ -200,6 +207,12 @@ onMounted(async () => {
 });
 
 const submitForm = async () => {
+  // Mandatory, and the API rejects a submission without one — prompt rather than fail.
+  if (!authStore.hasOfficerNumber) {
+    showOfficerNumberModal.value = true;
+    return;
+  }
+
   uploading.value = true;
   errorMessage.value = '';
 
@@ -265,10 +278,28 @@ const submitForm = async () => {
         </div>
       </div>
 
-      <!-- Officer number -->
+      <!-- Officer number — stored on the profile, changed only through the modal -->
       <div class="officer-field">
-        <label>Officer Number</label>
-        <input type="text" v-model="officerNumber" />
+        <label for="officerNumberField">Officer Number <span class="required">*</span></label>
+        <div class="officer-field-row">
+          <input
+            id="officerNumberField"
+            type="text"
+            :value="officerNumber"
+            placeholder="Not set"
+            disabled
+          />
+          <button
+            type="button"
+            class="btn btn--tertiary btn--sm officer-number-edit"
+            @click="showOfficerNumberModal = true"
+          >
+            {{ officerNumber ? 'Edit' : 'Add' }}
+          </button>
+        </div>
+        <small v-if="!officerNumber" class="officer-field-missing">
+          An officer number is required before you can attach an exhibit.
+        </small>
       </div>
 
       <!-- Ticket list panel -->
@@ -344,7 +375,11 @@ const submitForm = async () => {
 
       <div class="actions">
         <button type="button" class="btn btn--secondary back-btn" @click="goBack">Back</button>
-        <button type="submit" class="btn btn--primary submit-btn" :disabled="uploading">
+        <button
+          type="submit"
+          class="btn btn--primary submit-btn"
+          :disabled="uploading || !authStore.hasOfficerNumber"
+        >
           Attach Exhibit
         </button>
       </div>
@@ -376,6 +411,13 @@ const submitForm = async () => {
       :add-description-fn="addExhibitDescription"
       @file-updated="updateFileInStore"
       @close="closeDetails"
+    />
+
+    <!-- Officer number: the only way to change it, so the profile stays authoritative. -->
+    <OfficerNumberModal
+      v-if="showOfficerNumberModal"
+      :initial-value="officerNumber"
+      @close="showOfficerNumberModal = false"
     />
   </div>
 </template>

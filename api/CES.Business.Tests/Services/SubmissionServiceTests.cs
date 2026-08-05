@@ -157,6 +157,66 @@ public class SubmissionServiceTests : IDisposable
         _db.Submissions.Count().Should().Be(0);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("OFF 001")]                          // disallowed character
+    [InlineData("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")]  // 31 chars, one over the maximum
+    public async Task SubmitEvidence_WithAnInvalidOfficerNumber_Throws(string? officerNumber)
+    {
+        // Mandatory as of CES-27: the number comes from the officer's profile, and a request
+        // without a usable one is rejected rather than stored against the submission.
+        var model = BuildModel(fileCount: 1);
+        model.OfficerNumber = officerNumber;
+        _fileStorageMock
+            .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
+            .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
+
+        var act = () => _service.SubmitEvidence(model, _officerUserId);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+        _db.Submissions.Count().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task SubmitEvidence_PersistsTheTrimmedOfficerNumber()
+    {
+        var model = BuildModel(fileCount: 1);
+        model.OfficerNumber = "  PC-1234  ";
+        _fileStorageMock
+            .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
+            .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
+
+        await _service.SubmitEvidence(model, _officerUserId);
+
+        _db.Submissions.First().OfficerNumber.Should().Be("PC-1234");
+    }
+
+    [Fact]
+    public async Task SubmitEvidence_AppendingToASubmission_DoesNotRequireAnOfficerNumber()
+    {
+        // An append reuses the number already recorded on the target; the request does not
+        // resend it, so validating it here would reject a legitimate second upload.
+        var existing = BuildSubmission();
+        existing.OfficerNumber = "PC-1234";
+        existing.Files.Add(BuildStoredFile());
+        _db.Submissions.Add(existing);
+        await _db.SaveChangesAsync();
+
+        var model = BuildModel(fileCount: 1);
+        model.SubmissionId = existing.Id;
+        model.OfficerNumber = null;
+        _fileStorageMock
+            .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
+            .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
+
+        var result = await _service.SubmitEvidence(model, _officerUserId);
+
+        result.Should().Be(existing.Id);
+        _db.Submissions.First().OfficerNumber.Should().Be("PC-1234");
+    }
+
     [Fact]
     public async Task SubmitEvidence_ReturnsSubmissionId()
     {

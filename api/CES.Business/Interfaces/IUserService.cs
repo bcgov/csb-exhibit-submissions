@@ -1,3 +1,4 @@
+using CES.Business.Models;
 using CES.Entities;
 
 namespace CES.Business.Interfaces
@@ -36,5 +37,20 @@ namespace CES.Business.Interfaces
         /// change rather than failing the request.
         /// </summary>
         Task<int?> ResolveUserIdAsync(string? keycloakSub, string? email);
+
+        /// <summary>
+        /// The signed-in user's own profile, resolved the same way as
+        /// <see cref="ResolveUserIdAsync"/> (realm subject first, then email). Null when no local
+        /// row matches — an ordinary state for a session whose upsert failed, not an error.
+        /// </summary>
+        Task<UserProfileModel?> GetProfileAsync(string? keycloakSub, string? email);
+
+        /// <summary>
+        /// Stores the officer number the officer supplied. IDIR exposes no such claim, so this is
+        /// the only way the value can reach CES.
+        /// </summary>
+        /// <exception cref="ArgumentException">The value is missing, too long, or malformed.</exception>
+        /// <exception cref="KeyNotFoundException">No user has the given id.</exception>
+        Task<UserProfileModel> SetOfficerNumberAsync(int userId, string? officerNumber);
     }
 }

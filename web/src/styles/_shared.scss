@@ -13,30 +13,45 @@
     background: $color-bg-light;
   }
 
-  .file-list {
-    margin-top: 1rem;
-    list-style: none;
-    padding: 0;
+  .small {
+    font-size: $font-size-label;
+    color: $color-text-secondary;
+  }
+}
 
-    li {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 0.5rem;
-    }
+// Pending (not yet submitted) files. The list is a *sibling* of .dropzone in the
+// template, so these rules must stay at the top level — nested under .dropzone
+// they never matched, which is what left the rows as raw bullets.
+.file-list {
+  margin-top: $margin-medium;
+  list-style: none;
+  padding: 0;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: $padding-small;
+    margin-bottom: $margin-small;
   }
 
   .file-info {
     display: flex;
-    gap: 0.5rem;
+    align-items: center;
+    gap: $padding-small;
+    text-align: left;
+    word-break: break-word;
   }
 
   .icon {
     font-size: $icon-size-medium;
   }
 
-  .small {
-    font-size: $font-size-label;
-    color: $color-text-secondary;
+  // MDI path is 24×24; sized from the icon token, coloured by the button variant.
+  .remove-icon {
+    display: block;
+    width: $icon-size-medium;
+    height: $icon-size-medium;
+    fill: currentColor;
   }
 }
 
@@ -502,11 +517,6 @@
 }
 
 // --- ExhibitDetailModal (shared: admin Exhibit Search + officer Submission Form) ---
-
-
-// Vuetify's default v-app-bar height — the modal must clear it so the fixed header
-// never overlaps the popup's title.
-$app-bar-height: 64px;
 
 .exhibit-detail-overlay {
   position: fixed;

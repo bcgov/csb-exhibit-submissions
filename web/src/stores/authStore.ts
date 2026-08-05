@@ -14,6 +14,19 @@ export const useAuthStore = defineStore('auth', () => {
   );
   const user = ref<User | null>(null);
   const roles = ref<string[]>([]);
+  /**
+   * Profile-sourced, never from the token — IDIR exposes no officer-number claim, so this is
+   * fetched from `GET /api/users/me` and held separately. Keeping it out of `user` is what
+   * makes it survive a renewal: `decodeAndSetUser` rebuilds `user` from scratch every time.
+   */
+  const officerNumber = ref<string | null>(null);
+  /** True once the profile fetch has settled, whether or not it found a number. */
+  const profileLoaded = ref(false);
+  /**
+   * Single-flight guard for the profile fetch. Plain module-scope state rather than a ref —
+   * nothing renders off it, and it must not be exposed as store state.
+   */
+  let profileRequest: Promise<void> | null = null;
   /** Epoch ms, derived from the token's `exp`. Drives the renewal timer. */
   const expiresAt = ref<number | null>(null);
   /** Handle for the pending renewal, owned by sessionService and cancelled here. */
@@ -21,6 +34,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!token.value && !isTokenExpired());
   const hasRole = (role: string) => roles.value.includes(role);
+  const hasOfficerNumber = computed(() => !!officerNumber.value);
 
   function setToken(newToken: string) {
     token.value = newToken;
@@ -42,6 +56,8 @@ export const useAuthStore = defineStore('auth', () => {
         email: decoded.email,
         roles: decodedRoles,
         displayName: decoded.name ?? decoded.preferred_username,
+        // Re-projected from the store ref, not the token: a renewal would otherwise drop it.
+        officerNumber: officerNumber.value,
       };
       roles.value = decodedRoles;
       expiresAt.value = decoded.exp * SECONDS_TO_MS;
@@ -77,11 +93,51 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /**
+   * Records a saved officer number, keeping the store ref and the projection on `user` in step.
+   */
+  function setOfficerNumber(value: string | null) {
+    officerNumber.value = value;
+    if (user.value) {
+      user.value = { ...user.value, officerNumber: value };
+    }
+  }
+
+  /**
+   * Fetches the profile once per session. Single-flight, and a no-op once loaded, so the
+   * renewal timer firing every few minutes does not re-fetch.
+   * <p>
+   * Failures are swallowed: a profile that cannot be read must not break an authenticated
+   * session — the officer is simply prompted for their number again.
+   */
+  function loadProfile(): Promise<void> {
+    if (profileLoaded.value) return Promise.resolve();
+
+    profileRequest ??= (async () => {
+      try {
+        // Imported lazily to break the authStore ↔ apiClient module cycle.
+        const { default: useUserService } = await import('@/services/UserService');
+        const profile = await useUserService().getProfile();
+        setOfficerNumber(profile?.officerNumber ?? null);
+        profileLoaded.value = true;
+      } catch (error) {
+        console.warn('Could not load the user profile', error);
+      } finally {
+        profileRequest = null;
+      }
+    })();
+
+    return profileRequest;
+  }
+
   function clearAuth() {
     token.value = null;
     user.value = null;
     roles.value = [];
     expiresAt.value = null;
+    officerNumber.value = null;
+    profileLoaded.value = false;
+    profileRequest = null;
 
     // Cancel any pending renewal, or a dead session keeps trying to refresh itself.
     if (renewalTimer.value !== null) {
@@ -104,8 +160,13 @@ export const useAuthStore = defineStore('auth', () => {
     roles,
     expiresAt,
     renewalTimer,
+    officerNumber,
+    profileLoaded,
+    hasOfficerNumber,
     hasRole,
     setToken,
+    setOfficerNumber,
+    loadProfile,
     clearAuth,
   };
 });

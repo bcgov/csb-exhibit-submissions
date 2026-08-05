@@ -1,4 +1,5 @@
 using CES.Business.Constants;
+using CES.Business.Extensions;
 using CES.Business.Extensions.Entities;
 using CES.Business.Interfaces;
 using CES.Business.Models;
@@ -31,6 +32,10 @@ namespace CES.Business.Services
 
             if (entity == null)
             {
+                // Mandatory on a new submission only: an append reuses the number already recorded
+                // on the target, which the request does not resend.
+                model.OfficerNumber = model.OfficerNumber.NormalizeOfficerNumberOrThrow();
+
                 // Create a new submission (first upload, or fallback for an invalid append target).
                 entity = model.ToEntity();
                 entity.CreatedByUserId = submittedByUserId;

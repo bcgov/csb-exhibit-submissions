@@ -1,4 +1,6 @@
+using CES.Business.Extensions;
 using CES.Business.Interfaces;
+using CES.Business.Models;
 using CES.Entities;
 using CES.Entities.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -82,6 +84,51 @@ namespace CES.Business.Services
                 return null;
 
             return (await FindByEmailAsync(candidateEmail))?.Id;
+        }
+
+        /// <inheritdoc />
+        public async Task<UserProfileModel?> GetProfileAsync(string? keycloakSub, string? email)
+        {
+            var userId = await ResolveUserIdAsync(keycloakSub, email);
+            if (userId is null)
+                return null;
+
+            return await _dataStore.ApplicationUser
+                .Where(candidate => candidate.Id == userId)
+                .Select(candidate => new UserProfileModel
+                {
+                    Id = candidate.Id,
+                    FirstName = candidate.FirstName,
+                    LastName = candidate.LastName,
+                    Email = candidate.Email,
+                    OfficerNumber = candidate.OfficerNumber,
+                })
+                .FirstOrDefaultAsync();
+        }
+
+        /// <inheritdoc />
+        public async Task<UserProfileModel> SetOfficerNumberAsync(int userId, string? officerNumber)
+        {
+            // Validated before the lookup so a malformed value is a 400 rather than a 404.
+            var normalised = officerNumber.NormalizeOfficerNumberOrThrow();
+
+            var user = await _dataStore.ApplicationUser
+                .FirstOrDefaultAsync(candidate => candidate.Id == userId)
+                ?? throw new KeyNotFoundException("No user record was found for the signed-in user.");
+
+            user.OfficerNumber = normalised;
+            user.SetUpdateBy(userId);
+
+            await _dataStore.SaveChangesAsync();
+
+            return new UserProfileModel
+            {
+                Id = user.Id,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Email = user.Email,
+                OfficerNumber = user.OfficerNumber,
+            };
         }
 
         private Task<ApplicationUser?> FindByEmailAsync(string email)

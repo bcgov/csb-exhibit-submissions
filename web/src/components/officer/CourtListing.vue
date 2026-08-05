@@ -142,6 +142,8 @@
       Upload Exhibit ({{ checkedFiles.length }} selected)
     </button>
   </div>
+
+  <OfficerNumberModal v-if="showOfficerNumberModal" @close="onOfficerNumberModalClosed" />
 </template>
 
 <script setup lang="ts">
@@ -150,16 +152,45 @@ import type { CourtFileList } from '@/models/CourtFileList';
 import type { CourtRoomsInfo, LocationInfo } from '@/models/LocationInfo';
 import useCourtFileService from '@/services/CourtFileService';
 import useLocationService from '@/services/LocationService';
+import { useAuthStore } from '@/stores/authStore';
 import { useCourtFileSelectionStore } from '@/stores/useCourtFileSelectionStore';
+import { ROLE_USER } from '@/constants/roles';
 import type { AxiosError } from 'axios';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AutocompleteSelect from '../shared/AutocompleteSelect.vue';
+import OfficerNumberModal from './OfficerNumberModal.vue';
 
 const { getLocations } = useLocationService();
 const { getCourtList } = useCourtFileService();
 const router = useRouter();
 const selectionStore = useCourtFileSelectionStore();
+const authStore = useAuthStore();
+
+// Officer number prompt. The profile fetch is async and started by the router guard, so the
+// trigger is a watcher rather than an onMounted check — the answer usually is not in yet
+// when this component mounts.
+const showOfficerNumberModal = ref(false);
+// Dismissal holds for this visit only; the prompt returns on the next navigation here until
+// a number is actually stored.
+const officerNumberDismissed = ref(false);
+
+const needsOfficerNumber = computed(
+  () => authStore.hasRole(ROLE_USER) && authStore.profileLoaded && !authStore.hasOfficerNumber,
+);
+
+watch(
+  [needsOfficerNumber, officerNumberDismissed],
+  ([needed, dismissed]) => {
+    showOfficerNumberModal.value = needed && !dismissed;
+  },
+  { immediate: true },
+);
+
+const onOfficerNumberModalClosed = () => {
+  showOfficerNumberModal.value = false;
+  officerNumberDismissed.value = true;
+};
 
 const appearanceDate = ref<string>(new Date().toISOString().split('T')[0]!);
 const selectedLocation = ref<LocationInfo | null>(null);
