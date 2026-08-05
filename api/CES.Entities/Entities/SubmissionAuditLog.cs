@@ -12,7 +12,10 @@ namespace CES.Entities
         public string FieldName { get; set; } = null!;
         public string? OldValue { get; set; }
         public string? NewValue { get; set; }
-        public string? ChangedBy { get; set; }
+        // FK to ApplicationUser.Id — see BaseEntity.CreatedByUserId. The navigation is
+        // what read models and the metadata sidecar resolve the actor's email through.
+        public int? ChangedByUserId { get; set; }
+        public ApplicationUser? ChangedByUser { get; set; }
         public DateTime ChangedAtUTC { get; set; } = SystemDate.UtcNow();
     }
 }

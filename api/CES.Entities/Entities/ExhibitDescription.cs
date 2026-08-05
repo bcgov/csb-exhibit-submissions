@@ -12,7 +12,9 @@ namespace CES.Entities
         public Guid FileId { get; set; }
         public StoredFiles File { get; set; } = null!;
         public string DescriptionText { get; set; } = null!;
-        public string? CreatedBy { get; set; }
+        // FK to ApplicationUser.Id — see BaseEntity.CreatedByUserId.
+        public int? CreatedByUserId { get; set; }
+        public ApplicationUser? CreatedByUser { get; set; }
         public DateTime CreatedAtUTC { get; set; } = SystemDate.UtcNow();
     }
 }

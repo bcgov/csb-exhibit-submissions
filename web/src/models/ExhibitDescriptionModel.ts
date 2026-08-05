@@ -3,6 +3,9 @@
 export interface ExhibitDescriptionModel {
   id: number;
   descriptionText: string;
+  // Stored link to the author (ApplicationUser.Id); createdBy is the email the API
+  // resolves from it for display, and is never persisted alongside the id.
+  createdByUserId?: number | null;
   createdBy?: string | null;
   createdAtUTC: string;
 }

@@ -1,3 +1,4 @@
+using CES.API.Authentication;
 using CES.Business.Constants;
 using CES.Business.Interfaces;
 using CES.Business.Models;
@@ -10,20 +11,18 @@ namespace CES.API.Controllers
     public class FilesController : Controller
     {
         private readonly IFileService _fileService;
+        private readonly IUserService _userService;
 
-        public FilesController(IFileService fileService)
+        public FilesController(IFileService fileService, IUserService userService)
         {
             _fileService = fileService;
+            _userService = userService;
         }
 
         // Admin and Clerk can both edit a classification past its normal Entered lock
         // (Officer cannot); this drives the isAdminOverride flag on IFileService.
         private static bool HasClassificationOverride(ClaimsPrincipal user) =>
             user.IsInRole(RoleConstants.Admin) || user.IsInRole(RoleConstants.Clerk);
-
-        private static string ResolveActorLabel(ClaimsPrincipal user, string? userData) =>
-            userData ?? (user.IsInRole(RoleConstants.Admin) ? "Admin"
-                : user.IsInRole(RoleConstants.Clerk) ? "Clerk" : "Officer");
 
         [HttpPost]
         [Route("api/files/{fileId:guid}/mark")]
@@ -34,8 +33,8 @@ namespace CES.API.Controllers
                 return BadRequest(ModelState);
 
             var isOverride = HasClassificationOverride(User);
-            var changedBy = ResolveActorLabel(User, User.FindFirstValue(ClaimTypes.UserData));
-            var result = await _fileService.MarkExhibitAsync(fileId, model.MarkedValue, changedBy, isOverride);
+            var changedByUserId = await User.ResolveUserIdAsync(_userService);
+            var result = await _fileService.MarkExhibitAsync(fileId, model.MarkedValue, changedByUserId, isOverride);
             return Ok(result);
         }
 
@@ -48,8 +47,8 @@ namespace CES.API.Controllers
                 return BadRequest(ModelState);
 
             var isOverride = HasClassificationOverride(User);
-            var changedBy = ResolveActorLabel(User, User.FindFirstValue(ClaimTypes.UserData));
-            var result = await _fileService.EnterExhibitAsync(fileId, model.EnteredValue, changedBy, isOverride);
+            var changedByUserId = await User.ResolveUserIdAsync(_userService);
+            var result = await _fileService.EnterExhibitAsync(fileId, model.EnteredValue, changedByUserId, isOverride);
             return Ok(result);
         }
 
@@ -64,8 +63,8 @@ namespace CES.API.Controllers
                 return BadRequest(ModelState);
 
             var isOverride = HasClassificationOverride(User);
-            var createdBy = ResolveActorLabel(User, User.FindFirstValue(ClaimTypes.UserData));
-            var result = await _fileService.AddExhibitDescriptionAsync(fileId, model.DescriptionText, createdBy, isOverride);
+            var createdByUserId = await User.ResolveUserIdAsync(_userService);
+            var result = await _fileService.AddExhibitDescriptionAsync(fileId, model.DescriptionText, createdByUserId, isOverride);
             return Ok(result);
         }
 
@@ -78,8 +77,8 @@ namespace CES.API.Controllers
                 return BadRequest(ModelState);
 
             var isOverride = HasClassificationOverride(User);
-            var changedBy = ResolveActorLabel(User, User.FindFirstValue(ClaimTypes.UserData));
-            var result = await _fileService.UpdateExhibitEvidenceSourceAsync(fileId, model.EvidenceSourceType, changedBy, isOverride);
+            var changedByUserId = await User.ResolveUserIdAsync(_userService);
+            var result = await _fileService.UpdateExhibitEvidenceSourceAsync(fileId, model.EvidenceSourceType, changedByUserId, isOverride);
             return Ok(result);
         }
 
@@ -111,9 +110,8 @@ namespace CES.API.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var createdBy = User.FindFirstValue(ClaimTypes.UserData)
-                ?? (User.IsInRole(RoleConstants.Clerk) ? "Clerk" : "Admin");
-            var result = await _fileService.AddExhibitNoteAsync(fileId, model.NoteText, createdBy);
+            var createdByUserId = await User.ResolveUserIdAsync(_userService);
+            var result = await _fileService.AddExhibitNoteAsync(fileId, model.NoteText, createdByUserId);
             return Ok(result);
         }
 

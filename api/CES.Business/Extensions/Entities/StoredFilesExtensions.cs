@@ -36,7 +36,10 @@ namespace CES.Business.Extensions.Entities
                 {
                     Id = d.Id,
                     DescriptionText = d.DescriptionText,
-                    CreatedBy = d.CreatedBy,
+                    CreatedByUserId = d.CreatedByUserId,
+                    // Null unless the caller included CreatedByUser; every read path that
+                    // surfaces descriptions to the client does.
+                    CreatedBy = d.CreatedByUser?.Email,
                     CreatedAtUTC = d.CreatedAtUTC,
                 })
                 .ToList(),

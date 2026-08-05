@@ -47,6 +47,7 @@ namespace CES.Business.Models
     public class AcceptedMetadataDescription
     {
         public string Text { get; set; } = string.Empty;
+        /// <summary>Actor's email address — see the note on <c>AcceptedMetadataWriter</c>.</summary>
         public string? By { get; set; }
         public DateTime AtUTC { get; set; }
     }
@@ -54,6 +55,7 @@ namespace CES.Business.Models
     public class AcceptedMetadataRevision
     {
         public DateTime AtUTC { get; set; }
+        /// <summary>Actor's email address — see the note on <c>AcceptedMetadataWriter</c>.</summary>
         public string? By { get; set; }
         public string Change { get; set; } = string.Empty;
     }

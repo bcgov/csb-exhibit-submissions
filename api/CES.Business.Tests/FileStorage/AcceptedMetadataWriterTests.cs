@@ -9,6 +9,16 @@ namespace CES.Business.Tests.FileStorage;
 
 public class AcceptedMetadataWriterTests
 {
+    private const int OfficerUserId = 1;
+    private const int AdminUserId = 2;
+    private const string OfficerEmail = "officer@test.ca";
+    private const string AdminEmail = "admin@test.ca";
+
+    // The writer resolves actors through the navigation, which is what the service layer
+    // Includes before calling in; these tests attach it directly.
+    private static ApplicationUser BuildUser(int id, string email) =>
+        new() { Id = id, Email = email, FirstName = "Test", LastName = "User", IsActive = true };
+
     private static Submission BuildSubmission()
     {
         var submission = new Submission
@@ -62,13 +72,15 @@ public class AcceptedMetadataWriterTests
         file.Descriptions.Add(new ExhibitDescription
         {
             DescriptionText = "an addendum",
-            CreatedBy = "admin@test.ca",
+            CreatedByUserId = AdminUserId,
+            CreatedByUser = BuildUser(AdminUserId, AdminEmail),
             CreatedAtUTC = firstAdded.AddMinutes(5),
         });
         file.Descriptions.Add(new ExhibitDescription
         {
             DescriptionText = "first description",
-            CreatedBy = "officer@test.ca",
+            CreatedByUserId = OfficerUserId,
+            CreatedByUser = BuildUser(OfficerUserId, OfficerEmail),
             CreatedAtUTC = firstAdded,
         });
 
@@ -76,7 +88,8 @@ public class AcceptedMetadataWriterTests
 
         var descriptions = metadata.Exhibits[0].Descriptions;
         descriptions.Select(d => d.Text).Should().ContainInOrder("first description", "an addendum");
-        descriptions[0].By.Should().Be("officer@test.ca");
+        // The sidecar records the actor's email, not the ApplicationUser id it is linked by.
+        descriptions[0].By.Should().Be(OfficerEmail);
         descriptions[0].AtUTC.Should().Be(firstAdded);
     }
 
@@ -112,8 +125,8 @@ public class AcceptedMetadataWriterTests
         var fileId = submission.Files[0].Id;
         var logs = new List<SubmissionAuditLog>
         {
-            new() { FileId = fileId, FieldName = "EnteredValue", OldValue = "A", NewValue = "B", ChangedBy = "officer", ChangedAtUTC = new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc) },
-            new() { FileId = fileId, FieldName = "MarkedValue", OldValue = null, NewValue = "A", ChangedBy = "officer", ChangedAtUTC = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new() { FileId = fileId, FieldName = "EnteredValue", OldValue = "A", NewValue = "B", ChangedByUserId = OfficerUserId, ChangedByUser = BuildUser(OfficerUserId, OfficerEmail), ChangedAtUTC = new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc) },
+            new() { FileId = fileId, FieldName = "MarkedValue", OldValue = null, NewValue = "A", ChangedByUserId = OfficerUserId, ChangedByUser = BuildUser(OfficerUserId, OfficerEmail), ChangedAtUTC = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
         };
 
         var metadata = AcceptedMetadataWriter.BuildMetadata(submission, logs);
@@ -121,6 +134,8 @@ public class AcceptedMetadataWriterTests
         metadata.Revisions.Should().HaveCount(2);
         metadata.Revisions[0].Change.Should().Contain("MarkedValue");
         metadata.Revisions[1].Change.Should().Contain("EnteredValue");
+        // Revision history is attributed by email so the file reads on its own.
+        metadata.Revisions.Should().OnlyContain(r => r.By == OfficerEmail);
     }
 
     [Fact]
@@ -182,7 +197,7 @@ public class AcceptedMetadataWriterTests
             var fileId = submission.Files[0].Id;
             var logs = new List<SubmissionAuditLog>
             {
-                new() { FileId = fileId, FieldName = "MarkedValue", OldValue = null, NewValue = "A", ChangedBy = "officer", ChangedAtUTC = DateTime.UtcNow },
+                new() { FileId = fileId, FieldName = "MarkedValue", OldValue = null, NewValue = "A", ChangedByUserId = OfficerUserId, ChangedByUser = BuildUser(OfficerUserId, OfficerEmail), ChangedAtUTC = DateTime.UtcNow },
             };
 
             await AcceptedMetadataWriter.WriteAsync(folder, AcceptedMetadataWriter.BuildMetadata(submission, logs));

@@ -1,5 +1,3 @@
-using CES.Business.Constants;
-using CES.Business.Interfaces;
 using CES.Business.Services;
 using CES.EF;
 using CES.Entities;
@@ -24,9 +22,7 @@ public class UserServiceTests : IDisposable
             .UseInMemoryDatabase($"UserServiceTests_{Guid.NewGuid()}")
             .Options;
         _db = new CESDataStore(options);
-
-        // The password service is unused on this path but required by the constructor.
-        _service = new UserService(_db, new Mock<IPasswordService>().Object);
+        _service = new UserService(_db);
     }
 
     public void Dispose() => _db.Dispose();
@@ -45,22 +41,14 @@ public class UserServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task UpsertFromToken_LeavesThePasswordUnset()
+    public async Task UpsertFromToken_StampsCreatedByAsTheUserItself()
     {
         await _service.UpsertFromTokenAsync(Sub, "bryce.martel@gov.bc.ca", "Bryce", "Martel");
 
-        // Keycloak owns authentication; a provisioned row must never hold a credential.
+        // A login provisions its own row, so the audit FK points back at that row rather
+        // than being left null and unattributable.
         var row = await _db.ApplicationUser.SingleAsync();
-        row.Password.Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task UpsertFromToken_StampsCreatedByKeycloak()
-    {
-        await _service.UpsertFromTokenAsync(Sub, "bryce.martel@gov.bc.ca", "Bryce", "Martel");
-
-        var row = await _db.ApplicationUser.SingleAsync();
-        row.CreatedBy.Should().Be(UserConstants.KeycloakProvisionedBy);
+        row.CreatedByUserId.Should().Be(row.Id);
     }
 
     [Fact]
@@ -83,7 +71,7 @@ public class UserServiceTests : IDisposable
         var row = await _db.ApplicationUser.SingleAsync();
         row.Email.Should().Be("new@gov.bc.ca");
         row.LastName.Should().Be("Newname");
-        row.UpdatedBy.Should().Be(UserConstants.KeycloakProvisionedBy);
+        row.UpdatedByUserId.Should().Be(row.Id);
     }
 
     [Fact]
@@ -113,5 +101,84 @@ public class UserServiceTests : IDisposable
         row.Email.Should().BeEmpty();
         row.FirstName.Should().BeEmpty();
         row.LastName.Should().BeEmpty();
+    }
+
+    // ── UpsertMockUserAsync (dev-bypass login) ────────────────────────────
+
+    [Fact]
+    public async Task UpsertMockUser_InsertsARowWithNoRealmSubject()
+    {
+        await _service.UpsertMockUserAsync("officer@gov.bc.ca", "Dev", "Officer");
+
+        var row = await _db.ApplicationUser.SingleAsync();
+        row.Email.Should().Be("officer@gov.bc.ca");
+        row.KeycloakSub.Should().BeNull();
+        row.IsActive.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task UpsertMockUser_OnSecondLogin_UpdatesRatherThanDuplicating()
+    {
+        await _service.UpsertMockUserAsync("officer@gov.bc.ca", "Dev", "Officer");
+        await _service.UpsertMockUserAsync("officer@gov.bc.ca", "Dev", "Officer");
+
+        (await _db.ApplicationUser.CountAsync()).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task UpsertMockUser_WithABlankEmail_Throws()
+    {
+        var act = () => _service.UpsertMockUserAsync("  ", "Dev", "Officer");
+
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    // ── ResolveUserIdAsync (what the audit columns are stamped with) ──────
+
+    [Fact]
+    public async Task ResolveUserId_MatchesOnRealmSubject()
+    {
+        var user = await _service.UpsertFromTokenAsync(Sub, "bryce.martel@gov.bc.ca", "Bryce", "Martel");
+
+        (await _service.ResolveUserIdAsync(Sub, "bryce.martel@gov.bc.ca")).Should().Be(user.Id);
+    }
+
+    [Fact]
+    public async Task ResolveUserId_FallsBackToEmail_WhenTheSubjectIsUnknown()
+    {
+        // The mock dev-bypass token carries the email as its subject and has no realm sub.
+        var user = await _service.UpsertMockUserAsync("officer@gov.bc.ca", "Dev", "Officer");
+
+        (await _service.ResolveUserIdAsync("officer@gov.bc.ca", null)).Should().Be(user.Id);
+    }
+
+    [Fact]
+    public async Task ResolveUserId_MatchesEmailCaseInsensitively()
+    {
+        var user = await _service.UpsertMockUserAsync("officer@gov.bc.ca", "Dev", "Officer");
+
+        (await _service.ResolveUserIdAsync(null, "Officer@GOV.BC.CA")).Should().Be(user.Id);
+    }
+
+    [Fact]
+    public async Task ResolveUserId_PrefersTheSubjectMatch_OverTheEmailMatch()
+    {
+        var bySub = await _service.UpsertFromTokenAsync(Sub, "shared@gov.bc.ca", "Bryce", "Martel");
+        await _service.UpsertMockUserAsync("other@gov.bc.ca", "Dev", "Officer");
+
+        (await _service.ResolveUserIdAsync(Sub, "other@gov.bc.ca")).Should().Be(bySub.Id);
+    }
+
+    [Fact]
+    public async Task ResolveUserId_ReturnsNull_WhenNothingMatches()
+    {
+        // An unattributed change is recorded rather than the request being failed.
+        (await _service.ResolveUserIdAsync("unknown-sub", "nobody@gov.bc.ca")).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ResolveUserId_ReturnsNull_WhenNoIdentityIsSupplied()
+    {
+        (await _service.ResolveUserIdAsync(null, null)).Should().BeNull();
     }
 }

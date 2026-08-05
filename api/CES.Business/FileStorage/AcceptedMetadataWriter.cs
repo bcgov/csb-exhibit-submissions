@@ -10,6 +10,10 @@ namespace CES.Business.FileStorage
     // Produces/refreshes the per-submission metadata.json sidecar, derived from the
     // DB (the source of truth). One file per submission folder — no pointer copies
     // with the submission-leaf layout (CES-39, Phase 3).
+    //
+    // Actors are written as email addresses, not ApplicationUser ids: the sidecar is an
+    // audit artifact that has to remain readable on its own, long after — and away from —
+    // the database whose ids would otherwise be needed to interpret it.
     public static class AcceptedMetadataWriter
     {
         private static readonly JsonSerializerOptions SerializerOptions = new()
@@ -73,7 +77,7 @@ namespace CES.Business.FileStorage
                         .Select(d => new AcceptedMetadataDescription
                         {
                             Text = d.DescriptionText,
-                            By = d.CreatedBy,
+                            By = d.CreatedByUser?.Email,
                             AtUTC = d.CreatedAtUTC,
                         }).ToList(),
                     EvidenceSourceType = f.EvidenceSourceType,
@@ -84,7 +88,7 @@ namespace CES.Business.FileStorage
                     .Select(l => new AcceptedMetadataRevision
                     {
                         AtUTC = l.ChangedAtUTC,
-                        By = l.ChangedBy,
+                        By = l.ChangedByUser?.Email,
                         Change = $"{l.FieldName} {l.OldValue ?? "(none)"} : {l.NewValue ?? "(none)"} on exhibitId {l.FileId}",
                     }).ToList(),
             };

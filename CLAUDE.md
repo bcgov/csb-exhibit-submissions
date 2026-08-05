@@ -120,7 +120,7 @@ The body is always `{ "message": "…" }` (generic text for 500). When adding a 
 
 ### Key Integration Points
 
-- **File uploads:** Dropzone on the frontend, max 100MB, stored locally by the API under the path `{locationId}/{shortDate}/{roomCode}/{submissionId}` (submission-scoped, not per-ticket)
+- **File uploads:** Dropzone on the frontend, max 100MB, stored locally by the API under the path `{locationId}/{roomCode}/{shortDate}/{submissionId}` (submission-scoped, not per-ticket)
 - **Email:** SMTP configuration in `appsettings.json`
 - **BC Gov design system:** BC Gov design tokens and fonts are imported for consistent styling
 
