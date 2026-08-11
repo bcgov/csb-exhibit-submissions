@@ -58,7 +58,8 @@
     "vitest": "^4.1.7"
   },
   "overrides": {
-    "minimatch": "^10.2.4"
+    "minimatch": "^10.2.4",
+    "nanoid": "^3.3.17"
   },
   "engines": {
     "node": "^20.19.0 || >=22.13.0"
