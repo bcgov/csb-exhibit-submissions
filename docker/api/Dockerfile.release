@@ -13,6 +13,9 @@ RUN dotnet publish -c Release -o /app/publish
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
 WORKDIR /app
 
+# Npgsql requires GSSAPI (Kerberos) support, not present by default on Alpine
+RUN apk add --no-cache krb5-libs
+
 # Copy published app
 COPY --from=build /app/publish .
 
