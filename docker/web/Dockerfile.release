@@ -16,8 +16,8 @@ ARG VUE_ON_NGINX_SRC
 
 ENV STI_SCRIPTS_PATH=/usr/libexec/s2i
 
-# Required for HTTP Basic feature
-RUN apk add --no-cache openssl ca-certificates
+# Required for HTTP Basic feature and bash-based S2I scripts
+RUN apk add --no-cache openssl ca-certificates bash
 
 # Copy our OpenShift s2i scripts over to default location
 COPY ${VUE_ON_NGINX_SRC}/s2i/bin/ /usr/libexec/s2i/
@@ -98,7 +98,7 @@ COPY ${VUE_ON_NGINX_SRC}/s2i/bin/fix-base-url /usr/libexec/s2i/fix-base-url
 
 # Fix permissions.
 USER root
-RUN chmod 674 /usr/libexec/s2i/fix-base-url
+RUN chmod 755 /usr/libexec/s2i/fix-base-url
 RUN chmod -R 674 /tmp/app/dist/
 
 # From nginx-runtime.
@@ -108,4 +108,4 @@ USER 104
 # short circuit the s2i lifecycle.
 # The runtime image "loses" its s2i runtime voodoo when it
 # is used in a dockerSrategy, which is why the explicit `CMD` is necessary
-CMD  /usr/libexec/s2i/fix-base-url
+CMD ["/usr/libexec/s2i/fix-base-url"]
