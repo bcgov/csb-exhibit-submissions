@@ -115,6 +115,10 @@ $chevron-width:          1.75rem;
 $status-chip-width:      6.5rem;
 $row1-gap:               0.6rem;
 
+// Vuetify's default v-app-bar height. Every modal overlay offsets its top padding by this
+// so the fixed header never overlaps a dialog's title.
+$app-bar-height:         64px;
+
 // WCAG 2.5.8 (AA) minimum interactive target size for buttons. Consumed by the .btn
 // system in _buttons.scss and by the ExhibitList action slots below.
 $btn-min-target:         2rem;    // 32px

@@ -6,6 +6,7 @@ using CES.Entities;
 using CES.Entities.Infrastructure;
 using CES.Entities.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace CES.Business.Services
 {
@@ -13,11 +14,13 @@ namespace CES.Business.Services
     {
         private readonly ICESDataStore _dataStore;
         private readonly IFileStorage _fileStorage;
+        private readonly ILogger<FileService> _logger;
 
-        public FileService(ICESDataStore dataStore, IFileStorage fileStorage)
+        public FileService(ICESDataStore dataStore, IFileStorage fileStorage, ILogger<FileService> logger)
         {
             _dataStore = dataStore;
             _fileStorage = fileStorage;
+            _logger = logger;
         }
 
         public async Task<StoredFiles?> RetrieveFileMetaData(Guid fileId)
@@ -49,7 +52,7 @@ namespace CES.Business.Services
             }
         }
 
-        public async Task<SubmissionFile> MarkExhibitAsync(Guid fileId, string markedValue, string changedBy, bool isAdminOverride = false)
+        public async Task<SubmissionFile> MarkExhibitAsync(Guid fileId, string markedValue, int? changedByUserId, bool isAdminOverride = false)
         {
             var file = await LoadFileWithSubmissionAsync(fileId)
                 ?? throw new KeyNotFoundException($"File {fileId} not found.");
@@ -64,7 +67,7 @@ namespace CES.Business.Services
             var oldValue = file.MarkedValue;
             file.MarkedValue = normalised;
             file.MarkedAt = SystemDate.UtcNow();
-            file.SetUpdateBy(changedBy);
+            file.SetUpdateBy(changedByUserId);
 
             _dataStore.SubmissionAuditLogs.Add(new SubmissionAuditLog
             {
@@ -73,7 +76,7 @@ namespace CES.Business.Services
                 FieldName = "MarkedValue",
                 OldValue = oldValue,
                 NewValue = normalised,
-                ChangedBy = changedBy,
+                ChangedByUserId = changedByUserId,
             });
 
             // Per-file auto-accept on first Marked (Decision #13).
@@ -81,7 +84,7 @@ namespace CES.Business.Services
             return ToSubmissionFile(file);
         }
 
-        public async Task<SubmissionFile> EnterExhibitAsync(Guid fileId, string enteredValue, string changedBy, bool isAdminOverride = false)
+        public async Task<SubmissionFile> EnterExhibitAsync(Guid fileId, string enteredValue, int? changedByUserId, bool isAdminOverride = false)
         {
             var file = await LoadFileWithSubmissionAsync(fileId)
                 ?? throw new KeyNotFoundException($"File {fileId} not found.");
@@ -106,7 +109,7 @@ namespace CES.Business.Services
             if (!file.EnteredAt.HasValue)
                 file.EnteredAt = SystemDate.UtcNow();
 
-            file.SetUpdateBy(changedBy);
+            file.SetUpdateBy(changedByUserId);
 
             _dataStore.SubmissionAuditLogs.Add(new SubmissionAuditLog
             {
@@ -115,7 +118,7 @@ namespace CES.Business.Services
                 FieldName = "EnteredValue",
                 OldValue = oldValue,
                 NewValue = enteredValue,
-                ChangedBy = changedBy,
+                ChangedByUserId = changedByUserId,
             });
 
             // Per-file auto-accept on first Entered (Decision #13); if already
@@ -128,7 +131,7 @@ namespace CES.Business.Services
         // update or delete: a correction is a new entry and the earlier ones remain.
         // The entry list is the description's history, so — unlike Marked/Entered/Source
         // — no SubmissionAuditLog row is written.
-        public async Task<SubmissionFile> AddExhibitDescriptionAsync(Guid fileId, string descriptionText, string createdBy, bool isAdminOverride = false)
+        public async Task<SubmissionFile> AddExhibitDescriptionAsync(Guid fileId, string descriptionText, int? createdByUserId, bool isAdminOverride = false)
         {
             var file = await LoadFileWithSubmissionAsync(fileId)
                 ?? throw new KeyNotFoundException($"File {fileId} not found.");
@@ -146,12 +149,19 @@ namespace CES.Business.Services
             {
                 FileId = file.Id,
                 DescriptionText = normalised,
-                CreatedBy = createdBy,
+                CreatedByUserId = createdByUserId,
                 CreatedAtUTC = SystemDate.UtcNow(),
             };
 
+            // Hydrate the author navigation on the new entry before anything reads it back:
+            // the echoed SubmissionFile and the metadata sidecar both resolve the display
+            // email through it, and EF will not fix up a navigation for an untracked user.
+            if (createdByUserId.HasValue)
+                entry.CreatedByUser = await _dataStore.ApplicationUser
+                    .FirstOrDefaultAsync(u => u.Id == createdByUserId.Value);
+
             file.Descriptions.Add(entry);
-            file.SetUpdateBy(createdBy);
+            file.SetUpdateBy(createdByUserId);
 
             // Adding a description never triggers acceptance on its own; it only
             // refreshes the sidecar when the file is already accepted (and, per the
@@ -165,7 +175,7 @@ namespace CES.Business.Services
         private static string NormaliseDescription(string? text)
             => (text ?? string.Empty).Replace("\r\n", "\n").Replace("\r", "\n").Trim();
 
-        public async Task<SubmissionFile> UpdateExhibitEvidenceSourceAsync(Guid fileId, string? evidenceSourceType, string changedBy, bool isAdminOverride = false)
+        public async Task<SubmissionFile> UpdateExhibitEvidenceSourceAsync(Guid fileId, string? evidenceSourceType, int? changedByUserId, bool isAdminOverride = false)
         {
             var file = await LoadFileWithSubmissionAsync(fileId)
                 ?? throw new KeyNotFoundException($"File {fileId} not found.");
@@ -180,7 +190,7 @@ namespace CES.Business.Services
 
             var oldValue = file.EvidenceSourceType;
             file.EvidenceSourceType = normalised;
-            file.SetUpdateBy(changedBy);
+            file.SetUpdateBy(changedByUserId);
 
             _dataStore.SubmissionAuditLogs.Add(new SubmissionAuditLog
             {
@@ -189,7 +199,7 @@ namespace CES.Business.Services
                 FieldName = "EvidenceSourceType",
                 OldValue = oldValue,
                 NewValue = normalised,
-                ChangedBy = changedBy,
+                ChangedByUserId = changedByUserId,
             });
 
             // Like a description edit: never triggers acceptance on its own, only
@@ -199,12 +209,14 @@ namespace CES.Business.Services
         }
 
         // Loads a file together with its submission's tickets and files so promotion
-        // and metadata refresh have the full context they need.
+        // and metadata refresh have the full context they need. Description authors are
+        // pulled in as well — the metadata sidecar records them by email.
         private async Task<StoredFiles?> LoadFileWithSubmissionAsync(Guid fileId)
             => await _dataStore.StoredFiles
-                .Include(f => f.Descriptions)
+                .Include(f => f.Descriptions).ThenInclude(d => d.CreatedByUser)
                 .Include(f => f.Submission).ThenInclude(s => s.Tickets)
-                .Include(f => f.Submission).ThenInclude(s => s.Files).ThenInclude(sf => sf.Descriptions)
+                .Include(f => f.Submission).ThenInclude(s => s.Files)
+                    .ThenInclude(sf => sf.Descriptions).ThenInclude(d => d.CreatedByUser)
                 .FirstOrDefaultAsync(f => f.Id == fileId && !f.IsDeleted);
 
         // Persists the DB change (source of truth) first, then promotes bytes /
@@ -227,10 +239,50 @@ namespace CES.Business.Services
 
             if (file.IsAccepted)
             {
+                // ChangedByUser is included because the sidecar records the actor's email,
+                // not the internal id — the file has to stand on its own outside the DB.
                 var auditLogs = await _dataStore.SubmissionAuditLogs
+                    .Include(l => l.ChangedByUser)
                     .Where(l => l.SubmissionId == file.SubmissionId)
                     .ToListAsync();
                 await _fileStorage.WriteMetadataAsync(file.Submission, auditLogs);
+
+                await CleanupPendingCopyAsync(file);
+            }
+        }
+
+        // The pending upload is redundant once the exhibit is in the accepted store, so
+        // it is removed — but strictly last, after the DB has committed the canonical
+        // path and hash the storage layer re-verifies against. Ordering it here means a
+        // crash or failure at any earlier point leaves a harmless orphan in uploads
+        // rather than an exhibit with nowhere to read its bytes from.
+        //
+        // Runs on every finalize (not just the promoting one) so an exhibit accepted
+        // before this cleanup existed has its original swept up the next time it is
+        // touched.
+        private async Task CleanupPendingCopyAsync(StoredFiles file)
+        {
+            try
+            {
+                var result = await _fileStorage.DeletePendingCopyAsync(file);
+
+                if (result == PendingCleanupResult.VerificationFailed)
+                {
+                    // The accepted copy could not be confirmed against the hash recorded
+                    // at acceptance. The pending original is intentionally kept as the
+                    // surviving source of the bytes — this needs a human.
+                    _logger.LogError(
+                        "Pending copy of exhibit {FileId} (submission {SubmissionId}) retained: the accepted copy at {CanonicalPath} failed verification.",
+                        file.Id, file.SubmissionId, file.CanonicalPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Cleanup is best-effort. Acceptance has already succeeded and committed,
+                // so a failure to delete must not surface as a failed request.
+                _logger.LogError(ex,
+                    "Failed to remove the pending copy of exhibit {FileId} (submission {SubmissionId}) after acceptance.",
+                    file.Id, file.SubmissionId);
             }
         }
 
@@ -248,7 +300,10 @@ namespace CES.Business.Services
                     FieldName = l.FieldName,
                     OldValue = l.OldValue,
                     NewValue = l.NewValue,
-                    ChangedBy = l.ChangedBy,
+                    ChangedByUserId = l.ChangedByUserId,
+                    // Resolved on read from the linked user, so a rename in IDIR is reflected
+                    // everywhere rather than leaving a stale copy on the audit row.
+                    ChangedBy = l.ChangedByUser != null ? l.ChangedByUser.Email : null,
                     ChangedAtUTC = l.ChangedAtUTC,
                 })
                 .ToListAsync();
@@ -267,13 +322,14 @@ namespace CES.Business.Services
                 {
                     Id = n.Id,
                     NoteText = n.NoteText,
-                    CreatedBy = n.CreatedBy,
+                    CreatedByUserId = n.CreatedByUserId,
+                    CreatedBy = n.CreatedByUser != null ? n.CreatedByUser.Email : null,
                     CreatedAtUTC = n.CreatedAtUTC,
                 })
                 .ToListAsync();
         }
 
-        public async Task<ExhibitNoteModel> AddExhibitNoteAsync(Guid fileId, string noteText, string createdBy)
+        public async Task<ExhibitNoteModel> AddExhibitNoteAsync(Guid fileId, string noteText, int? createdByUserId)
         {
             var fileExists = await _dataStore.StoredFiles.AnyAsync(f => f.Id == fileId);
             if (!fileExists)
@@ -289,7 +345,7 @@ namespace CES.Business.Services
             {
                 FileId = fileId,
                 NoteText = trimmed,
-                CreatedBy = createdBy,
+                CreatedByUserId = createdByUserId,
                 CreatedAtUTC = SystemDate.UtcNow(),
             };
 
@@ -300,9 +356,23 @@ namespace CES.Business.Services
             {
                 Id = note.Id,
                 NoteText = note.NoteText,
-                CreatedBy = note.CreatedBy,
+                CreatedByUserId = note.CreatedByUserId,
+                CreatedBy = await ResolveEmailAsync(note.CreatedByUserId),
                 CreatedAtUTC = note.CreatedAtUTC,
             };
+        }
+
+        // The note was just inserted, so its CreatedByUser navigation is not loaded; the
+        // echoed response resolves the email directly rather than re-querying the note.
+        private async Task<string?> ResolveEmailAsync(int? userId)
+        {
+            if (!userId.HasValue)
+                return null;
+
+            return await _dataStore.ApplicationUser
+                .Where(u => u.Id == userId.Value)
+                .Select(u => u.Email)
+                .FirstOrDefaultAsync();
         }
 
         private static SubmissionFile ToSubmissionFile(StoredFiles f) => f.ToSubmissionFile();

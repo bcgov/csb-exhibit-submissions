@@ -1,8 +1,16 @@
 import { mount, flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import SubmissionForm from '@/components/officer/SubmissionForm.vue';
+import { useAuthStore } from '@/stores/authStore';
 import { useCourtFileSelectionStore } from '@/stores/useCourtFileSelectionStore';
 import type { CourtFileList } from '@/models/CourtFileList';
+
+vi.mock('@/services/UserService', () => ({
+  default: () => ({
+    getProfile: vi.fn(),
+    saveOfficerNumber: vi.fn(),
+  }),
+}));
 
 const mockPush = vi.hoisted(() => vi.fn());
 vi.mock('vue-router', () => ({
@@ -72,11 +80,19 @@ const secondTicket: CourtFileList = {
   fileNumberText: 'FILE002',
 };
 
-function mountWithTickets(tickets: CourtFileList[] = [mockTicket]) {
+/**
+ * @param officerNumber The number stored on the officer's profile. Null models an officer
+ *   who has not answered the Court Search prompt yet, which blocks upload (CES-27).
+ */
+function mountWithTickets(
+  tickets: CourtFileList[] = [mockTicket],
+  officerNumber: string | null = 'PC-1234',
+) {
   const pinia = createPinia();
   setActivePinia(pinia);
   const store = useCourtFileSelectionStore();
   store.setSelectedFiles(tickets);
+  useAuthStore().setOfficerNumber(officerNumber);
   mockGetSubmissionsByFileNumber.mockResolvedValue([]);
   return mount(SubmissionForm, { global: { plugins: [pinia] } });
 }
@@ -219,5 +235,72 @@ describe('SubmissionForm', () => {
     expect(wrapper.find('.descriptions-section').exists()).toBe(true);
     expect(wrapper.find('.notes-section').exists()).toBe(false);
     expect(mockGetExhibitNotes).not.toHaveBeenCalled();
+  });
+
+  // CES-27: the officer number comes from the profile, not from this form.
+  describe('officer number', () => {
+    it('prefills the field from the store and leaves it disabled', async () => {
+      const wrapper = mountWithTickets();
+      await flushPromises();
+
+      const field = wrapper.find('#officerNumberField');
+      expect((field.element as HTMLInputElement).value).toBe('PC-1234');
+      expect(field.attributes('disabled')).toBeDefined();
+    });
+
+    it('sends the stored number with the submission', async () => {
+      mockSubmitExhibits.mockResolvedValue(7);
+      const wrapper = mountWithTickets();
+      await flushPromises();
+
+      await wrapper.find('form').trigger('submit');
+      await flushPromises();
+
+      expect(mockSubmitExhibits.mock.calls[0][0].officerNumber).toBe('PC-1234');
+    });
+
+    it('disables upload and warns when no number is stored', async () => {
+      const wrapper = mountWithTickets([mockTicket], null);
+      await flushPromises();
+
+      expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeDefined();
+      expect(wrapper.find('.officer-field-missing').exists()).toBe(true);
+    });
+
+    it('does not submit without a stored number', async () => {
+      const wrapper = mountWithTickets([mockTicket], null);
+      await flushPromises();
+
+      await wrapper.find('form').trigger('submit');
+      await flushPromises();
+
+      expect(mockSubmitExhibits).not.toHaveBeenCalled();
+      // Prompted instead of failed — the modal is the only way to supply one.
+      expect(wrapper.find('.officer-number-dialog').exists()).toBe(true);
+    });
+
+    it('opens the modal from the Edit button', async () => {
+      const wrapper = mountWithTickets();
+      await flushPromises();
+
+      expect(wrapper.find('.officer-number-dialog').exists()).toBe(false);
+
+      await wrapper.find('.officer-number-edit').trigger('click');
+
+      expect(wrapper.find('.officer-number-dialog').exists()).toBe(true);
+    });
+
+    it('reflects a number saved through the modal without a remount', async () => {
+      const wrapper = mountWithTickets([mockTicket], null);
+      await flushPromises();
+
+      useAuthStore().setOfficerNumber('PC-9999');
+      await flushPromises();
+
+      expect((wrapper.find('#officerNumberField').element as HTMLInputElement).value).toBe(
+        'PC-9999',
+      );
+      expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeUndefined();
+    });
   });
 });

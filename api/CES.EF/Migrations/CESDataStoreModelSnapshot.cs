@@ -30,8 +30,8 @@ namespace CES.EF.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text");
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("CreatedDateUTC")
                         .HasColumnType("timestamp with time zone");
@@ -57,21 +57,24 @@ namespace CES.EF.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("Password")
-                        .IsRequired()
+                    b.Property<string>("OfficerNumber")
                         .HasColumnType("text");
 
-                    b.Property<string>("UpdatedBy")
-                        .HasColumnType("text");
+                    b.Property<int?>("UpdatedByUserId")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdatedDateUTC")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CreatedByUserId");
+
                     b.HasIndex("KeycloakSub")
                         .IsUnique()
                         .HasFilter("\"KeycloakSub\" IS NOT NULL");
+
+                    b.HasIndex("UpdatedByUserId");
 
                     b.ToTable("ApplicationUser");
                 });
@@ -87,8 +90,8 @@ namespace CES.EF.Migrations
                     b.Property<DateTime>("CreatedAtUTC")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text");
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("DescriptionText")
                         .IsRequired()
@@ -98,6 +101,8 @@ namespace CES.EF.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("FileId", "CreatedAtUTC");
 
@@ -115,8 +120,8 @@ namespace CES.EF.Migrations
                     b.Property<DateTime>("CreatedAtUTC")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text");
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("FileId")
                         .HasColumnType("uuid");
@@ -126,6 +131,8 @@ namespace CES.EF.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("FileId");
 
@@ -151,8 +158,8 @@ namespace CES.EF.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text");
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("CreatedDateUTC")
                         .HasColumnType("timestamp with time zone");
@@ -206,15 +213,19 @@ namespace CES.EF.Migrations
                     b.Property<int>("SubmissionId")
                         .HasColumnType("integer");
 
-                    b.Property<string>("UpdatedBy")
-                        .HasColumnType("text");
+                    b.Property<int?>("UpdatedByUserId")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdatedDateUTC")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CreatedByUserId");
+
                     b.HasIndex("SubmissionId");
+
+                    b.HasIndex("UpdatedByUserId");
 
                     b.ToTable("StoredFiles");
                 });
@@ -230,8 +241,8 @@ namespace CES.EF.Migrations
                     b.Property<string>("AppearanceDateTime")
                         .HasColumnType("text");
 
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text");
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("CreatedDateUTC")
                         .HasColumnType("timestamp with time zone");
@@ -266,8 +277,8 @@ namespace CES.EF.Migrations
                     b.Property<DateTime?>("StatusChangedDateUTC")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("UpdatedBy")
-                        .HasColumnType("text");
+                    b.Property<int?>("UpdatedByUserId")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdatedDateUTC")
                         .HasColumnType("timestamp with time zone");
@@ -276,6 +287,10 @@ namespace CES.EF.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("UpdatedByUserId");
 
                     b.ToTable("Submissions");
                 });
@@ -291,8 +306,8 @@ namespace CES.EF.Migrations
                     b.Property<DateTime>("ChangedAtUTC")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("ChangedBy")
-                        .HasColumnType("text");
+                    b.Property<int?>("ChangedByUserId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("FieldName")
                         .IsRequired()
@@ -311,6 +326,8 @@ namespace CES.EF.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ChangedByUserId");
 
                     b.HasIndex("FileId");
 
@@ -378,8 +395,8 @@ namespace CES.EF.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text");
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("CreatedDateUTC")
                         .HasColumnType("timestamp with time zone");
@@ -396,8 +413,8 @@ namespace CES.EF.Migrations
                     b.Property<DateTime>("TokenExpiryDateUTC")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("UpdatedBy")
-                        .HasColumnType("text");
+                    b.Property<int?>("UpdatedByUserId")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdatedDateUTC")
                         .HasColumnType("timestamp with time zone");
@@ -406,44 +423,107 @@ namespace CES.EF.Migrations
 
                     b.HasIndex("ApplicationUserId");
 
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("UpdatedByUserId");
+
                     b.ToTable("UserAuthTokens");
+                });
+
+            modelBuilder.Entity("CES.Entities.ApplicationUser", b =>
+                {
+                    b.HasOne("CES.Entities.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CES.Entities.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("CES.Entities.ExhibitDescription", b =>
                 {
+                    b.HasOne("CES.Entities.ApplicationUser", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("CES.Entities.StoredFiles", "File")
                         .WithMany("Descriptions")
                         .HasForeignKey("FileId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("CreatedByUser");
+
                     b.Navigation("File");
                 });
 
             modelBuilder.Entity("CES.Entities.ExhibitNote", b =>
                 {
+                    b.HasOne("CES.Entities.ApplicationUser", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("CES.Entities.StoredFiles", "File")
                         .WithMany()
                         .HasForeignKey("FileId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("CreatedByUser");
+
                     b.Navigation("File");
                 });
 
             modelBuilder.Entity("CES.Entities.StoredFiles", b =>
                 {
+                    b.HasOne("CES.Entities.ApplicationUser", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("CES.Entities.Submission", "Submission")
                         .WithMany("Files")
                         .HasForeignKey("SubmissionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("CES.Entities.ApplicationUser", "UpdatedByUser")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CreatedByUser");
+
                     b.Navigation("Submission");
+
+                    b.Navigation("UpdatedByUser");
+                });
+
+            modelBuilder.Entity("CES.Entities.Submission", b =>
+                {
+                    b.HasOne("CES.Entities.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CES.Entities.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("CES.Entities.SubmissionAuditLog", b =>
                 {
+                    b.HasOne("CES.Entities.ApplicationUser", "ChangedByUser")
+                        .WithMany()
+                        .HasForeignKey("ChangedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("CES.Entities.StoredFiles", "File")
                         .WithMany()
                         .HasForeignKey("FileId")
@@ -454,6 +534,8 @@ namespace CES.EF.Migrations
                         .HasForeignKey("SubmissionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("ChangedByUser");
 
                     b.Navigation("File");
 
@@ -478,6 +560,16 @@ namespace CES.EF.Migrations
                         .HasForeignKey("ApplicationUserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("CES.Entities.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CES.Entities.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("ApplicationUser");
                 });

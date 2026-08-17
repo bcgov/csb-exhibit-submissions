@@ -39,6 +39,8 @@ export interface ExhibitHistoryEntry {
   fieldName: string;
   oldValue?: string | null;
   newValue?: string | null;
+  // See ExhibitDescriptionModel — id is the stored link, changedBy the resolved email.
+  changedByUserId?: number | null;
   changedBy?: string | null;
   changedAtUTC: string;
 }

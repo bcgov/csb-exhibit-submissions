@@ -172,6 +172,14 @@ router.beforeEach(async (to, from, next) => {
     return next({ name: 'Login' });
   }
 
+  // The officer number is not a token claim, so it has to be fetched. Done here rather than
+  // at each login path because this is the one point every route into the app passes through
+  // — including a dev-bypass reload, which restores its token from storage and mints nothing.
+  // Not awaited: navigation must not wait on it, and loadProfile is a no-op once loaded.
+  if (authStore.isAuthenticated) {
+    void authStore.loadProfile();
+  }
+
   // Logged in but missing role
   if (requiredRoles && requiredRoles.length > 0) {
     const hasRole = requiredRoles.some((role) => authStore.roles.includes(role));

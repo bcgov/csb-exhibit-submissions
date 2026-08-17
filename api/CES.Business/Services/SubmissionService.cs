@@ -1,4 +1,5 @@
 using CES.Business.Constants;
+using CES.Business.Extensions;
 using CES.Business.Extensions.Entities;
 using CES.Business.Interfaces;
 using CES.Business.Models;
@@ -21,7 +22,7 @@ namespace CES.Business.Services
             _fileStorage = fileStorage;
         }
 
-        public async Task<int?> SubmitEvidence(EvidenceSubmissionModel model)
+        public async Task<int?> SubmitEvidence(EvidenceSubmissionModel model, int? submittedByUserId)
         {
             if (model.Tickets == null || model.Tickets.Count == 0)
                 return null;
@@ -31,20 +32,31 @@ namespace CES.Business.Services
 
             if (entity == null)
             {
+                // Mandatory on a new submission only: an append reuses the number already recorded
+                // on the target, which the request does not resend.
+                model.OfficerNumber = model.OfficerNumber.NormalizeOfficerNumberOrThrow();
+
                 // Create a new submission (first upload, or fallback for an invalid append target).
                 entity = model.ToEntity();
+                entity.CreatedByUserId = submittedByUserId;
                 await _datastore.Submissions.AddAsync(entity);
 
                 // Flush now so entity.Id is populated; files are stored under the submission ID.
                 await _datastore.SaveChangesAsync();
             }
+            else
+            {
+                // An append is an update to someone else's (or one's own) earlier submission.
+                entity.SetUpdateBy(submittedByUserId);
+            }
 
             // ShortDate is persisted on the submission, so appended files reuse the original folder.
-            var storagePath = Path.Combine(entity.LocationId, entity.ShortDate, entity.RoomCode, entity.Id.ToString());
+            var storagePath = Path.Combine(entity.LocationId, entity.RoomCode, entity.ShortDate, entity.Id.ToString());
 
             foreach (var file in model.fileUploads)
             {
                 var newFile = await _fileStorage.SaveAsync(file, storagePath);
+                newFile.CreatedByUserId = submittedByUserId;
                 entity.Files.Add(newFile);
                 await _datastore.StoredFiles.AddAsync(newFile);
             }
@@ -92,6 +104,7 @@ namespace CES.Business.Services
                 .Include(s => s.Tickets)
                 .Include(s => s.Files) // include all files (including Removed) for historical view
                     .ThenInclude(f => f.Descriptions)
+                        .ThenInclude(d => d.CreatedByUser) // description author, rendered as their email
                 .FirstOrDefaultAsync(s => s.Id == submissionId);
 
             if (entity == null)
@@ -110,6 +123,7 @@ namespace CES.Business.Services
                 .Include(s => s.Tickets)
                 .Include(s => s.Files)
                     .ThenInclude(f => f.Descriptions)
+                        .ThenInclude(d => d.CreatedByUser)
                 .AsQueryable();
 
             if (filter.SubmissionDateFrom.HasValue)
@@ -180,7 +194,7 @@ namespace CES.Business.Services
             return (true, null);
         }
 
-        public async Task<bool> RemoveFileAsync(Guid fileId)
+        public async Task<bool> RemoveFileAsync(Guid fileId, int? removedByUserId)
         {
             var file = await _datastore.StoredFiles
                 .Include(f => f.Submission)
@@ -200,7 +214,7 @@ namespace CES.Business.Services
             await _fileStorage.DeleteAsync(file);
             file.IsDeleted = true;
             file.DeletedAtUTC = SystemDate.UtcNow();
-            file.SetUpdateBy("Admin");
+            file.SetUpdateBy(removedByUserId);
             await _datastore.SaveChangesAsync();
             return true;
         }
@@ -212,6 +226,7 @@ namespace CES.Business.Services
                 .Include(s => s.Tickets)
                 .Include(s => s.Files)
                     .ThenInclude(f => f.Descriptions)
+                        .ThenInclude(d => d.CreatedByUser)
                 .OrderByDescending(s => s.UploadDate)
                 .ToListAsync();
 
@@ -241,6 +256,7 @@ namespace CES.Business.Services
                 .Include(s => s.Tickets)
                 .Include(s => s.Files)
                     .ThenInclude(f => f.Descriptions)
+                        .ThenInclude(d => d.CreatedByUser)
                 .Where(s => !s.IsDeleted);
 
             if (!string.IsNullOrWhiteSpace(filter.FileNumberText))

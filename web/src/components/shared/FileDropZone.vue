@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import { mdiTrashCanOutline } from '@mdi/js';
 
 const emit = defineEmits<{
   (e: 'filesChanged', files: File[]): void;
@@ -70,14 +71,25 @@ const getFileIcon = (file: File) => {
 
   <ul class="file-list" v-if="files.length">
     <li v-for="(file, index) in files" :key="index">
+      <!-- Leads the row so every file's remove target lines up in one column.
+           Rows repeat, so the aria-label names the file while the hover hint
+           (title) stays the plain action text. -->
+      <button
+        type="button"
+        class="btn btn--icon btn--danger-outline remove-btn"
+        title="Remove file from upload"
+        :aria-label="`Remove ${file.name} from upload`"
+        @click="removeFile(index)"
+      >
+        <svg class="remove-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path :d="mdiTrashCanOutline" />
+        </svg>
+      </button>
+
       <span class="file-info">
         <span class="icon">{{ getFileIcon(file) }}</span>
         {{ file.name }}
       </span>
-
-      <button type="button" class="btn btn--sm btn--danger-outline" @click="removeFile(index)">
-        Remove
-      </button>
     </li>
   </ul>
 </template>

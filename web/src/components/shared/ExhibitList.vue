@@ -45,6 +45,12 @@ const props = defineProps<{
    * line per exhibit, which is what keeps a long Exhibit Search result set readable.
    */
   initialExpanded?: boolean;
+  /**
+   * Order rows Marked → Entered → Unclassified (see `compareByClassification`). Off by
+   * default: Exhibit Search arrives already sorted by the API, so only callers whose
+   * `entries` come in arbitrary order (the officer upload screen) need this.
+   */
+  sortByClassification?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -83,9 +89,47 @@ const toggleRow = (fileId: string) => {
   else expandedRows.add(fileId);
 };
 
-const visibleEntries = computed(() =>
-  props.showRemoved ? props.entries : props.entries.filter((e) => e.file.status !== 'Removed'),
-);
+// Classification sort tiers. Mirrors SubmissionService.SortTier (the Exhibit Search
+// ordering) so every role reads the list in the order exhibits are called, with Removed
+// rows parked at the end when they are shown at all.
+const SORT_TIER_MARKED = 0;
+const SORT_TIER_ENTERED = 1;
+const SORT_TIER_UNCLASSIFIED = 2;
+const SORT_TIER_REMOVED = 3;
+// Entered values that aren't numeric sort last within their tier rather than first.
+const ENTERED_SORT_FALLBACK = Number.MAX_SAFE_INTEGER;
+
+const sortTier = (file: SubmissionFile): number => {
+  if (file.status === 'Removed') return SORT_TIER_REMOVED;
+  if (file.enteredValue != null) return SORT_TIER_ENTERED;
+  if (file.markedValue != null) return SORT_TIER_MARKED;
+  return SORT_TIER_UNCLASSIFIED;
+};
+
+const parseEntered = (value?: string | null): number => {
+  const parsed = Number.parseInt(value ?? '', 10);
+  return Number.isNaN(parsed) ? ENTERED_SORT_FALLBACK : parsed;
+};
+
+// Tier first, then Marked A→Z and Entered 1→50 within their own tiers. Equal keys fall
+// through to 0 so the caller's original order survives (Array.sort is stable).
+const compareByClassification = (a: PriorFileEntry, b: PriorFileEntry): number => {
+  const tierA = sortTier(a.file);
+  const tierB = sortTier(b.file);
+  if (tierA !== tierB) return tierA - tierB;
+  if (tierA === SORT_TIER_MARKED)
+    return (a.file.markedValue ?? '').localeCompare(b.file.markedValue ?? '');
+  if (tierA === SORT_TIER_ENTERED)
+    return parseEntered(a.file.enteredValue) - parseEntered(b.file.enteredValue);
+  return 0;
+};
+
+const visibleEntries = computed(() => {
+  const shown = props.showRemoved
+    ? props.entries
+    : props.entries.filter((e) => e.file.status !== 'Removed');
+  return props.sortByClassification ? [...shown].sort(compareByClassification) : shown;
+});
 
 const markedLetters = Array.from({ length: 26 }, (_, i) =>
   String.fromCharCode(MARKED_MIN.charCodeAt(0) + i),

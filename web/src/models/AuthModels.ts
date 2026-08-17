@@ -16,6 +16,11 @@ export interface User {
   email: string;
   roles: string[];
   displayName?: string;
+  /**
+   * Officer-only, and not a token claim — sourced from `GET /api/users/me` and re-projected
+   * here on every decode. Null until the officer supplies it via the Court Search prompt.
+   */
+  officerNumber?: string | null;
 }
 
 /**

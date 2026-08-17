@@ -9,14 +9,23 @@ using CES.Entities.Enums;
 using CES.Entities.Infrastructure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace CES.Business.Tests.Services;
 
 public class FileServiceTests : IDisposable
 {
+    private const string OfficerEmail = "officer@test.ca";
+    private const string AdminEmail = "admin@test.ca";
+
     private readonly CESDataStore _db;
     private readonly Mock<IFileStorage> _fileStorageMock;
     private readonly FileService _service;
+
+    // Audit columns are FKs to ApplicationUser, so the actors have to exist as rows.
+    // The read models resolve these ids back to the emails above.
+    private readonly int _officerUserId;
+    private readonly int _adminUserId;
 
     public FileServiceTests()
     {
@@ -24,6 +33,13 @@ public class FileServiceTests : IDisposable
             .UseInMemoryDatabase($"FileServiceTests_{Guid.NewGuid()}")
             .Options;
         _db = new CESDataStore(options);
+
+        var officer = new ApplicationUser { Email = OfficerEmail, FirstName = "Test", LastName = "Officer", IsActive = true };
+        var admin = new ApplicationUser { Email = AdminEmail, FirstName = "Test", LastName = "Admin", IsActive = true };
+        _db.ApplicationUser.AddRange(officer, admin);
+        _db.SaveChanges();
+        _officerUserId = officer.Id;
+        _adminUserId = admin.Id;
 
         _fileStorageMock = new Mock<IFileStorage>();
         // Auto-accept promotion returns a canonical result derived from the ids.
@@ -38,8 +54,13 @@ public class FileServiceTests : IDisposable
         _fileStorageMock
             .Setup(s => s.WriteMetadataAsync(It.IsAny<Submission>(), It.IsAny<IReadOnlyList<SubmissionAuditLog>>()))
             .Returns(Task.CompletedTask);
+        // The storage layer verifies the canonical copy itself; the happy path here is
+        // "verified and removed".
+        _fileStorageMock
+            .Setup(s => s.DeletePendingCopyAsync(It.IsAny<StoredFiles>()))
+            .ReturnsAsync(PendingCleanupResult.Deleted);
 
-        _service = new FileService(_db, _fileStorageMock.Object);
+        _service = new FileService(_db, _fileStorageMock.Object, NullLogger<FileService>.Instance);
     }
 
     public void Dispose() => _db.Dispose();
@@ -125,7 +146,7 @@ public class FileServiceTests : IDisposable
         var file = SeedFile();
         var before = DateTime.UtcNow;
 
-        var result = await _service.MarkExhibitAsync(file.Id, "B", "officer@test.ca");
+        var result = await _service.MarkExhibitAsync(file.Id, "B", _officerUserId);
 
         var dbFile = _db.StoredFiles.Find(file.Id)!;
         dbFile.MarkedValue.Should().Be("B");
@@ -134,7 +155,7 @@ public class FileServiceTests : IDisposable
         var log = _db.SubmissionAuditLogs.Single(l => l.FileId == file.Id && l.FieldName == "MarkedValue");
         log.OldValue.Should().BeNull();
         log.NewValue.Should().Be("B");
-        log.ChangedBy.Should().Be("officer@test.ca");
+        log.ChangedByUserId.Should().Be(_officerUserId);
 
         result.MarkedValue.Should().Be("B");
         result.Status.Should().Be("Marked");
@@ -145,7 +166,7 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile();
 
-        var result = await _service.MarkExhibitAsync(file.Id, "c", "officer@test.ca");
+        var result = await _service.MarkExhibitAsync(file.Id, "c", _officerUserId);
 
         result.MarkedValue.Should().Be("C");
         _db.StoredFiles.Find(file.Id)!.MarkedValue.Should().Be("C");
@@ -156,7 +177,7 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile(enteredValue: "5", enteredAt: DateTime.UtcNow);
 
-        var act = async () => await _service.MarkExhibitAsync(file.Id, "A", "officer@test.ca");
+        var act = async () => await _service.MarkExhibitAsync(file.Id, "A", _officerUserId);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Entered*");
@@ -167,7 +188,7 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile();
 
-        var act = async () => await _service.MarkExhibitAsync(file.Id, "AB", "officer@test.ca");
+        var act = async () => await _service.MarkExhibitAsync(file.Id, "AB", _officerUserId);
 
         await act.Should().ThrowAsync<ArgumentException>();
     }
@@ -175,7 +196,7 @@ public class FileServiceTests : IDisposable
     [Fact]
     public async Task MarkExhibit_Rejects_WhenFileNotFound()
     {
-        var act = async () => await _service.MarkExhibitAsync(Guid.NewGuid(), "A", "officer@test.ca");
+        var act = async () => await _service.MarkExhibitAsync(Guid.NewGuid(), "A", _officerUserId);
 
         await act.Should().ThrowAsync<KeyNotFoundException>();
     }
@@ -188,7 +209,7 @@ public class FileServiceTests : IDisposable
         var file = SeedFile();
         var before = DateTime.UtcNow;
 
-        var result = await _service.EnterExhibitAsync(file.Id, "7", "officer@test.ca");
+        var result = await _service.EnterExhibitAsync(file.Id, "7", _officerUserId);
 
         var dbFile = _db.StoredFiles.Find(file.Id)!;
         dbFile.EnteredValue.Should().Be("7");
@@ -197,7 +218,7 @@ public class FileServiceTests : IDisposable
         var log = _db.SubmissionAuditLogs.Single(l => l.FileId == file.Id && l.FieldName == "EnteredValue");
         log.OldValue.Should().BeNull();
         log.NewValue.Should().Be("7");
-        log.ChangedBy.Should().Be("officer@test.ca");
+        log.ChangedByUserId.Should().Be(_officerUserId);
 
         result.EnteredValue.Should().Be("7");
         result.Status.Should().Be("Entered");
@@ -208,7 +229,7 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile(markedValue: "A");
 
-        var result = await _service.EnterExhibitAsync(file.Id, "3", "officer@test.ca");
+        var result = await _service.EnterExhibitAsync(file.Id, "3", _officerUserId);
 
         result.Status.Should().Be("Entered");
         result.MarkedValue.Should().Be("A");
@@ -219,10 +240,10 @@ public class FileServiceTests : IDisposable
     public async Task EnterExhibit_AllowsOverwrite_WithinWindow()
     {
         var file = SeedFile();
-        await _service.EnterExhibitAsync(file.Id, "3", "officer@test.ca");
+        await _service.EnterExhibitAsync(file.Id, "3", _officerUserId);
         var firstEnteredAt = _db.StoredFiles.Find(file.Id)!.EnteredAt;
 
-        var result = await _service.EnterExhibitAsync(file.Id, "4", "officer@test.ca");
+        var result = await _service.EnterExhibitAsync(file.Id, "4", _officerUserId);
 
         result.EnteredValue.Should().Be("4");
         // EnteredAt must not advance on correction
@@ -237,7 +258,7 @@ public class FileServiceTests : IDisposable
             enteredValue: "3",
             enteredAt: DateTime.UtcNow - TimeSpan.FromSeconds(11));
 
-        var act = async () => await _service.EnterExhibitAsync(file.Id, "4", "officer@test.ca");
+        var act = async () => await _service.EnterExhibitAsync(file.Id, "4", _officerUserId);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*cannot be modified*");
@@ -247,10 +268,10 @@ public class FileServiceTests : IDisposable
     public async Task MarkExhibit_Rejects_WhenEntered_EvenWithinWindow()
     {
         var file = SeedFile();
-        await _service.EnterExhibitAsync(file.Id, "3", "officer@test.ca");
+        await _service.EnterExhibitAsync(file.Id, "3", _officerUserId);
 
         // Immediately try to go backwards; Entered blocks all Marked writes
-        var act = async () => await _service.MarkExhibitAsync(file.Id, "A", "officer@test.ca");
+        var act = async () => await _service.MarkExhibitAsync(file.Id, "A", _officerUserId);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Entered*");
@@ -261,9 +282,9 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile();
 
-        await Assert.ThrowsAsync<ArgumentException>(() => _service.EnterExhibitAsync(file.Id, "0", "x"));
-        await Assert.ThrowsAsync<ArgumentException>(() => _service.EnterExhibitAsync(file.Id, "51", "x"));
-        await Assert.ThrowsAsync<ArgumentException>(() => _service.EnterExhibitAsync(file.Id, "abc", "x"));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.EnterExhibitAsync(file.Id, "0", _officerUserId));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.EnterExhibitAsync(file.Id, "51", _officerUserId));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.EnterExhibitAsync(file.Id, "abc", _officerUserId));
     }
 
     // ── AddExhibitDescriptionAsync (CES-42, append-only) ──────────────────
@@ -273,14 +294,17 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile();
 
-        var result = await _service.AddExhibitDescriptionAsync(file.Id, "key piece of evidence", "officer@test.ca");
+        var result = await _service.AddExhibitDescriptionAsync(file.Id, "key piece of evidence", _officerUserId);
 
         var entry = _db.ExhibitDescriptions.Single(d => d.FileId == file.Id);
         entry.DescriptionText.Should().Be("key piece of evidence");
-        entry.CreatedBy.Should().Be("officer@test.ca");
+        entry.CreatedByUserId.Should().Be(_officerUserId);
 
-        result.Descriptions.Should().ContainSingle()
-            .Which.DescriptionText.Should().Be("key piece of evidence");
+        var returned = result.Descriptions.Should().ContainSingle().Subject;
+        returned.DescriptionText.Should().Be("key piece of evidence");
+        // The echoed entry carries the author immediately, without needing a reload.
+        returned.CreatedByUserId.Should().Be(_officerUserId);
+        returned.CreatedBy.Should().Be(OfficerEmail);
 
         // The entry list is the description's history — it is not an audited field.
         _db.SubmissionAuditLogs.Should().NotContain(l => l.FieldName == "Description");
@@ -291,8 +315,8 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile();
 
-        await _service.AddExhibitDescriptionAsync(file.Id, "first", "officer@test.ca");
-        var result = await _service.AddExhibitDescriptionAsync(file.Id, "an addendum", "officer@test.ca");
+        await _service.AddExhibitDescriptionAsync(file.Id, "first", _officerUserId);
+        var result = await _service.AddExhibitDescriptionAsync(file.Id, "an addendum", _officerUserId);
 
         _db.ExhibitDescriptions.Count(d => d.FileId == file.Id).Should().Be(2);
         result.Descriptions.Select(d => d.DescriptionText)
@@ -304,7 +328,7 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile();
 
-        var result = await _service.AddExhibitDescriptionAsync(file.Id, "  line one\r\n\r\n    indented\t line  ", "officer@test.ca");
+        var result = await _service.AddExhibitDescriptionAsync(file.Id, "  line one\r\n\r\n    indented\t line  ", _officerUserId);
 
         result.Descriptions.Single().DescriptionText.Should().Be("line one\n\n    indented\t line");
     }
@@ -314,7 +338,7 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile(enteredValue: "5", enteredAt: DateTime.UtcNow);
 
-        var act = async () => await _service.AddExhibitDescriptionAsync(file.Id, "notes", "officer@test.ca");
+        var act = async () => await _service.AddExhibitDescriptionAsync(file.Id, "notes", _officerUserId);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Entered*");
@@ -325,7 +349,7 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile();
 
-        var act = async () => await _service.AddExhibitDescriptionAsync(file.Id, "   \n  ", "officer@test.ca");
+        var act = async () => await _service.AddExhibitDescriptionAsync(file.Id, "   \n  ", _officerUserId);
 
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*required*");
@@ -337,7 +361,7 @@ public class FileServiceTests : IDisposable
         var file = SeedFile();
         var tooLong = new string('x', ClassificationConstants.DescriptionMaxLength + 1);
 
-        var act = async () => await _service.AddExhibitDescriptionAsync(file.Id, tooLong, "officer@test.ca");
+        var act = async () => await _service.AddExhibitDescriptionAsync(file.Id, tooLong, _officerUserId);
 
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage($"*{ClassificationConstants.DescriptionMaxLength}*");
@@ -346,7 +370,7 @@ public class FileServiceTests : IDisposable
     [Fact]
     public async Task AddDescription_Throws_WhenFileNotFound()
     {
-        var act = async () => await _service.AddExhibitDescriptionAsync(Guid.NewGuid(), "text", "officer@test.ca");
+        var act = async () => await _service.AddExhibitDescriptionAsync(Guid.NewGuid(), "text", _officerUserId);
 
         await act.Should().ThrowAsync<KeyNotFoundException>();
     }
@@ -358,14 +382,14 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile();
 
-        var result = await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "BodyCam", "officer@test.ca");
+        var result = await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "BodyCam", _officerUserId);
 
         var dbFile = _db.StoredFiles.Find(file.Id)!;
         dbFile.EvidenceSourceType.Should().Be("BodyCam");
 
         var log = _db.SubmissionAuditLogs.Single(l => l.FileId == file.Id && l.FieldName == "EvidenceSourceType");
         log.NewValue.Should().Be("BodyCam");
-        log.ChangedBy.Should().Be("officer@test.ca");
+        log.ChangedByUserId.Should().Be(_officerUserId);
 
         result.EvidenceSourceType.Should().Be("BodyCam");
     }
@@ -375,7 +399,7 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile(enteredValue: "5", enteredAt: DateTime.UtcNow);
 
-        var act = async () => await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "DashCam", "officer@test.ca");
+        var act = async () => await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "DashCam", _officerUserId);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Entered*");
@@ -386,7 +410,7 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile(enteredValue: "5", enteredAt: DateTime.UtcNow);
 
-        var result = await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "DashCam", "admin@test.ca", isAdminOverride: true);
+        var result = await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "DashCam", _adminUserId, isAdminOverride: true);
 
         result.EvidenceSourceType.Should().Be("DashCam");
         _db.StoredFiles.Find(file.Id)!.EvidenceSourceType.Should().Be("DashCam");
@@ -397,7 +421,7 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile();
 
-        var act = async () => await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "Drone", "officer@test.ca");
+        var act = async () => await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "Drone", _officerUserId);
 
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*BodyCam*");
@@ -407,9 +431,9 @@ public class FileServiceTests : IDisposable
     public async Task UpdateEvidenceSource_AllowsEmpty_ToUnset()
     {
         var file = SeedFile();
-        await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "BodyCam", "officer@test.ca");
+        await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "BodyCam", _officerUserId);
 
-        var result = await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "", "officer@test.ca");
+        var result = await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "", _officerUserId);
 
         result.EvidenceSourceType.Should().BeNull();
         _db.StoredFiles.Find(file.Id)!.EvidenceSourceType.Should().BeNull();
@@ -422,7 +446,7 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile(markedValue: "A");
 
-        var result = await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "Other", "officer@test.ca");
+        var result = await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "Other", _officerUserId);
 
         result.EvidenceSourceType.Should().Be("Other");
     }
@@ -430,7 +454,7 @@ public class FileServiceTests : IDisposable
     [Fact]
     public async Task UpdateEvidenceSource_Throws_WhenFileNotFound()
     {
-        var act = async () => await _service.UpdateExhibitEvidenceSourceAsync(Guid.NewGuid(), "BodyCam", "officer@test.ca");
+        var act = async () => await _service.UpdateExhibitEvidenceSourceAsync(Guid.NewGuid(), "BodyCam", _officerUserId);
 
         await act.Should().ThrowAsync<KeyNotFoundException>();
     }
@@ -457,16 +481,18 @@ public class FileServiceTests : IDisposable
     public async Task GetExhibitHistory_ReturnsEntriesInChronologicalOrder()
     {
         var file = SeedFile();
-        await _service.MarkExhibitAsync(file.Id, "A", "officer@test.ca");
-        await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "BodyCam", "officer@test.ca");
-        await _service.EnterExhibitAsync(file.Id, "5", "admin@test.ca", isAdminOverride: true);
+        await _service.MarkExhibitAsync(file.Id, "A", _officerUserId);
+        await _service.UpdateExhibitEvidenceSourceAsync(file.Id, "BodyCam", _officerUserId);
+        await _service.EnterExhibitAsync(file.Id, "5", _adminUserId, isAdminOverride: true);
 
         var history = await _service.GetExhibitHistoryAsync(file.Id);
 
         history.Should().HaveCount(3);
         history.Select(h => h.FieldName).Should().ContainInOrder("MarkedValue", "EvidenceSourceType", "EnteredValue");
         history[0].NewValue.Should().Be("A");
-        history[0].ChangedBy.Should().Be("officer@test.ca");
+        // The read model resolves the stored link back to the actor's email.
+        history[0].ChangedByUserId.Should().Be(_officerUserId);
+        history[0].ChangedBy.Should().Be(OfficerEmail);
         history.Should().BeInAscendingOrder(h => h.ChangedAtUTC);
     }
 
@@ -495,7 +521,7 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile();
 
-        await _service.MarkExhibitAsync(file.Id, "A", "officer@test.ca");
+        await _service.MarkExhibitAsync(file.Id, "A", _officerUserId);
 
         var dbFile = _db.StoredFiles.Find(file.Id)!;
         dbFile.IsAccepted.Should().BeTrue();
@@ -512,7 +538,7 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile();
 
-        await _service.EnterExhibitAsync(file.Id, "5", "officer@test.ca");
+        await _service.EnterExhibitAsync(file.Id, "5", _officerUserId);
 
         _db.StoredFiles.Find(file.Id)!.IsAccepted.Should().BeTrue();
         _fileStorageMock.Verify(s => s.PromoteToAcceptedAsync(It.IsAny<Submission>(), It.IsAny<StoredFiles>()), Times.Once);
@@ -523,10 +549,10 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile();
 
-        await _service.MarkExhibitAsync(file.Id, "A", "officer@test.ca");
+        await _service.MarkExhibitAsync(file.Id, "A", _officerUserId);
         var shaAfterMark = _db.StoredFiles.Find(file.Id)!.Sha256;
 
-        await _service.EnterExhibitAsync(file.Id, "3", "officer@test.ca");
+        await _service.EnterExhibitAsync(file.Id, "3", _officerUserId);
         var shaAfterEnter = _db.StoredFiles.Find(file.Id)!.Sha256;
 
         // Bytes are immutable at accept: the second classification does not re-promote.
@@ -540,10 +566,10 @@ public class FileServiceTests : IDisposable
     public async Task AddDescription_OnAcceptedNotEnteredFile_RewritesMetadata_WithoutPromoting()
     {
         var file = SeedFile();
-        await _service.MarkExhibitAsync(file.Id, "A", "officer@test.ca"); // accept it
+        await _service.MarkExhibitAsync(file.Id, "A", _officerUserId); // accept it
         _fileStorageMock.Invocations.Clear();
 
-        await _service.AddExhibitDescriptionAsync(file.Id, "a note", "officer@test.ca");
+        await _service.AddExhibitDescriptionAsync(file.Id, "a note", _officerUserId);
 
         _fileStorageMock.Verify(s => s.PromoteToAcceptedAsync(It.IsAny<Submission>(), It.IsAny<StoredFiles>()), Times.Never);
         _fileStorageMock.Verify(s => s.WriteMetadataAsync(It.IsAny<Submission>(), It.IsAny<IReadOnlyList<SubmissionAuditLog>>()), Times.Once);
@@ -554,11 +580,109 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile();
 
-        await _service.AddExhibitDescriptionAsync(file.Id, "a note", "officer@test.ca");
+        await _service.AddExhibitDescriptionAsync(file.Id, "a note", _officerUserId);
 
         _db.StoredFiles.Find(file.Id)!.IsAccepted.Should().BeFalse();
         _fileStorageMock.Verify(s => s.PromoteToAcceptedAsync(It.IsAny<Submission>(), It.IsAny<StoredFiles>()), Times.Never);
         _fileStorageMock.Verify(s => s.WriteMetadataAsync(It.IsAny<Submission>(), It.IsAny<IReadOnlyList<SubmissionAuditLog>>()), Times.Never);
+    }
+
+    // ── Pending cleanup after acceptance ──────────────────────────────────
+
+    [Fact]
+    public async Task MarkExhibit_DeletesPendingCopy_OnlyAfterAcceptanceIsPersisted()
+    {
+        var file = SeedFile();
+
+        // Capture the state the storage layer sees at the moment cleanup is invoked:
+        // the canonical path/hash it verifies against must already be committed, or a
+        // crash mid-request could leave the exhibit with no readable copy.
+        bool acceptedAtCleanup = false, hadUncommittedChanges = true;
+        string? canonicalPathAtCleanup = null, shaAtCleanup = null;
+        _fileStorageMock
+            .Setup(s => s.DeletePendingCopyAsync(It.IsAny<StoredFiles>()))
+            .ReturnsAsync((StoredFiles f) =>
+            {
+                acceptedAtCleanup = f.IsAccepted;
+                canonicalPathAtCleanup = f.CanonicalPath;
+                shaAtCleanup = f.Sha256;
+                hadUncommittedChanges = _db.ChangeTracker.HasChanges();
+                return PendingCleanupResult.Deleted;
+            });
+
+        await _service.MarkExhibitAsync(file.Id, "A", _officerUserId);
+
+        _fileStorageMock.Verify(s => s.DeletePendingCopyAsync(It.Is<StoredFiles>(f => f.Id == file.Id)), Times.Once);
+        acceptedAtCleanup.Should().BeTrue();
+        canonicalPathAtCleanup.Should().NotBeNullOrEmpty();
+        shaAtCleanup.Should().Be("DEADBEEF");
+        hadUncommittedChanges.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task EnterExhibit_DeletesPendingCopy_OnAutoAccept()
+    {
+        var file = SeedFile();
+
+        await _service.EnterExhibitAsync(file.Id, "5", _officerUserId);
+
+        _fileStorageMock.Verify(s => s.DeletePendingCopyAsync(It.Is<StoredFiles>(f => f.Id == file.Id)), Times.Once);
+    }
+
+    [Fact]
+    public async Task AddDescription_OnAcceptedFile_SweepsPendingCopy()
+    {
+        // Cleanup runs on every finalize, not just the promoting one, so an exhibit
+        // accepted before this step existed has its original swept up when next touched.
+        var file = SeedFile();
+        await _service.MarkExhibitAsync(file.Id, "A", _officerUserId);
+        _fileStorageMock.Invocations.Clear();
+
+        await _service.AddExhibitDescriptionAsync(file.Id, "a note", _officerUserId);
+
+        _fileStorageMock.Verify(s => s.DeletePendingCopyAsync(It.Is<StoredFiles>(f => f.Id == file.Id)), Times.Once);
+    }
+
+    [Fact]
+    public async Task AddDescription_OnUnacceptedFile_DoesNotTouchPendingCopy()
+    {
+        var file = SeedFile();
+
+        await _service.AddExhibitDescriptionAsync(file.Id, "a note", _officerUserId);
+
+        _fileStorageMock.Verify(s => s.DeletePendingCopyAsync(It.IsAny<StoredFiles>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task MarkExhibit_StillSucceeds_WhenPendingCleanupThrows()
+    {
+        // Acceptance has already committed by then — a failed delete leaves an orphan
+        // in uploads, which must not surface as a failed classification.
+        var file = SeedFile();
+        _fileStorageMock
+            .Setup(s => s.DeletePendingCopyAsync(It.IsAny<StoredFiles>()))
+            .ThrowsAsync(new IOException("uploads volume unavailable"));
+
+        var result = await _service.MarkExhibitAsync(file.Id, "A", _officerUserId);
+
+        result.MarkedValue.Should().Be("A");
+        _db.StoredFiles.Find(file.Id)!.IsAccepted.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task MarkExhibit_StillSucceeds_WhenPendingCopyFailsVerification()
+    {
+        // The original is deliberately retained in this case; the acceptance itself
+        // stands and the operator is told through the error log.
+        var file = SeedFile();
+        _fileStorageMock
+            .Setup(s => s.DeletePendingCopyAsync(It.IsAny<StoredFiles>()))
+            .ReturnsAsync(PendingCleanupResult.VerificationFailed);
+
+        var result = await _service.MarkExhibitAsync(file.Id, "A", _officerUserId);
+
+        result.MarkedValue.Should().Be("A");
+        _db.StoredFiles.Find(file.Id)!.IsAccepted.Should().BeTrue();
     }
 
     // ── GetExhibitContentAsync (download branch) ──────────────────────────
@@ -618,10 +742,10 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile(enteredValue: "5", enteredAt: DateTime.UtcNow);
 
-        var result = await _service.MarkExhibitAsync(file.Id, "A", "admin@test.ca", isAdminOverride: true);
+        var result = await _service.MarkExhibitAsync(file.Id, "A", _adminUserId, isAdminOverride: true);
 
         result.MarkedValue.Should().Be("A");
-        _db.SubmissionAuditLogs.Should().Contain(l => l.FieldName == "MarkedValue" && l.ChangedBy == "admin@test.ca");
+        _db.SubmissionAuditLogs.Should().Contain(l => l.FieldName == "MarkedValue" && l.ChangedByUserId == _adminUserId);
     }
 
     [Fact]
@@ -631,10 +755,10 @@ public class FileServiceTests : IDisposable
             enteredValue: "3",
             enteredAt: DateTime.UtcNow - TimeSpan.FromSeconds(30));
 
-        var result = await _service.EnterExhibitAsync(file.Id, "7", "admin@test.ca", isAdminOverride: true);
+        var result = await _service.EnterExhibitAsync(file.Id, "7", _adminUserId, isAdminOverride: true);
 
         result.EnteredValue.Should().Be("7");
-        _db.SubmissionAuditLogs.Should().Contain(l => l.FieldName == "EnteredValue" && l.ChangedBy == "admin@test.ca");
+        _db.SubmissionAuditLogs.Should().Contain(l => l.FieldName == "EnteredValue" && l.ChangedByUserId == _adminUserId);
     }
 
     [Fact]
@@ -642,11 +766,11 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile(enteredValue: "5", enteredAt: DateTime.UtcNow);
 
-        var result = await _service.AddExhibitDescriptionAsync(file.Id, "admin note", "admin@test.ca", isAdminOverride: true);
+        var result = await _service.AddExhibitDescriptionAsync(file.Id, "admin note", _adminUserId, isAdminOverride: true);
 
         result.Descriptions.Should().ContainSingle()
             .Which.DescriptionText.Should().Be("admin note");
-        _db.ExhibitDescriptions.Single(d => d.FileId == file.Id).CreatedBy.Should().Be("admin@test.ca");
+        _db.ExhibitDescriptions.Single(d => d.FileId == file.Id).CreatedByUserId.Should().Be(_adminUserId);
     }
 
     [Fact]
@@ -654,7 +778,7 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile(enteredValue: "5", enteredAt: DateTime.UtcNow);
 
-        var act = async () => await _service.MarkExhibitAsync(file.Id, "AA", "admin@test.ca", isAdminOverride: true);
+        var act = async () => await _service.MarkExhibitAsync(file.Id, "AA", _adminUserId, isAdminOverride: true);
 
         await act.Should().ThrowAsync<ArgumentException>();
     }
@@ -665,7 +789,7 @@ public class FileServiceTests : IDisposable
         var file = SeedFile();
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            _service.EnterExhibitAsync(file.Id, "999", "admin@test.ca", isAdminOverride: true));
+            _service.EnterExhibitAsync(file.Id, "999", _adminUserId, isAdminOverride: true));
     }
 
     // ── Registry notes (CES-38 extension) ─────────────────────────────────
@@ -676,11 +800,12 @@ public class FileServiceTests : IDisposable
         var file = SeedFile();
         var before = DateTime.UtcNow;
 
-        var result = await _service.AddExhibitNoteAsync(file.Id, "Registry note", "admin@test.ca");
+        var result = await _service.AddExhibitNoteAsync(file.Id, "Registry note", _adminUserId);
 
         result.Id.Should().BeGreaterThan(0);
         result.NoteText.Should().Be("Registry note");
-        result.CreatedBy.Should().Be("admin@test.ca");
+        result.CreatedByUserId.Should().Be(_adminUserId);
+        result.CreatedBy.Should().Be(AdminEmail);
         result.CreatedAtUTC.Should().BeOnOrAfter(before);
         _db.ExhibitNotes.Count(n => n.FileId == file.Id).Should().Be(1);
     }
@@ -690,7 +815,7 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile();
 
-        var result = await _service.AddExhibitNoteAsync(file.Id, "   spaced   ", "admin@test.ca");
+        var result = await _service.AddExhibitNoteAsync(file.Id, "   spaced   ", _adminUserId);
 
         result.NoteText.Should().Be("spaced");
     }
@@ -700,8 +825,8 @@ public class FileServiceTests : IDisposable
     {
         var file = SeedFile();
 
-        await Assert.ThrowsAsync<ArgumentException>(() => _service.AddExhibitNoteAsync(file.Id, "", "admin@test.ca"));
-        await Assert.ThrowsAsync<ArgumentException>(() => _service.AddExhibitNoteAsync(file.Id, "   ", "admin@test.ca"));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.AddExhibitNoteAsync(file.Id, "", _adminUserId));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.AddExhibitNoteAsync(file.Id, "   ", _adminUserId));
     }
 
     [Fact]
@@ -710,7 +835,7 @@ public class FileServiceTests : IDisposable
         var file = SeedFile();
         var tooLong = new string('x', 2001);
 
-        var act = async () => await _service.AddExhibitNoteAsync(file.Id, tooLong, "admin@test.ca");
+        var act = async () => await _service.AddExhibitNoteAsync(file.Id, tooLong, _adminUserId);
 
         await act.Should().ThrowAsync<ArgumentException>().WithMessage("*2000*");
     }
@@ -718,7 +843,7 @@ public class FileServiceTests : IDisposable
     [Fact]
     public async Task AddExhibitNote_Throws_WhenFileNotFound()
     {
-        var act = async () => await _service.AddExhibitNoteAsync(Guid.NewGuid(), "note", "admin@test.ca");
+        var act = async () => await _service.AddExhibitNoteAsync(Guid.NewGuid(), "note", _adminUserId);
 
         await act.Should().ThrowAsync<KeyNotFoundException>();
     }
@@ -730,7 +855,7 @@ public class FileServiceTests : IDisposable
         // field-change history (SubmissionAuditLog).
         var file = SeedFile();
 
-        await _service.AddExhibitNoteAsync(file.Id, "protected note", "admin@test.ca");
+        await _service.AddExhibitNoteAsync(file.Id, "protected note", _adminUserId);
 
         _db.SubmissionAuditLogs.Any(l => l.FileId == file.Id).Should().BeFalse();
         (await _service.GetExhibitHistoryAsync(file.Id)).Should().BeEmpty();
@@ -744,14 +869,14 @@ public class FileServiceTests : IDisposable
         {
             FileId = file.Id,
             NoteText = "first",
-            CreatedBy = "admin@test.ca",
+            CreatedByUserId = _adminUserId,
             CreatedAtUTC = new DateTime(2026, 7, 7, 9, 0, 0, DateTimeKind.Utc),
         });
         _db.ExhibitNotes.Add(new ExhibitNote
         {
             FileId = file.Id,
             NoteText = "second",
-            CreatedBy = "admin@test.ca",
+            CreatedByUserId = _adminUserId,
             CreatedAtUTC = new DateTime(2026, 7, 7, 10, 0, 0, DateTimeKind.Utc),
         });
         await _db.SaveChangesAsync();

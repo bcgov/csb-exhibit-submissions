@@ -1,13 +1,17 @@
+using CES.API.Authentication;
 using CES.Business.Interfaces;
 using CES.EF;
+using CES.Entities;
 using CES.Entities.Interfaces;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace CES.API.Tests.Fixtures;
 
@@ -69,5 +73,36 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
             // requests within a single test (e.g. accept then download package).
             services.AddSingleton<IFileStorage, InMemoryFileStorage>();
         });
+    }
+
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        var host = base.CreateHost(builder);
+        SeedDevBypassUsers(host);
+        return host;
+    }
+
+    /// <summary>
+    /// Audit columns are FKs to ApplicationUser, so the identities behind
+    /// <see cref="JwtTokenHelper"/>'s tokens need rows to resolve to — the same rows a real
+    /// mock login would have provisioned before handing out that token.
+    /// </summary>
+    private static void SeedDevBypassUsers(IHost host)
+    {
+        using var scope = host.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CESDataStore>();
+
+        if (db.ApplicationUser.Any())
+            return;
+
+        db.ApplicationUser.AddRange(
+            DevBypassUsers.All.Values.Select(user => new ApplicationUser
+            {
+                Email = user.Email,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                IsActive = true,
+            }));
+        db.SaveChanges();
     }
 }

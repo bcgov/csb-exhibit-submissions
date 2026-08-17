@@ -12,9 +12,14 @@ namespace CES.Business.Tests.Services;
 
 public class SubmissionServiceTests : IDisposable
 {
+    private const string OfficerEmail = "officer@test.ca";
+
     private readonly CESDataStore _db;
     private readonly Mock<IFileStorage> _fileStorageMock;
     private readonly SubmissionService _service;
+
+    // Audit columns are FKs to ApplicationUser, so the acting user has to exist as a row.
+    private readonly int _officerUserId;
 
     public SubmissionServiceTests()
     {
@@ -22,6 +27,12 @@ public class SubmissionServiceTests : IDisposable
             .UseInMemoryDatabase($"SubmissionServiceTests_{Guid.NewGuid()}")
             .Options;
         _db = new CESDataStore(options);
+
+        var officer = new ApplicationUser { Email = OfficerEmail, FirstName = "Test", LastName = "Officer", IsActive = true };
+        _db.ApplicationUser.Add(officer);
+        _db.SaveChanges();
+        _officerUserId = officer.Id;
+
         _fileStorageMock = new Mock<IFileStorage>();
         _service = new SubmissionService(_db, _fileStorageMock.Object);
     }
@@ -60,7 +71,7 @@ public class SubmissionServiceTests : IDisposable
         Id = id ?? Guid.NewGuid(),
         OriginalFileName = "file.mp4",
         StoredFileName = "stored.mp4",
-        StoredPath = "LOC001/2026-01-01/ROOM1/1",
+        StoredPath = "LOC001/ROOM1/2026-01-01/1",
         ContentType = "video/mp4",
         FileSize = 1024,
         StorageProvider = "Local"
@@ -93,7 +104,7 @@ public class SubmissionServiceTests : IDisposable
             .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
             .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
 
-        await _service.SubmitEvidence(model);
+        await _service.SubmitEvidence(model, _officerUserId);
 
         _db.Submissions.Count().Should().Be(1);
         _db.StoredFiles.Count().Should().Be(2);
@@ -107,7 +118,7 @@ public class SubmissionServiceTests : IDisposable
             .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
             .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
 
-        await _service.SubmitEvidence(model);
+        await _service.SubmitEvidence(model, _officerUserId);
 
         _db.SubmissionTickets.Count().Should().Be(2);
         _db.SubmissionTickets.Select(t => t.FileNumberText).Should().BeEquivalentTo(["FILE000", "FILE001"]);
@@ -123,10 +134,11 @@ public class SubmissionServiceTests : IDisposable
             .Callback<FileUpload, string>((_, path) => capturedPath = path)
             .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
 
-        await _service.SubmitEvidence(model);
+        await _service.SubmitEvidence(model, _officerUserId);
 
         var submission = _db.Submissions.First();
-        var expectedPath = Path.Combine("LOC001", "2026-01-01", "ROOM1", submission.Id.ToString());
+        // Upload folders use the same segment order as the accepted store: room before date.
+        var expectedPath = Path.Combine("LOC001", "ROOM1", "2026-01-01", submission.Id.ToString());
         capturedPath.Should().Be(expectedPath);
     }
 
@@ -139,10 +151,70 @@ public class SubmissionServiceTests : IDisposable
             .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
             .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
 
-        var result = await _service.SubmitEvidence(model);
+        var result = await _service.SubmitEvidence(model, _officerUserId);
 
         result.Should().BeNull();
         _db.Submissions.Count().Should().Be(0);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("OFF 001")]                          // disallowed character
+    [InlineData("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")]  // 31 chars, one over the maximum
+    public async Task SubmitEvidence_WithAnInvalidOfficerNumber_Throws(string? officerNumber)
+    {
+        // Mandatory as of CES-27: the number comes from the officer's profile, and a request
+        // without a usable one is rejected rather than stored against the submission.
+        var model = BuildModel(fileCount: 1);
+        model.OfficerNumber = officerNumber;
+        _fileStorageMock
+            .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
+            .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
+
+        var act = () => _service.SubmitEvidence(model, _officerUserId);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+        _db.Submissions.Count().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task SubmitEvidence_PersistsTheTrimmedOfficerNumber()
+    {
+        var model = BuildModel(fileCount: 1);
+        model.OfficerNumber = "  PC-1234  ";
+        _fileStorageMock
+            .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
+            .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
+
+        await _service.SubmitEvidence(model, _officerUserId);
+
+        _db.Submissions.First().OfficerNumber.Should().Be("PC-1234");
+    }
+
+    [Fact]
+    public async Task SubmitEvidence_AppendingToASubmission_DoesNotRequireAnOfficerNumber()
+    {
+        // An append reuses the number already recorded on the target; the request does not
+        // resend it, so validating it here would reject a legitimate second upload.
+        var existing = BuildSubmission();
+        existing.OfficerNumber = "PC-1234";
+        existing.Files.Add(BuildStoredFile());
+        _db.Submissions.Add(existing);
+        await _db.SaveChangesAsync();
+
+        var model = BuildModel(fileCount: 1);
+        model.SubmissionId = existing.Id;
+        model.OfficerNumber = null;
+        _fileStorageMock
+            .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
+            .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
+
+        var result = await _service.SubmitEvidence(model, _officerUserId);
+
+        result.Should().Be(existing.Id);
+        _db.Submissions.First().OfficerNumber.Should().Be("PC-1234");
     }
 
     [Fact]
@@ -153,7 +225,7 @@ public class SubmissionServiceTests : IDisposable
             .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
             .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
 
-        var result = await _service.SubmitEvidence(model);
+        var result = await _service.SubmitEvidence(model, _officerUserId);
 
         result.Should().NotBeNull();
         result.Should().Be(_db.Submissions.First().Id);
@@ -168,7 +240,7 @@ public class SubmissionServiceTests : IDisposable
             .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
             .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
 
-        await _service.SubmitEvidence(model);
+        await _service.SubmitEvidence(model, _officerUserId);
 
         var submission = _db.Submissions.First();
         submission.ShortDate.Should().Be("2026-01-01");
@@ -190,7 +262,7 @@ public class SubmissionServiceTests : IDisposable
             .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
             .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
 
-        var result = await _service.SubmitEvidence(model);
+        var result = await _service.SubmitEvidence(model, _officerUserId);
 
         result.Should().Be(existing.Id);
         // No new submission and no duplicate tickets — only files were appended.
@@ -214,9 +286,9 @@ public class SubmissionServiceTests : IDisposable
             .Callback<FileUpload, string>((_, path) => capturedPath = path)
             .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
 
-        await _service.SubmitEvidence(model);
+        await _service.SubmitEvidence(model, _officerUserId);
 
-        capturedPath.Should().Be(Path.Combine("LOC001", "2026-01-01", "ROOM1", existing.Id.ToString()));
+        capturedPath.Should().Be(Path.Combine("LOC001", "ROOM1", "2026-01-01", existing.Id.ToString()));
     }
 
     [Fact]
@@ -236,7 +308,7 @@ public class SubmissionServiceTests : IDisposable
             .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
             .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
 
-        var result = await _service.SubmitEvidence(model);
+        var result = await _service.SubmitEvidence(model, _officerUserId);
 
         result.Should().NotBe(existing.Id);
         _db.Submissions.Count().Should().Be(2);
@@ -256,7 +328,7 @@ public class SubmissionServiceTests : IDisposable
             .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
             .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
 
-        var result = await _service.SubmitEvidence(model);
+        var result = await _service.SubmitEvidence(model, _officerUserId);
 
         result.Should().NotBe(existing.Id);
         _db.Submissions.Count().Should().Be(2);
@@ -271,7 +343,7 @@ public class SubmissionServiceTests : IDisposable
             .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
             .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
 
-        var result = await _service.SubmitEvidence(model);
+        var result = await _service.SubmitEvidence(model, _officerUserId);
 
         result.Should().NotBeNull();
         _db.Submissions.Count().Should().Be(1);
@@ -285,7 +357,7 @@ public class SubmissionServiceTests : IDisposable
             .Setup(s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()))
             .ReturnsAsync((FileUpload _, string _) => BuildStoredFile());
 
-        await _service.SubmitEvidence(model);
+        await _service.SubmitEvidence(model, _officerUserId);
 
         _fileStorageMock.Verify(
             s => s.SaveAsync(It.IsAny<FileUpload>(), It.IsAny<string>()),
@@ -502,7 +574,7 @@ public class SubmissionServiceTests : IDisposable
                 StorageProvider = "Mock",
             });
 
-        var id = await _service.SubmitEvidence(BuildModel());
+        var id = await _service.SubmitEvidence(BuildModel(), _officerUserId);
 
         id.Should().NotBeNull();
         _db.Submissions.Find(id!.Value)!.Status.Should().Be(SubmissionStatus.Pending);
@@ -538,7 +610,7 @@ public class SubmissionServiceTests : IDisposable
         model.SubmissionId = submission.Id;
         model.ShortDate = submission.ShortDate;
 
-        await _service.SubmitEvidence(model);
+        await _service.SubmitEvidence(model, _officerUserId);
 
         _db.Submissions.Find(submission.Id)!.Status.Should().Be(SubmissionStatus.Pending);
     }
@@ -618,7 +690,7 @@ public class SubmissionServiceTests : IDisposable
 
         _fileStorageMock.Setup(s => s.DeleteAsync(It.IsAny<StoredFiles>())).Returns(Task.CompletedTask);
 
-        var result = await _service.RemoveFileAsync(file.Id);
+        var result = await _service.RemoveFileAsync(file.Id, _officerUserId);
 
         result.Should().BeTrue();
         var dbFile = _db.StoredFiles.Find(file.Id)!;
@@ -640,7 +712,7 @@ public class SubmissionServiceTests : IDisposable
 
         _fileStorageMock.Setup(s => s.DeleteAsync(It.IsAny<StoredFiles>())).Returns(Task.CompletedTask);
 
-        var result = await _service.RemoveFileAsync(file.Id);
+        var result = await _service.RemoveFileAsync(file.Id, _officerUserId);
 
         result.Should().BeTrue();
         _db.StoredFiles.Find(file.Id)!.IsDeleted.Should().BeTrue();
@@ -660,7 +732,7 @@ public class SubmissionServiceTests : IDisposable
 
         _fileStorageMock.Setup(s => s.DeleteAsync(It.IsAny<StoredFiles>())).Returns(Task.CompletedTask);
 
-        var act = async () => await _service.RemoveFileAsync(file.Id);
+        var act = async () => await _service.RemoveFileAsync(file.Id, _officerUserId);
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Accepted*");
         _fileStorageMock.Verify(s => s.DeleteAsync(It.IsAny<StoredFiles>()), Times.Never);
@@ -678,7 +750,7 @@ public class SubmissionServiceTests : IDisposable
 
         _fileStorageMock.Setup(s => s.DeleteAsync(It.IsAny<StoredFiles>())).Returns(Task.CompletedTask);
 
-        var act = async () => await _service.RemoveFileAsync(file.Id);
+        var act = async () => await _service.RemoveFileAsync(file.Id, _officerUserId);
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*rejected*");
         _fileStorageMock.Verify(s => s.DeleteAsync(It.IsAny<StoredFiles>()), Times.Never);
@@ -689,7 +761,7 @@ public class SubmissionServiceTests : IDisposable
     {
         _fileStorageMock.Setup(s => s.DeleteAsync(It.IsAny<StoredFiles>())).Returns(Task.CompletedTask);
 
-        var result = await _service.RemoveFileAsync(Guid.NewGuid());
+        var result = await _service.RemoveFileAsync(Guid.NewGuid(), _officerUserId);
 
         result.Should().BeFalse();
         _fileStorageMock.Verify(s => s.DeleteAsync(It.IsAny<StoredFiles>()), Times.Never);
@@ -706,7 +778,7 @@ public class SubmissionServiceTests : IDisposable
 
         _fileStorageMock.Setup(s => s.DeleteAsync(It.IsAny<StoredFiles>())).Returns(Task.CompletedTask);
 
-        var result = await _service.RemoveFileAsync(fileId);
+        var result = await _service.RemoveFileAsync(fileId, _officerUserId);
 
         result.Should().BeFalse();
         _fileStorageMock.Verify(s => s.DeleteAsync(It.IsAny<StoredFiles>()), Times.Never);
@@ -761,7 +833,7 @@ public class SubmissionServiceTests : IDisposable
         file.MarkedAt = DateTime.UtcNow;
         file.EnteredValue = "4";
         file.EnteredAt = DateTime.UtcNow;
-        file.Descriptions.Add(new ExhibitDescription { DescriptionText = "test exhibit", CreatedBy = "officer@test.ca" });
+        file.Descriptions.Add(new ExhibitDescription { DescriptionText = "test exhibit", CreatedByUserId = _officerUserId });
         submission.Files.Add(file);
         _db.Submissions.Add(submission);
         await _db.SaveChangesAsync();

@@ -1,4 +1,4 @@
-﻿using CES.API.Authentication;
+using CES.API.Authentication;
 using CES.Business.Constants;
 using CES.Business.Interfaces;
 using CES.Business.Models;
@@ -10,32 +10,32 @@ namespace CES.API.Controllers
     public class LoginController : Controller
     {
         public ITokenService _tokenService {get;set;}
-        public LoginController(ITokenService tokenService) 
+        private readonly IUserService _userService;
+
+        public LoginController(ITokenService tokenService, IUserService userService)
         {
             _tokenService = tokenService;
+            _userService = userService;
         }
 
         [HttpPost]
         [Route("api/auth/login")]
-        public IActionResult LoginUser([FromBody] CESLoginModel model)
+        public async Task<IActionResult> LoginUser([FromBody] CESLoginModel model)
         {
-            var mockUsers = new Dictionary<string, (string Password, string Role)>
+            if (!DevBypassUsers.All.TryGetValue(model.Username.ToLower(), out var userRecord) ||
+                userRecord.Password != model.Password)
             {
-                { "admin@gov.bc.ca", ("pass123", RoleConstants.Admin) },
-                { "officer@gov.bc.ca", ("pass123", RoleConstants.User) },
-                { "clerk@gov.bc.ca", ("pass123", RoleConstants.Clerk) }
-            };
-            if (mockUsers.TryGetValue(model.Username.ToLower(), out var userRecord) && 
-                userRecord.Password == model.Password)
-            {
-                // Generate the token using the service we built earlier
-                var token = _tokenService.GenerateToken(model.Username, userRecord.Role);
-                return Ok(new { token });
+                return Unauthorized();
             }
 
-            return Unauthorized();
-        }
+            // Provision the local row before minting the token so this session's audit
+            // writes resolve to a real ApplicationUser.Id, exactly as a Keycloak login does.
+            await _userService.UpsertMockUserAsync(
+                userRecord.Email, userRecord.FirstName, userRecord.LastName);
 
-        
+            // Generate the token using the service we built earlier
+            var token = _tokenService.GenerateToken(model.Username, userRecord.Role);
+            return Ok(new { token });
+        }
     }
 }

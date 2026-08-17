@@ -16,7 +16,8 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
         _client = factory.CreateClient();
     }
 
-    private static MultipartFormDataContent BuildSubmitForm(int ticketCount = 1)
+    private static MultipartFormDataContent BuildSubmitForm(
+        int ticketCount = 1, string officerNumber = "OFF001")
     {
         var form = new MultipartFormDataContent
         {
@@ -25,7 +26,7 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
             { new StringContent("Test Court"), "locationNameText" },
             { new StringContent("ROOM1"), "roomCode" },
             { new StringContent("Courtroom 1"), "roomText" },
-            { new StringContent("OFF001"), "officerNumber" },
+            { new StringContent(officerNumber), "officerNumber" },
         };
 
         for (var i = 0; i < ticketCount; i++)
@@ -151,6 +152,22 @@ public class SubmissionsControllerTests : IClassFixture<TestWebApplicationFactor
         var fileContent = new ByteArrayContent(Encoding.UTF8.GetBytes("fake"));
         fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("video/mp4");
         form.Add(fileContent, "files", "evidence.mp4");
+
+        var response = await _client.PostAsync("/api/submissions/submit", form);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("OFF 001")]
+    [InlineData("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")]  // 31 chars, one over the maximum
+    public async Task Submit_WithAnInvalidOfficerNumber_Returns400(string officerNumber)
+    {
+        // Mandatory as of CES-27, and validated server-side even though the SPA now fills the
+        // field from the officer's stored profile.
+        WithAuth(JwtTokenHelper.UserToken());
+        var form = BuildSubmitForm(officerNumber: officerNumber);
 
         var response = await _client.PostAsync("/api/submissions/submit", form);
 

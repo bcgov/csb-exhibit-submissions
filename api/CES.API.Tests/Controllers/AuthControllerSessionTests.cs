@@ -197,7 +197,9 @@ public class AuthControllerSessionTests : IDisposable
 
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CESDataStore>();
-        db.ApplicationUser.Should().BeEmpty();
+        // Only the seeded dev-bypass rows remain — none of them was provisioned by this
+        // callback, which is what a skipped upsert looks like.
+        db.ApplicationUser.Should().NotContain(user => user.KeycloakSub != null);
     }
 
     // ---------- helpers ----------

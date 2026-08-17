@@ -12,8 +12,14 @@ namespace CES.Entities
         public long FileSize { get; set; }
         public string StorageProvider { get; set; } = string.Empty;
         public DateTime CreatedDateUTC { get; set; } = DateTime.UtcNow;
-        public string? CreatedBy { get; set; }
-        public string? UpdatedBy { get; set; }
+
+        // FKs to ApplicationUser.Id — see BaseEntity.CreatedByUserId for why the audit
+        // columns hold an id rather than a name. StoredFiles does not derive from
+        // BaseEntity (its key is a Guid), so the same pair is declared here.
+        public int? CreatedByUserId { get; set; }
+        public ApplicationUser? CreatedByUser { get; set; }
+        public int? UpdatedByUserId { get; set; }
+        public ApplicationUser? UpdatedByUser { get; set; }
         public DateTime? UpdatedDateUTC { get; set; }
         public bool IsDeleted { get; set; } = false;
 
@@ -53,9 +59,12 @@ namespace CES.Entities
             CreatedDateUTC = SystemDate.UtcNow();
         }
 
-        public void SetUpdateBy(string updator = "System")
+        /// <param name="updatedByUserId">
+        /// The acting user's <c>ApplicationUser.Id</c>, or null for a system-driven update.
+        /// </param>
+        public void SetUpdateBy(int? updatedByUserId = null)
         {
-            UpdatedBy = updator;
+            UpdatedByUserId = updatedByUserId;
             UpdatedDateUTC = SystemDate.UtcNow();
         }
 

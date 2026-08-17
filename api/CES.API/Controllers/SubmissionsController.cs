@@ -1,3 +1,4 @@
+using CES.API.Authentication;
 using CES.API.Models;
 using CES.Business.Constants;
 using CES.Business.Interfaces;
@@ -10,10 +11,12 @@ namespace CES.API.Controllers
     public class SubmissionController : Controller
     {
         private readonly ISubmissionService _submissionService;
+        private readonly IUserService _userService;
 
-        public SubmissionController(ISubmissionService submissionService)
+        public SubmissionController(ISubmissionService submissionService, IUserService userService)
         {
             _submissionService = submissionService;
+            _userService = userService;
         }
 
         [HttpPost]
@@ -41,7 +44,8 @@ namespace CES.API.Controllers
             if (model.fileUploads.Count == 0)
                 return BadRequest("No files uploaded.");
 
-            var result = await _submissionService.SubmitEvidence(model);
+            var submittedByUserId = await User.ResolveUserIdAsync(_userService);
+            var result = await _submissionService.SubmitEvidence(model, submittedByUserId);
             return result.HasValue ? Ok(new { submissionId = result.Value }) : BadRequest("Something failed");
         }
 
@@ -120,7 +124,8 @@ namespace CES.API.Controllers
         [Authorize(Roles = RoleConstants.AdminOrClerk)]
         public async Task<IActionResult> RemoveFile(Guid fileId)
         {
-            var result = await _submissionService.RemoveFileAsync(fileId);
+            var removedByUserId = await User.ResolveUserIdAsync(_userService);
+            var result = await _submissionService.RemoveFileAsync(fileId, removedByUserId);
             return result ? Ok() : NotFound();
         }
     }

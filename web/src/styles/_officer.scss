@@ -80,6 +80,30 @@
   max-width: 1280px;
   margin: auto;
 
+  // Plain text link back to the court/room search. Same treatment as the filename
+  // links in ExhibitList — a button (it clears the selection store on the way out)
+  // rendered as a link.
+  .back-link {
+    display: inline-block;
+    margin-bottom: $margin-small;
+    padding: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: $font-size-small-body;
+    color: $color-text-link;
+    text-decoration: underline;
+
+    &:hover {
+      color: $color-primary;
+    }
+
+    &:focus-visible {
+      outline: $border-width-medium solid $color-text-link;
+      outline-offset: 2px;
+    }
+  }
+
   .shared-fields {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -173,6 +197,30 @@
     display: flex;
     flex-direction: column;
     max-width: 250px;
+
+    // The input is disabled by design — the value is owned by the profile and changed only
+    // through the modal the adjacent button opens.
+    .officer-field-row {
+      display: flex;
+      align-items: center;
+      gap: $margin-small;
+
+      input {
+        flex: 1;
+        min-width: 0;
+        padding: $padding-small;
+      }
+    }
+
+    .officer-number-edit {
+      flex: none;
+    }
+
+    .officer-field-missing {
+      font-size: $font-size-label;
+      color: $color-danger;
+      margin-top: $margin-xsmall;
+    }
   }
 
   .dropzone {
@@ -217,5 +265,72 @@
     position: absolute;
     top: 5px;
     right: 5px;
+  }
+}
+
+// --- Officer number prompt (modal) ---
+// Overlay metrics mirror .exhibit-detail-overlay in _shared.scss so both dialogs clear the
+// app bar and dim the page identically.
+
+.officer-number-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: $padding-large;
+  padding-top: calc(#{$app-bar-height} + #{$padding-large});
+  overflow-y: auto;
+  z-index: 1000;
+  background: $color-overlay;
+}
+
+.officer-number-dialog {
+  background: white;
+  border-radius: $border-radius-large;
+  box-shadow: $shadow-large;
+  padding: $padding-large;
+  max-width: 480px;
+  width: 100%;
+
+  h2 {
+    font-size: $font-size-h5;
+    margin-bottom: $margin-small;
+  }
+
+  .officer-number-intro {
+    font-size: $font-size-small-body;
+    color: $color-text-secondary;
+    margin-bottom: $margin-large;
+  }
+
+  input {
+    padding: $padding-small;
+    border: $border-width-small solid $color-border-medium;
+    border-radius: $border-radius-default;
+    font-size: $font-size-body;
+
+    &:disabled {
+      background: $color-disabled-bg;
+      color: $color-text-disabled;
+    }
+  }
+
+  .officer-number-hint {
+    font-size: $font-size-label;
+    color: $color-text-secondary;
+    margin-top: $margin-xsmall;
+  }
+
+  .officer-number-error {
+    font-size: $font-size-small-body;
+    color: $color-danger;
+    margin-bottom: $margin-medium;
+  }
+
+  .officer-number-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: $margin-small;
   }
 }

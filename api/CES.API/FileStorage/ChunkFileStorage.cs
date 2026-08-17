@@ -43,5 +43,10 @@ namespace CES.API.FileStorage
         {
             throw new NotImplementedException();
         }
+
+        public Task<PendingCleanupResult> DeletePendingCopyAsync(StoredFiles file)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

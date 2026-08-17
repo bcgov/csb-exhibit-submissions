@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using CES.Business.Constants;
 using CES.Business.FileStorage;
 using CES.Business.Interfaces;
@@ -96,18 +97,36 @@ namespace CES.API.FileStorage
             var destinationFolder = Path.GetDirectoryName(destinationFullPath)!;
             Directory.CreateDirectory(destinationFolder);
 
-            // Atomic byte placement: copy to {exhibitId}{ext}.tmp then rename.
+            // Atomic byte placement: copy to {exhibitId}{ext}.tmp, verify, then rename.
+            // Verification is what licenses deleting the pending original later, so an
+            // unverified copy must never become canonical: the hash is accumulated over
+            // the bytes read from the source during the copy and then re-read back off
+            // the written temp file. A mismatch (short write, full disk, bad sector)
+            // deletes the temp and throws, leaving the pending original untouched.
             var tempPath = destinationFullPath + AcceptedStorageConstants.TempSuffix;
-            await using (var source = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 65536, useAsync: true))
-            await using (var dest = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 65536, useAsync: true))
+            string hash;
+
+            try
             {
-                await source.CopyToAsync(dest);
-                await dest.FlushAsync();
+                var (sourceHash, bytesCopied) = await CopyAndHashAsync(sourcePath, tempPath);
+
+                var writtenLength = new FileInfo(tempPath).Length;
+                if (writtenLength != bytesCopied)
+                    throw new IOException($"Accepted copy of {file.OriginalFileName} is {writtenLength} bytes, expected {bytesCopied}.");
+
+                var writtenHash = await CryptographyService.ComputeSHA256Async(tempPath);
+                if (!string.Equals(writtenHash, sourceHash, StringComparison.OrdinalIgnoreCase))
+                    throw new IOException($"Accepted copy of {file.OriginalFileName} failed {AcceptedStorageConstants.HashAlgorithm} verification.");
+
+                hash = writtenHash;
+            }
+            catch
+            {
+                TryDeleteTempFile(tempPath);
+                throw;
             }
 
             File.Move(tempPath, destinationFullPath, overwrite: true);
-
-            var hash = await CryptographyService.ComputeSHA256Async(destinationFullPath);
 
             return new AcceptedFileResult
             {
@@ -115,6 +134,50 @@ namespace CES.API.FileStorage
                 AcceptedFileName = acceptedFileName,
                 Sha256 = hash,
             };
+        }
+
+        // Streams source → destination while hashing the bytes as they are read, so the
+        // copy costs one pass over the source rather than a separate hashing pass.
+        // Returns the source hash and the number of bytes written.
+        private static async Task<(string Sha256, long Length)> CopyAndHashAsync(string sourcePath, string destinationPath)
+        {
+            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            var buffer = new byte[AcceptedStorageConstants.CopyBufferSize];
+            long total = 0;
+
+            await using (var source = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, AcceptedStorageConstants.CopyBufferSize, useAsync: true))
+            await using (var dest = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None, AcceptedStorageConstants.CopyBufferSize, useAsync: true))
+            {
+                int read;
+                while ((read = await source.ReadAsync(buffer)) > 0)
+                {
+                    await dest.WriteAsync(buffer.AsMemory(0, read));
+                    hash.AppendData(buffer, 0, read);
+                    total += read;
+                }
+
+                await dest.FlushAsync();
+                // Force the bytes down to the device, not just the OS cache: the pending
+                // original is deleted once this copy verifies, so the accepted copy has
+                // to survive a crash on its own.
+                dest.Flush(flushToDisk: true);
+            }
+
+            return (Convert.ToHexString(hash.GetHashAndReset()), total);
+        }
+
+        // Best-effort removal of a failed partial copy. A leftover .tmp is harmless
+        // (the next promotion overwrites it), so a failure here must not mask the
+        // original error being propagated.
+        private static void TryDeleteTempFile(string tempPath)
+        {
+            try
+            {
+                if (File.Exists(tempPath))
+                    File.Delete(tempPath);
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
         }
 
         public async Task WriteMetadataAsync(Submission submission, IReadOnlyList<SubmissionAuditLog> auditLogs)
@@ -142,6 +205,46 @@ namespace CES.API.FileStorage
 
             Stream stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read);
             return Task.FromResult(stream);
+        }
+
+        // Removes the pending (uploads) copy once the exhibit lives in the accepted
+        // store. Every precondition is re-checked here rather than trusted from the
+        // promotion that ran earlier in the request: the delete is irreversible, so it
+        // only happens when the canonical file is present and its bytes hash to both
+        // the value recorded at acceptance and the bytes about to be deleted.
+        public async Task<PendingCleanupResult> DeletePendingCopyAsync(StoredFiles file)
+        {
+            // Without a canonical path and hash there is nothing to verify against.
+            if (!file.IsAccepted || string.IsNullOrEmpty(file.CanonicalPath) || string.IsNullOrEmpty(file.Sha256))
+                return PendingCleanupResult.VerificationFailed;
+
+            var pendingPath = Path.Combine(_options.LocalPath, file.StoredPath, file.StoredFileName);
+            if (!File.Exists(pendingPath))
+                return PendingCleanupResult.AlreadyRemoved;
+
+            var canonicalFullPath = AcceptedPathBuilder.ResolveAndVerifyWithinRoot(_options.AcceptedPath, file.CanonicalPath);
+            if (!File.Exists(canonicalFullPath))
+                return PendingCleanupResult.VerificationFailed;
+
+            // Cheap gate first — a length mismatch rules out a complete copy without
+            // reading either file end to end.
+            if (new FileInfo(pendingPath).Length != new FileInfo(canonicalFullPath).Length)
+                return PendingCleanupResult.VerificationFailed;
+
+            // Hash both sides now, immediately before the delete. Comparing the
+            // canonical bytes to the DB hash proves the accepted copy is the one that
+            // was accepted; comparing them to the pending bytes proves the copy about
+            // to be deleted is fully represented there.
+            var canonicalHash = await CryptographyService.ComputeSHA256Async(canonicalFullPath);
+            if (!string.Equals(canonicalHash, file.Sha256, StringComparison.OrdinalIgnoreCase))
+                return PendingCleanupResult.VerificationFailed;
+
+            var pendingHash = await CryptographyService.ComputeSHA256Async(pendingPath);
+            if (!string.Equals(pendingHash, canonicalHash, StringComparison.OrdinalIgnoreCase))
+                return PendingCleanupResult.VerificationFailed;
+
+            File.Delete(pendingPath);
+            return PendingCleanupResult.Deleted;
         }
     }
 }

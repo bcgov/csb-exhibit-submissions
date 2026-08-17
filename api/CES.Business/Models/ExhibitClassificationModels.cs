@@ -15,6 +15,9 @@ namespace CES.Business.Models
     {
         public int Id { get; set; }
         public string DescriptionText { get; set; } = string.Empty;
+        // The stored link (ApplicationUser.Id) and the display value resolved from it.
+        // CreatedBy is derived on read and is never persisted alongside the id.
+        public int? CreatedByUserId { get; set; }
         public string? CreatedBy { get; set; }
         public DateTime CreatedAtUTC { get; set; }
     }
@@ -35,6 +38,8 @@ namespace CES.Business.Models
         public string FieldName { get; set; } = string.Empty;
         public string? OldValue { get; set; }
         public string? NewValue { get; set; }
+        /// <inheritdoc cref="ExhibitDescriptionEntryModel.CreatedByUserId"/>
+        public int? ChangedByUserId { get; set; }
         public string? ChangedBy { get; set; }
         public DateTime ChangedAtUTC { get; set; }
     }
@@ -44,6 +49,8 @@ namespace CES.Business.Models
     {
         public int Id { get; set; }
         public string NoteText { get; set; } = string.Empty;
+        /// <inheritdoc cref="ExhibitDescriptionEntryModel.CreatedByUserId"/>
+        public int? CreatedByUserId { get; set; }
         public string? CreatedBy { get; set; }
         public DateTime CreatedAtUTC { get; set; }
     }

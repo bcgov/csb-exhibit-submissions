@@ -120,7 +120,7 @@ The body is always `{ "message": "…" }` (generic text for 500). When adding a 
 
 ### Key Integration Points
 
-- **File uploads:** Dropzone on the frontend, max 100MB, stored locally by the API under the path `{locationId}/{shortDate}/{roomCode}/{submissionId}` (submission-scoped, not per-ticket)
+- **File uploads:** Dropzone on the frontend, max 100MB, stored locally by the API under the path `{locationId}/{roomCode}/{shortDate}/{submissionId}` (submission-scoped, not per-ticket)
 - **Email:** SMTP configuration in `appsettings.json`
 - **BC Gov design system:** BC Gov design tokens and fonts are imported for consistent styling
 
@@ -164,6 +164,7 @@ Feature specifications live in [`/spec`](spec/). Read the relevant spec before i
 | [exhibit-descriptions.md](spec/exhibit-descriptions.md) | (CES-42) Replaces the single mutable exhibit `Description` field with append-only, immutable description entries (same shape as registry `ExhibitNote`): multiline plain text, never edited, addenda only. Streamlines `ExhibitList.vue` into a collapsed single-row view with a chevron, and opens the Exhibit Detail modal to officers (without the Notes section). |
 | [documents/component-rules.md](spec/documents/component-rules.md) | Reference: BC Gov Design System component rules (Buttons, Text field, Text area, Select, Dialog, Tags/Chips, Date picker) adapted for CES's native-HTML-+-SCSS approach. Universal a11y rules (focus ring, target sizes, labels), per-component states/variants, and a mapping to existing SCSS tokens. Read before styling or building a control. |
 | [documents/typography-rules.md](spec/documents/typography-rules.md) | Reference: BC Gov typography standards mapped to CES. The sanctioned type scale (H1–H6 + body/small-body/label sizes, weights, line-heights) with their design tokens, the rules (rem-only, weights 400/700 only, min 16px body, sequential headings), and an audit of current off-scale sizes/weights to fix. Read before setting any `font-size`/`font-weight`/heading. |
+| [officer-number-profile.md](spec/officer-number-profile.md) | Officer Number moves from a retyped free-text field on the upload form to a stored `ApplicationUser.OfficerNumber`. IDIR exposes no such claim, so an officer landing on Court Search with none stored is prompted by a dismissible modal; the value is loaded into `authStore` once per session (surviving token refresh), prefills the now read-only field on Exhibit Upload, and is mandatory on submit. Adds `GET /api/users/me` + `PUT /api/users/me/officer-number`. |
 | [keycloak-authentication.md](spec/keycloak-authentication.md) | (CES-36-2) BC Gov Keycloak/IDIR SSO login against a **confidential** client. The client secret is required, so the SPA cannot run the flow: the API initiates Authorization Code + PKCE, performs the code exchange and all refreshes, and keeps the refresh token in a Data Protection-encrypted `HttpOnly` cookie. Keycloak's registered redirect URI is the Vue route `/auth/callback`, which posts the code to the API rather than handling it. The browser holds only an in-memory access token, auto-renewed ahead of expiry (plus a one-shot `401` retry) so long file uploads never lapse. Supersedes the rejected [keycloak-simplified.md](spec/completed/keycloak-simplified.md) (public client, no secret) and [keycloak-integration.md](spec/completed/keycloak-integration.md). |
 
 ---

@@ -7,7 +7,6 @@ namespace CES.Entities
         public string FirstName { get;set; } = null!;
         public string LastName { get;set; } = null!;
         public string Email {  get;set; } = null!;
-        public string Password {  get;set; } = null!;
         public bool IsActive {  get;set; }
 
         /// <summary>
@@ -19,6 +18,17 @@ namespace CES.Entities
         /// </para>
         /// </summary>
         public string? KeycloakSub { get; set; }
+
+        /// <summary>
+        /// The officer's badge/PIN number, supplied by the officer on first use — IDIR does not
+        /// expose it as a claim, so it cannot be read off the token like the identity columns.
+        /// <para>
+        /// Null until they provide it, and only ever set for officer-role users. This is the one
+        /// CES-owned, user-editable column on the row: unlike name and email it is never refreshed
+        /// from the provider, so a login must not clear it.
+        /// </para>
+        /// </summary>
+        public string? OfficerNumber { get; set; }
 
         public string GetFullName()
         {

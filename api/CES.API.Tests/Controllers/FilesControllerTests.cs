@@ -158,7 +158,7 @@ public class FilesControllerTests : IClassFixture<TestWebApplicationFactory>
     }
 
     [Fact]
-    public async Task MarkExhibit_AsClerk_RecordsChangedByClerk()
+    public async Task MarkExhibit_AsClerk_RecordsTheClerkAsTheActor()
     {
         var fileId = await UploadFileAndGetId();
         _client.DefaultRequestHeaders.Authorization =
@@ -169,7 +169,9 @@ public class FilesControllerTests : IClassFixture<TestWebApplicationFactory>
         var response = await _client.GetAsync($"/api/files/{fileId}/history");
         var history = await response.Content.ReadFromJsonAsync<List<HistoryEntry>>();
 
-        history.Should().ContainSingle(h => h.FieldName == "MarkedValue" && h.ChangedBy == "Clerk");
+        // The audit row links to the clerk's ApplicationUser row; the history read model
+        // renders that link as their email rather than the old bare role label.
+        history.Should().ContainSingle(h => h.FieldName == "MarkedValue" && h.ChangedBy == "clerk@gov.bc.ca");
     }
 
     [Fact]
@@ -576,7 +578,7 @@ public class FilesControllerTests : IClassFixture<TestWebApplicationFactory>
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         body!.NoteText.Should().Be("Clerk registry note");
-        body.CreatedBy.Should().Be("Clerk");
+        body.CreatedBy.Should().Be("clerk@gov.bc.ca");
     }
 
     [Fact]
