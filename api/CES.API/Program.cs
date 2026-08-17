@@ -25,10 +25,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddScopedServiceCollection(builder.Configuration);
 
-//TODO: File storage service.  Change to adjust how files are saved at upload
-builder.Services.AddScoped<IFileStorage, LocalFileStorage>();
-builder.Services.Configure<StorageOptions>(
-    builder.Configuration.GetSection("FileStorage"));
+// Pending (upload) and accepted (canonical) stores are selected independently via
+// FileStorage:PendingProvider / FileStorage:AcceptedProvider, then composed into one
+// IFileStorage. Fails at boot on an unknown or unsupported provider.
+builder.Services.AddFileStorage(builder.Configuration);
 
 // Keycloak configuration. Registered unconditionally so AuthController can always be
 // constructed; every one of its endpoints returns 404 while Keycloak:Enabled is false,

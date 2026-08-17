@@ -152,29 +152,40 @@ Also unchanged:
 
 ### The one new class
 
-```csharp
-// api/CES.API/FileStorage/SmbFileStorage.cs
-public class SmbFileStorage : IFileStorage
+**Completed 2026-08-17, ahead of the SMB work.** The original draft proposed a single
+`SmbFileStorage : IFileStorage` that implemented the accepted half over SMB and delegated the
+three pending methods to an injected `LocalFileStorage`. That hybrid is gone: the store has been
+split so the two halves are configured and implemented independently.
+
+```
+IFileStorage                          ← unchanged; still what the services consume
+   └── FileStorageCoordinator         ← CES.Business/FileStorage
+         ├── IPendingFileStore        ← Save / Get / Delete / Exists
+         │     └── LocalPendingFileStore
+         └── IAcceptedFileStore       ← TryGetExisting / Promote / WriteMetadata / GetAccepted
+               ├── LocalAcceptedFileStore
+               └── SmbAcceptedFileStore   ← Stage 3, three of the four members
 ```
 
-It is a **hybrid**: the pending half is local, the accepted half is SMB.
+Providers are chosen by `FileStorage:PendingProvider` and `FileStorage:AcceptedProvider`, so
+`Local`/`Local` and `Local`/`Smb` are both just configuration. What this changed for the SMB work:
 
-| `IFileStorage` member | Store | Implementation |
-|---|---|---|
-| `SaveAsync` | local | Unchanged logic — delegated to the injected `LocalFileStorage`. |
-| `GetAsync` | local | Delegated. |
-| `DeleteAsync` | local | Delegated. |
-| `PromoteToAcceptedAsync` | **local → SMB** | Reads pending bytes from disk, streams them to the share, verifies, returns path + hash. |
-| `WriteMetadataAsync` | **SMB** | Serializes `metadata.json` to memory, writes it to the share. |
-| `GetAcceptedExhibitAsync` | **SMB** | Returns an `SmbReadStream` over the canonical path. |
-| `DeletePendingCopyAsync` | **SMB read + local delete** | Hashes the canonical copy over SMB, compares to DB + pending, then deletes the *local* pending file. |
+- **The SMB class implements three or four members, not seven**, and has no dependency on the
+  local store. Delegation and the "hybrid" concept disappear entirely.
+- **`PromoteToAcceptedAsync` takes the pending bytes as a `Stream`.** The coordinator opens it from
+  whichever pending store is configured. This is the decoupling that makes any pairing work — the
+  accepted store never reaches into `FileStorage:LocalPath`.
+- **`DeletePendingCopyAsync` lives in the coordinator**, so the verification sequence (canonical
+  hash vs DB hash vs pending hash) is written once and holds for every pairing rather than being
+  reimplemented per provider. Its cheap length gate now applies only when both streams report a
+  length, so a store that cannot is skipped rather than assumed good.
+- **`TryGetExistingAsync`** was added to `IAcceptedFileStore` to keep promotion idempotent without
+  requiring the pending copy to still exist — it is deleted after a successful acceptance, so a
+  re-run must not depend on it.
 
-Delegating the three pending methods (rather than inheriting from `LocalFileStorage`) keeps
-`LocalFileStorage` unmodified and makes the split explicit at the call site. `SmbFileStorage`
-takes `LocalFileStorage` as a constructor dependency.
-
-`ChunkFileStorage.cs` is a stub with seven `NotImplementedException`s and is not registered
-anywhere. It is unaffected; leave it alone (or delete it in passing — separate call).
+`ChunkFileStorage.cs` — an unregistered stub of seven `NotImplementedException`s — was deleted in
+the same change. It implemented `IFileStorage` directly, which is now the coordinator's role, so
+keeping it would have advertised the wrong extension point.
 
 ### Supporting types
 
@@ -187,7 +198,19 @@ api/CES.API/FileStorage/Smb/
 ├── SmbPath.cs              # relative "a/b/c" → "Base\a\b\c"; parent-chain enumeration
 ├── SmbReadStream.cs        # lazy read-only Stream; owns its session
 └── SmbFileWriter.cs        # EnsureDirectory / WriteStream / Rename / Delete / Exists
-api/CES.API/FileStorage/SmbFileStorage.cs
+api/CES.API/FileStorage/SmbAcceptedFileStore.cs   # IAcceptedFileStore, 4 members
+```
+
+Already in place from the provider split:
+
+```
+api/CES.Business/Constants/FileStorageProviders.cs
+api/CES.Business/Interfaces/IPendingFileStore.cs
+api/CES.Business/Interfaces/IAcceptedFileStore.cs
+api/CES.Business/FileStorage/FileStorageCoordinator.cs
+api/CES.API/FileStorage/LocalPendingFileStore.cs
+api/CES.API/FileStorage/LocalAcceptedFileStore.cs
+api/CES.API/FileStorage/FileStorageRegistration.cs   # provider switch + legacy-key guard
 ```
 
 ### Connection lifecycle
@@ -271,16 +294,17 @@ Mitigations that do not weaken the guarantee:
 All additive. None change `LocalFileStorage` behaviour; each exists because a helper currently
 assumes `System.IO`.
 
-| # | File | Change | Why |
+| # | File | Change | Status |
 |---|---|---|---|
-| R1 | `CES.Business/Services/CryptographicService.cs` | Add `ComputeSHA256Async(Stream)`. Make the existing `(string filePath)` overload open the file and call it. | SMB has no file path to hand to `FileStream`. |
-| R2 | `CES.Business/FileStorage/AcceptedMetadataWriter.cs` | Extract `byte[] Serialize(AcceptedMetadata)`. `WriteAsync` keeps its current signature and calls it. | The SMB writer needs the bytes, not a local temp+rename. |
-| R3 | `CES.Business/FileStorage/AcceptedPathBuilder.cs` | Add `BuildSubmissionFolderRelativePath(locationId, roomCode, shortDate, submissionId)`. | `LocalFileStorage.WriteMetadataAsync` currently rebuilds this inline; both implementations should share one definition. Fixes an existing duplication. |
-| R4 | `CES.API/configuration/StorageOptions.cs` | Add `public SmbOptions Smb { get; set; }`. `Provider` gains a documented `"Smb"` value. | Config binding. |
-| R5 | `CES.API/Program.cs` | Replace the hard-coded `AddScoped<IFileStorage, LocalFileStorage>()` with a switch on `FileStorage:Provider`. Register `LocalFileStorage` concretely either way (`SmbFileStorage` depends on it). | `Provider` is currently read from config and then ignored — a live trap. |
-| R6 | `CES.API/CES.API.csproj` | `<PackageReference Include="SMBLibrary" Version="1.5.3" />` | Jasper's pinned version; verified to work against a BC Gov share. |
+| R1 | `CES.Business/Services/CryptographicService.cs` | Add `ComputeSHA256Async(Stream)`; the existing `(string filePath)` overload opens the file and calls it. | ✅ **Done** |
+| R3 | `CES.Business/FileStorage/AcceptedPathBuilder.cs` | Add `BuildSubmissionFolderRelativePath(...)`. `BuildCanonicalRelativePath` now delegates to it, so the folder path and its canonical prefix cannot drift. | ✅ **Done** — also removed the inline duplicate that was in `WriteMetadataAsync` |
+| R5 | `CES.API/Program.cs` | Replaced the hard-coded `AddScoped<IFileStorage, LocalFileStorage>()` with `AddFileStorage(configuration)`, which switches on both provider settings. | ✅ **Done** — the "`Provider` is read then ignored" trap is gone |
+| R2 | `CES.Business/FileStorage/AcceptedMetadataWriter.cs` | Extract `byte[] Serialize(AcceptedMetadata)`. `WriteAsync` keeps its signature and calls it. | Stage 3 — the SMB writer needs the bytes, not a local temp+rename |
+| R4 | `CES.API/configuration/StorageOptions.cs` | Add `public SmbOptions Smb { get; set; }`. | Stage 1 |
+| R6 | `CES.API/CES.API.csproj` | `<PackageReference Include="SMBLibrary" Version="1.5.3" />` | Stage 1 |
 
-`IFileStorage` itself is **unchanged**.
+`IFileStorage` itself is **unchanged** — which is why `InMemoryFileStorage`, both `Mock<IFileStorage>`
+suites and all 389 backend tests passed the provider split without a single assertion changing.
 
 ---
 
@@ -354,10 +378,10 @@ inside the running API container, with the working domain and share recorded in 
 
 **Ships:**
 - `SmbReadStream` (D3): lazy, seekable-for-range-requests, owns its session, semaphore-gated.
-- R1 (`ComputeSHA256Async(Stream)`).
-- `SmbFileStorage` with `GetAcceptedExhibitAsync` implemented against SMB and the three pending
-  methods delegated to `LocalFileStorage`; the three write methods throw `NotSupportedException`.
-- R5 provider switch, so `FileStorage__Provider=Smb` selects it.
+- `SmbAcceptedFileStore` with `GetAcceptedExhibitAsync` implemented against SMB; the three write
+  members throw `NotSupportedException` until Stage 3.
+- Registering it in `FileStorageRegistration` so `FileStorage__AcceptedProvider=Smb` selects it,
+  replacing the `NotImplementedException` placeholder.
 
 Validated by seeding the share manually (files placed by hand, or by a `Local` run whose
 `AcceptedPath` output is copied up) and then downloading through the normal
@@ -373,8 +397,10 @@ Blocked on a service account with write + delete on the share.
 
 **Ships:**
 - `SmbFileWriter`: `ExistsAsync`, `EnsureDirectoryAsync`, `WriteAsync(Stream)`, `RenameAsync`, `DeleteAsync`.
-- `PromoteToAcceptedAsync`, `WriteMetadataAsync`, `DeletePendingCopyAsync` on `SmbFileStorage`.
-- R2 (`AcceptedMetadataWriter.Serialize`), R3 (`BuildSubmissionFolderRelativePath`).
+- `TryGetExistingAsync`, `PromoteToAcceptedAsync` and `WriteMetadataAsync` on
+  `SmbAcceptedFileStore`. (`DeletePendingCopyAsync` needs nothing new — it already runs in the
+  coordinator against whatever the accepted store returns.)
+- R2 (`AcceptedMetadataWriter.Serialize`).
 - Extension of `/api/dev/smb/health` with an opt-in `?write=true` that writes, verifies, reads
   back and deletes a scratch file under `{BasePath}/_diagnostics/`, reporting each step's
   `NTStatus`. This is how we will diagnose partial permissions (a very common outcome: create
@@ -422,7 +448,8 @@ discovers both. Nothing here needs to be chased with the file-services team befo
 
 | Setting | Default | Notes |
 |---|---|---|
-| `FileStorage__Provider` | `Local` | Set to `Smb` to activate. |
+| `FileStorage__PendingProvider` | `Local` | Only `Local` is supported — pending uploads stay on pod disk by design (D1). |
+| `FileStorage__AcceptedProvider` | `Local` | Set to `Smb` to move the accepted store onto the share. Throws at boot until Stage 3 lands. |
 | `FileStorage__Smb__TransportType` | `DirectTcp` | Port 445. `NetBios` (139) is also open on the dev host if 445 is ever blocked. |
 | `FileStorage__Smb__AuthenticationMethod` | `NTLMv2` | `NTLMv1ExtendedSessionSecurity` and `NTLMv1` are the other options. A cheap thing to vary if `NTLMv2` returns `STATUS_LOGON_FAILURE`. |
 | `FileStorage__Smb__BufferSize` | `65536` | 64 KiB read/write chunk. Clamped to the negotiated `MaxReadSize`/`MaxWriteSize`. |
@@ -435,7 +462,13 @@ discovers both. Nothing here needs to be chased with the file-services team befo
 | `FileStorage__Smb__DiagnosticsEnabled` | `false` | Gates `/api/dev/smb/health` independently of `ASPNETCORE_ENVIRONMENT`. |
 
 `FileStorage__LocalPath` and `FileStorage__MaxFileSize` keep their current meaning.
-`FileStorage__AcceptedPath` becomes unused when `Provider=Smb`.
+`FileStorage__AcceptedPath` becomes unused when `AcceptedProvider=Smb`.
+
+> **`FileStorage__Provider` was removed.** A single provider could not express a `Local` pending +
+> `Smb` accepted pairing. Because .NET config binding ignores unknown keys silently, a deployment
+> still setting the old key would have looked configured while doing nothing — so
+> `FileStorageRegistration` throws at boot if it sees `FileStorage:Provider`, naming the two
+> replacements in the message.
 
 > **Dropped: `RequireEncryption`.** The original draft proposed failing closed unless SMB 3.x
 > encryption was negotiated. SMBLibrary 1.5.3 exposes no such switch and no way to read back
@@ -456,17 +489,24 @@ discovers both. Nothing here needs to be chased with the file-services team befo
 `CES.API.Tests/Fixtures/InMemoryFileStorage.cs` implements `IFileStorage` for integration tests.
 Because `IFileStorage` does not change, it needs no modification — the whole point of not adding
 interface methods. `FileServiceTests` and `SubmissionServiceTests` mock `IFileStorage` and are
-likewise unaffected.
+likewise unaffected. This held in practice: the provider split landed with all 389 backend tests
+green and no assertion edited.
+
+`LocalFileStorageTests` was renamed `LocalFileStorageCoordinatorTests` and now constructs
+`FileStorageCoordinator(LocalPendingFileStore, LocalAcceptedFileStore)` behind an `IFileStorage`
+reference. Its 15 cases are otherwise untouched, and they now cover the `Local`/`Local` pairing
+end to end rather than one class.
 
 ### New unit tests (no network)
 
 | Target | Cases |
 |---|---|
 | `SmbPath` | relative → SMB join; empty `BasePath`; leading/trailing separator normalisation; forward→back slash conversion; parent-chain enumeration for `EnsureDirectory`. |
-| `SmbFileStorage` (mocked `ISmbSessionFactory`) | `SaveAsync`/`GetAsync`/`DeleteAsync` delegate to `LocalFileStorage` and never open a session; `GetAcceptedExhibitAsync` throws `FileNotFoundException` when `IsAccepted` is false or `CanonicalPath` is null (parity with `LocalFileStorage`); `DeletePendingCopyAsync` returns `VerificationFailed` on hash mismatch and never deletes. |
+| `SmbAcceptedFileStore` (mocked `ISmbSessionFactory`) | `GetAcceptedExhibitAsync` throws `FileNotFoundException` when `IsAccepted` is false or `CanonicalPath` is null (parity with `LocalAcceptedFileStore`); `TryGetExistingAsync` returns null for an absent canonical file rather than throwing. |
+| `FileStorageCoordinator` (mocked halves) | Pending methods never touch the accepted store; `PromoteToAcceptedAsync` short-circuits on `TryGetExistingAsync` without opening the pending stream; `DeletePendingCopyAsync` returns `VerificationFailed` on each mismatch and never calls `DeleteAsync`; the length gate is skipped when a stream cannot report `Length`. |
 | `CryptographyService` (R1) | Stream and file-path overloads agree on the same bytes. |
 | `AcceptedMetadataWriter` (R2) | `Serialize` output is byte-identical to what `WriteAsync` puts on disk. |
-| `AcceptedPathBuilder` (R3) | `BuildSubmissionFolderRelativePath` matches the prefix of `BuildCanonicalRelativePath`. |
+| `FileStorageRegistration` | Legacy `FileStorage:Provider` throws at boot; unknown provider names throw; `Local`/`Local` resolves an `IFileStorage`. |
 | Retry helper | Retries connect failures up to the cap; does **not** retry writes. |
 
 ### New integration tests (against a Samba container)

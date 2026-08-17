@@ -11,14 +11,25 @@ namespace CES.Business.Services
 
         public static async Task<string> ComputeSHA256Async(string filePath)
         {
-            using var sha = SHA256.Create();
             using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+            return await ComputeSHA256Async(stream);
+        }
+
+        // Hashes whatever the stream yields from its current position to the end.
+        // The caller owns the stream (and its position): a remote store has no file
+        // path to hand to FileStream, and the pending/accepted verification reads a
+        // stream it may need to rewind and reuse.
+        public static async Task<string> ComputeSHA256Async(Stream stream)
+        {
+            using var sha = SHA256.Create();
 
             var hash = await sha.ComputeHashAsync(stream);
 
             return Convert.ToHexString(hash);
         }
-        
+
+
 
         public static async Task<string> GenerateVideoViewToken(Guid fileId, DateTime expires, string hashKey = "thisneedstobesomethingthatisatleastafewcharacterslong")
         {

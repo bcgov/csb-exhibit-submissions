@@ -47,7 +47,8 @@ services:
       # Storage Configuration
       - FileStorage__LocalPath=${FileStorage__LocalPath:-/data/uploads}
       - FileStorage__AcceptedPath=${FileStorage__AcceptedPath:-/data/accepted}
-      - FileStorage__Provider=${FileStorage__Provider:-Local}
+      - FileStorage__PendingProvider=${FileStorage__PendingProvider:-Local}
+      - FileStorage__AcceptedProvider=${FileStorage__AcceptedProvider:-Local}
       - FileStorage__MaxFileSize=${FileStorage__MaxFileSize:-104857600}
       # File Service Client Configuration
       - FileServicesClient__Username=${FileServicesClient__Username:-JcInterfaceClient}
@@ -92,7 +93,8 @@ services:
       # Storage Configuration
       - FileStorage__LocalPath=${FileStorage__LocalPath:-/data/uploads}
       - FileStorage__AcceptedPath=${FileStorage__AcceptedPath:-/data/accepted}
-      - FileStorage__Provider=${FileStorage__Provider:-Local}
+      - FileStorage__PendingProvider=${FileStorage__PendingProvider:-Local}
+      - FileStorage__AcceptedProvider=${FileStorage__AcceptedProvider:-Local}
       - FileStorage__MaxFileSize=${FileStorage__MaxFileSize:-104857600}
       # File Service Client Configuration
       - FileServicesClient__Username=${FileServicesClient__Username:-JcInterfaceClient}

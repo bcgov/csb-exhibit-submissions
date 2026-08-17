@@ -3,6 +3,7 @@ using System.Text;
 using CES.API;
 using CES.API.FileStorage;
 using CES.Business.FileStorage;
+using CES.Business.Interfaces;
 using CES.Business.Models;
 using CES.Entities;
 using FluentAssertions;
@@ -10,13 +11,17 @@ using Microsoft.Extensions.Options;
 
 namespace CES.API.Tests.FileStorage;
 
-public class LocalFileStorageTests : IDisposable
+// Exercises the all-Local pairing end to end: the coordinator over
+// LocalPendingFileStore + LocalAcceptedFileStore. Asserting through IFileStorage
+// (rather than against either half directly) is deliberate — it is the surface the
+// services consume, and it keeps these tests valid for any future provider pairing.
+public class LocalFileStorageCoordinatorTests : IDisposable
 {
     private readonly string _root;
     private readonly StorageOptions _options;
-    private readonly LocalFileStorage _storage;
+    private readonly IFileStorage _storage;
 
-    public LocalFileStorageTests()
+    public LocalFileStorageCoordinatorTests()
     {
         _root = Path.Combine(Path.GetTempPath(), $"lfs-test-{Guid.NewGuid()}");
         _options = new StorageOptions
@@ -25,7 +30,10 @@ public class LocalFileStorageTests : IDisposable
             AcceptedPath = Path.Combine(_root, "accepted"),
             MaxFileSize = 104857600,
         };
-        _storage = new LocalFileStorage(Options.Create(_options));
+        var options = Options.Create(_options);
+        _storage = new FileStorageCoordinator(
+            new LocalPendingFileStore(options),
+            new LocalAcceptedFileStore(options));
     }
 
     public void Dispose()

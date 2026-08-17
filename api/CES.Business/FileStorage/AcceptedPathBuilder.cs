@@ -51,19 +51,29 @@ namespace CES.Business.FileStorage
             Guid exhibitId,
             string? extension)
         {
+            var folder = BuildSubmissionFolderRelativePath(locationId, roomCode, shortDate, submissionId);
+            var leaf = BuildAcceptedFileName(exhibitId, extension);
+
+            return $"{folder}/{leaf}";
+        }
+
+        // Builds {loc}/{room}/{date}/{submissionId} — the submission folder that holds
+        // an exhibit and its metadata.json sidecar. This is the prefix of
+        // BuildCanonicalRelativePath; both derive it here so the two can never drift.
+        public static string BuildSubmissionFolderRelativePath(
+            string locationId,
+            string roomCode,
+            string shortDate,
+            int submissionId)
+        {
             if (submissionId <= 0)
                 throw new PathTraversalException("Submission id must be a positive integer.");
-
-            if (exhibitId == Guid.Empty)
-                throw new PathTraversalException("Exhibit id must be a non-empty GUID.");
 
             var loc = SanitizeSegment(locationId);
             var room = SanitizeSegment(roomCode);
             var date = SanitizeSegment(shortDate);
-            var ext = NormalizeExtension(extension);
-            var leaf = $"{exhibitId}{ext}";
 
-            return string.Join('/', loc, room, date, submissionId.ToString(CultureInfo.InvariantCulture), leaf);
+            return string.Join('/', loc, room, date, submissionId.ToString(CultureInfo.InvariantCulture));
         }
 
         // The {exhibitId}{ext} leaf file name for a given exhibit.

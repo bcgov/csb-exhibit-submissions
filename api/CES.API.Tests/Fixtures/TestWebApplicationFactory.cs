@@ -40,7 +40,8 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
                 ["MailConfiguration:DefaultFromAddress"] = "test@test.com",
                 ["FileStorage:LocalPath"] = Path.GetTempPath(),
                 ["FileStorage:AcceptedPath"] = Path.GetTempPath(),
-                ["FileStorage:Provider"] = "Local",
+                ["FileStorage:PendingProvider"] = "Local",
+                ["FileStorage:AcceptedProvider"] = "Local",
                 ["FileStorage:MaxFileSize"] = "104857600",
             });
         });
