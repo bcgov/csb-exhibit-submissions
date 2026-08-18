@@ -1,0 +1,172 @@
+info:
+  name: SMB health (Stage 1 exit criteria)
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{apiBaseUrl}}/api/dev/smb/health"
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+    - expression: res.body.steps.connect.ok
+      operator: isTruthy
+    - expression: res.body.steps.login.ok
+      operator: isTruthy
+    - expression: res.body.steps.treeConnect.ok
+      operator: isTruthy
+    - expression: res.body.steps.listBasePath.ok
+      operator: isTruthy
+  scripts:
+    - type: after-response
+      code: |-
+        // Renders the progressive walk as a transcript, because the useful answer
+        // is "how far did we get and what did the server say", not pass/fail.
+        // The assertions above are the Stage 1 exit criteria; this is the reading.
+        const STEPS = ['connect', 'login', 'listShares', 'treeConnect', 'listBasePath', 'probeRead'];
+
+        // listShares goes through IPC$/SRVSVC, which a hardened server can deny
+        // while normal share access works fine. Informative, never fatal.
+        const ADVISORY = ['listShares'];
+
+        const body = res.body || {};
+        const steps = body.steps || {};
+
+        if (res.status === 404) {
+          console.log('404 - the diagnostic is switched off. It needs the API in Development, or');
+          console.log('      FileStorage__Smb__DiagnosticsEnabled=true. A 401/403 instead would mean');
+          console.log('      the token is missing or the account is not Admin - re-run "Login (dev bypass)".');
+        } else {
+          // Per-step detail worth seeing even on a green run: which domain actually
+          // authenticated, which share and path were tried, what the probe read.
+          const DETAIL = {
+            login: (s) => (s.domain === undefined ? '' : "domain='" + s.domain + "' " + (s.method || '')),
+            treeConnect: (s) => (s.share ? "share='" + s.share + "'" : ''),
+            listBasePath: (s) => (s.basePath === undefined ? '' : "basePath='" + s.basePath + "'"),
+            probeRead: (s) => (s.path ? s.path + ' ' + s.bytes + ' bytes sha256=' + (s.sha256 || '') : ''),
+          };
+
+          const render = (name) => {
+            const s = steps[name] || {};
+            const mark = s.skipped ? ' -- ' : (s.ok ? ' ok ' : 'FAIL');
+            let line = mark + '  ' + name + ' (' + (s.elapsedMs || 0) + 'ms)';
+            if (s.status) line += '  ' + s.status;
+            const detail = DETAIL[name] ? DETAIL[name](s).trim() : '';
+            if (detail) line += '  ' + detail;
+            if (s.error) line += '  ' + s.error;
+            if (s.skipped) line += '  ' + s.skipped;
+            return line;
+          };
+
+          console.log('--- SMB Stage 1 diagnostic (' + (body.elapsedMs || 0) + 'ms total) ---');
+          STEPS.forEach((name) => console.log(render(name)));
+
+          if (body.negotiated) {
+            const n = body.negotiated;
+            console.log('negotiated: maxRead=' + n.maxReadSize + ' maxWrite=' + n.maxWriteSize + ' maxTransact=' + n.maxTransactSize);
+          }
+
+          // The two discovery outputs: they are how ShareName and BasePath get settled.
+          const shares = (steps.listShares && steps.listShares.shares) || [];
+          if (shares.length) {
+            console.log('shares: ' + shares.join(', '));
+            console.log('  -> pick one for FileStorage__Smb__ShareName in docker/.env');
+          }
+
+          const listing = steps.listBasePath || {};
+          const entries = listing.entries || [];
+          if (listing.ok) {
+            const where = listing.basePath ? "'" + listing.basePath + "'" : 'the share root';
+            console.log('entries under ' + where + ': ' + (entries.length ? entries.join(', ') : '(empty)') + (listing.truncated ? ' ...(truncated)' : ''));
+          }
+
+          // First hard failure. listShares is skipped here on purpose - it does not
+          // gate treeConnect on the API side either.
+          const failed = STEPS.find((n) => steps[n] && !steps[n].ok && !steps[n].skipped && ADVISORY.indexOf(n) === -1);
+          const status = failed ? (steps[failed].status || '') : '';
+
+          const HINTS = {
+            'connect': 'Never reached the server. Confirm the ministry VPN is up, then FileStorage__Smb__Server and outbound 445 from the container.',
+            'login|STATUS_LOGON_FAILURE': 'Credentials or domain rejected. Re-run with FileStorage__Smb__Domain set to IDIR, then PROVJUD, then blank - login.domain echoes back which one was used.',
+            'login|STATUS_ACCOUNT_DISABLED': 'The service account itself is disabled - an AD problem, not a config one.',
+            'login|STATUS_PASSWORD_EXPIRED': 'The service account password has expired - an AD problem, not a config one.',
+            'login': 'Login reached the server and was refused. The raw NTStatus above is the thing to quote when asking for help.',
+            'treeConnect|STATUS_BAD_NETWORK_NAME': 'The share name is wrong. Take one from the shares list above, or ask for it if listShares was denied.',
+            'treeConnect|STATUS_ACCESS_DENIED': 'The share exists but this account has no rights to it. Credentials are fine; the grant is not.',
+            'treeConnect': 'Tree-connect failed with the status above.',
+            'listBasePath|STATUS_OBJECT_PATH_NOT_FOUND': 'FileStorage__Smb__BasePath does not exist on the share. Blank it to list the share root, then pick a folder from entries.',
+            'listBasePath|STATUS_OBJECT_NAME_NOT_FOUND': 'FileStorage__Smb__BasePath does not exist on the share. Blank it to list the share root, then pick a folder from entries.',
+            'listBasePath|STATUS_ACCESS_DENIED': 'The base path exists but is not readable by this account.',
+            'listBasePath': 'Listing the base path failed with the status above.',
+            'probeRead': 'Optional. Blank FileStorage__Smb__ProbeFile to skip it, or set it to a file name from the entries listed above.',
+          };
+
+          console.log('');
+          if (!failed) {
+            console.log('PASS - connect, login, treeConnect and listBasePath all succeeded.');
+            console.log('Record the working Domain / ShareName / BasePath in docker/.env, then Stage 1 is done.');
+          } else {
+            console.log('Stopped at: ' + failed + (status ? ' (' + status + ')' : ''));
+            console.log(HINTS[failed + '|' + status] || HINTS[failed] || 'See the error text above.');
+          }
+
+          if (steps.listShares && !steps.listShares.ok && !steps.listShares.skipped) {
+            console.log('note: listShares was denied. Not a failure - the run continued to treeConnect anyway.');
+          }
+
+          // The share password must never leave the API. Cheap standing check.
+          if (/password/i.test(JSON.stringify(body))) {
+            console.log('WARNING: the response mentions "password". Nothing should ever serialize it - investigate before sharing this output.');
+          }
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  Stage 1 of spec/smb-file-storage.md: connect, log in, list the server's
+  shares, tree-connect, list the base path, and optionally read a probe file -
+  each step reporting its own outcome and raw NTStatus.
+
+  Run "Login (dev bypass)" first. The endpoint always answers 200 when it runs,
+  even when a step fails, so read the steps rather than the status code; the
+  Console tab carries a transcript and a suggested next move.
+
+  The four assertions encode Stage 1's exit criteria: connect, login,
+  treeConnect and listBasePath all ok. Expect them red on the first run - that
+  is the point. listShares and probeRead are deliberately unasserted; the first
+  can be denied on a hardened server without anything being wrong, the second
+  only runs when FileStorage__Smb__ProbeFile is set.
+
+  Iterating in docker/.env (each change needs ./manage stop && ./manage debug,
+  since env vars are read at container start):
+
+    1. Server, Username, Password, Domain - leave ShareName, BasePath and
+       ProbeFile blank. Try Domain = IDIR, then PROVJUD, then blank until
+       `login` goes green; login.domain echoes back which one ran.
+    2. ShareName - take it from steps.listShares.shares. If listShares was
+       denied, ask the team for the name; treeConnect is attempted regardless.
+    3. BasePath - with it blank, steps.listBasePath.entries lists the share
+       root. Pick the folder the accepted store should sit under and set it.
+    4. ProbeFile (optional) - a file name from those entries. It is read and
+       SHA-256'd, capped at 1 MiB, proving the read path end to end.
+
+  Status codes other than 200:
+    404 - the diagnostic is off. It needs Development, or
+          FileStorage__Smb__DiagnosticsEnabled=true. It answers 404 rather than
+          403 on purpose, so it does not advertise itself in other environments.
+    401 - no token, or an expired one. Re-run "Login (dev bypass)".
+    403 - authenticated but not Admin. Use a dev-bypass account that carries it.
+    500 - a bug: this endpoint is meant to catch every step's failure and
+          report it as data. Worth a look at the API logs.
+
+  Nothing here should ever echo the share password. The script warns if the
+  response so much as mentions the word - see the "never logged" rule in the
+  spec.

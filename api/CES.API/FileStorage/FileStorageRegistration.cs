@@ -1,3 +1,4 @@
+using CES.API.FileStorage.Smb;
 using CES.Business.Constants;
 using CES.Business.FileStorage;
 using CES.Business.Interfaces;
@@ -16,6 +17,10 @@ namespace CES.API.FileStorage
         // configured while doing nothing — we fail at boot instead.
         private const string LegacyProviderKey = "Provider";
 
+        // FileStorage:Smb — bound separately from StorageOptions so the SMB types can
+        // take IOptions<SmbOptions> without dragging the whole storage config along.
+        private const string SmbSectionName = "Smb";
+
         public static IServiceCollection AddFileStorage(
             this IServiceCollection services,
             IConfiguration configuration)
@@ -29,6 +34,8 @@ namespace CES.API.FileStorage
 
             services.Configure<StorageOptions>(section);
 
+            RegisterSmbInfrastructure(services, section);
+
             var options = section.Get<StorageOptions>() ?? new StorageOptions();
 
             RegisterPendingStore(services, options.PendingProvider);
@@ -37,6 +44,19 @@ namespace CES.API.FileStorage
             services.AddScoped<IFileStorage, FileStorageCoordinator>();
 
             return services;
+        }
+
+        // Registered regardless of AcceptedProvider: the whole point of the Stage 1
+        // diagnostic is to prove the share works *before* switching the accepted store
+        // onto it. Nothing here touches the network at boot — a session is only
+        // established when an operation asks for one.
+        private static void RegisterSmbInfrastructure(IServiceCollection services, IConfigurationSection section)
+        {
+            services.Configure<SmbOptions>(section.GetSection(SmbSectionName));
+
+            // Singleton because the MaxConcurrentSessions semaphore is process-wide.
+            services.AddSingleton<ISmbSessionFactory, SmbSessionFactory>();
+            services.AddScoped<ISmbDiagnosticsService, SmbDiagnosticsService>();
         }
 
         private static void RegisterPendingStore(IServiceCollection services, string provider)

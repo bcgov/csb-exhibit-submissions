@@ -1,5 +1,8 @@
 name: dev
 variables:
+  # CES dev-bypass login (POST /api/auth/login), used by smb/Login.yml to mint an
+  # Admin bearer token. Must match a DevBypassUsers record; only works when the
+  # API is running with Keycloak__Enabled=false.
   - secret: true
     name: username
   - secret: true

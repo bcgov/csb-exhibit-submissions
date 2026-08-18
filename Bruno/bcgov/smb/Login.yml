@@ -1,0 +1,62 @@
+info:
+  name: Login (dev bypass)
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{apiBaseUrl}}/api/auth/login"
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "username": "{{username}}",
+        "password": "{{password}}"
+      }
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+    - expression: res.body.token
+      operator: isString
+  actions:
+    - type: set-variable
+      phase: after-response
+      selector:
+        method: jsonq
+        expression: res.body.token
+      variable:
+        name: cesAccessToken
+        scope: runtime
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  Mints a CES-issued JWT from the dev-bypass login (LoginController,
+  /api/auth/login) and stores it in the runtime variable cesAccessToken, which
+  the folder's bearer auth feeds to every other request in here.
+
+  This is the mock scheme, not Keycloak: it only works when the API is running
+  with Keycloak__Enabled=false. If you are running against Keycloak instead,
+  skip this request and give the smb folder `auth: inherit` off the keycloak
+  folder's OAuth2 config — /api/dev/smb/health only cares that the caller holds
+  the Admin role, not which scheme issued the token.
+
+  Set `username` and `password` on the active environment to a dev-bypass
+  account that carries Admin (DevBypassUsers in CES.Business.Constants). A 401
+  here means the pair does not match one of those records.
+
+  This request carries no auth of its own - it is the one that produces the
+  token, so the folder's bearer would be empty here anyway.
+
+  The token is a runtime variable, so it is never written to disk — expect to
+  re-run this after restarting Bruno.

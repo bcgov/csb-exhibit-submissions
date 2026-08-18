@@ -68,6 +68,25 @@ cd web && npm run test:coverage
 cd web && npm run test:watch
 ```
 
+### Manual API testing (Bruno)
+
+Exploratory and manual API requests live in [`/Bruno`](Bruno/) — that is **Bruno, not
+Postman or Insomnia**. It is a git-friendly API client: each request is a YAML file on
+disk, versioned and reviewed like code. (The stray `api/CES.API/CES.API.http` is a
+leftover, not the collection.)
+
+The collection root is [`Bruno/bcgov/`](Bruno/bcgov/), with folders grouping requests by
+concern — `keycloak/` verifies SSO token issuance and role mapping, `smb/` drives the SMB
+share diagnostic. Real environment files (`Bruno/bcgov/environments/*.yml`) hold
+credentials and are gitignored; only `*.sample.yml` is committed.
+
+**Read [Bruno/CLAUDE.md](Bruno/CLAUDE.md) before adding or editing a request.** The
+collection uses Bruno's OpenCollection 1.0.0 YAML format, *not* the older `.bru` DSL that
+most Bruno documentation online describes — the concepts map but the syntax does not.
+
+Reach for it instead of a curl one-liner whenever a spec needs manual validation against a
+running service, particularly where a bearer token or an OAuth2 flow is involved.
+
 ## Architecture
 
 ### Frontend Structure
@@ -178,6 +197,7 @@ Feature specifications live in [`/spec`](spec/). Read the relevant spec before i
 - **Write tests for all new development.** Every new service method, controller action, store mutation, and service function must have corresponding tests before the work is considered complete.
 - **Update existing tests when modifying existing code.** If a change alters behavior covered by an existing test, update that test to reflect the new spec — do not delete or skip tests to make them pass.
 - See [spec/testing-implementation.md](spec/testing-implementation.md) for the full testing strategy, framework choices, project structure, and test case inventory.
+- **Manual/exploratory API validation belongs in the Bruno collection** ([`/Bruno`](Bruno/), see [Bruno/CLAUDE.md](Bruno/CLAUDE.md)) — a committed request with assertions and `docs`, not a curl one-liner or a throwaway script. This is in addition to the automated tests above, never a substitute for them.
 
 ## Code Style
 - **`AppearanceId` casing:** use `appearanceId` in TypeScript/JSON/form keys and `AppearanceId` in C# properties. Never reintroduce the old `appearanceID` / `AppearanceID` variants — these were normalized as part of the multi-ticket work and the casing is now consistent across the codebase. Everything under `api/jc-interface-client/` (generated NSwag client) is excluded from this rule.

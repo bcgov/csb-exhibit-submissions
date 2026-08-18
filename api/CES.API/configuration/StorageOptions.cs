@@ -1,3 +1,4 @@
+using CES.API.FileStorage.Smb;
 using CES.Business.Constants;
 
 namespace CES.API
@@ -9,6 +10,7 @@ namespace CES.API
         public string LocalPath { get; }
         public string AcceptedPath { get; }
         public long MaxFileSize { get; }
+        public SmbOptions Smb { get; }
     }
 
     public class StorageOptions : IStorageOptions
@@ -27,5 +29,10 @@ namespace CES.API
         public string AcceptedPath { get; set; } = "accepted";
 
         public long MaxFileSize { get; set; } = 104857600; // 100MB
+
+        // Settings for the SMB accepted store. Also bound on its own as
+        // IOptions<SmbOptions> (see FileStorageRegistration) so the SMB types do not
+        // have to take a dependency on the whole storage config.
+        public SmbOptions Smb { get; set; } = new();
     }
 }

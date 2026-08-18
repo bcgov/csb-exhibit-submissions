@@ -1,0 +1,22 @@
+info:
+  name: smb
+  type: folder
+  seq: 5
+
+request:
+  auth:
+    type: bearer
+    token: "{{cesAccessToken}}"
+
+docs: |-
+  Manual validation for Stage 1 of spec/smb-file-storage.md: prove the API can
+  reach the SMB share before anything is wired onto it.
+
+  Run "Login (dev bypass)" once to mint an admin token into the runtime
+  variable cesAccessToken, then run "SMB health" as many times as it takes to
+  settle Domain / ShareName / BasePath. The token lives for the Bruno session,
+  so only the health request needs re-running between config changes.
+
+  Both requests need the API running locally with ./manage debug and the
+  ministry VPN connected — off the VPN the server hostname does not resolve and
+  every run stops at `connect`.

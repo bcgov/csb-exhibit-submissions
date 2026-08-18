@@ -50,6 +50,26 @@ services:
       - FileStorage__PendingProvider=${FileStorage__PendingProvider:-Local}
       - FileStorage__AcceptedProvider=${FileStorage__AcceptedProvider:-Local}
       - FileStorage__MaxFileSize=${FileStorage__MaxFileSize:-104857600}
+      # SMB accepted store (spec/smb-file-storage.md). Server/share/domain/base path and
+      # the credentials are never defaulted here — they come from .env (gitignored) or an
+      # OpenShift secret. Only AcceptedProvider=Smb actually routes traffic to the share;
+      # these are also read by the Stage 1 diagnostic while the provider is still Local.
+      - FileStorage__Smb__Server=${FileStorage__Smb__Server}
+      - FileStorage__Smb__ShareName=${FileStorage__Smb__ShareName}
+      - FileStorage__Smb__Domain=${FileStorage__Smb__Domain}
+      - FileStorage__Smb__Username=${FileStorage__Smb__Username}
+      - FileStorage__Smb__Password=${FileStorage__Smb__Password}
+      - FileStorage__Smb__BasePath=${FileStorage__Smb__BasePath}
+      - FileStorage__Smb__TransportType=${FileStorage__Smb__TransportType:-DirectTcp}
+      - FileStorage__Smb__AuthenticationMethod=${FileStorage__Smb__AuthenticationMethod:-NTLMv2}
+      - FileStorage__Smb__BufferSize=${FileStorage__Smb__BufferSize:-65536}
+      - FileStorage__Smb__MaxConcurrentSessions=${FileStorage__Smb__MaxConcurrentSessions:-16}
+      - FileStorage__Smb__ConnectTimeoutMs=${FileStorage__Smb__ConnectTimeoutMs:-10000}
+      - FileStorage__Smb__MaxRetryAttempts=${FileStorage__Smb__MaxRetryAttempts:-3}
+      - FileStorage__Smb__InitialRetryDelayMs=${FileStorage__Smb__InitialRetryDelayMs:-1000}
+      - FileStorage__Smb__VerifyAfterWrite=${FileStorage__Smb__VerifyAfterWrite:-true}
+      - FileStorage__Smb__ProbeFile=${FileStorage__Smb__ProbeFile}
+      - FileStorage__Smb__DiagnosticsEnabled=${FileStorage__Smb__DiagnosticsEnabled:-false}
       # File Service Client Configuration
       - FileServicesClient__Username=${FileServicesClient__Username:-JcInterfaceClient}
       - FileServicesClient__Password=${FileServicesClient__Password}
@@ -96,6 +116,26 @@ services:
       - FileStorage__PendingProvider=${FileStorage__PendingProvider:-Local}
       - FileStorage__AcceptedProvider=${FileStorage__AcceptedProvider:-Local}
       - FileStorage__MaxFileSize=${FileStorage__MaxFileSize:-104857600}
+      # SMB accepted store (spec/smb-file-storage.md). Server/share/domain/base path and
+      # the credentials are never defaulted here — they come from .env (gitignored) or an
+      # OpenShift secret. Only AcceptedProvider=Smb actually routes traffic to the share;
+      # these are also read by the Stage 1 diagnostic while the provider is still Local.
+      - FileStorage__Smb__Server=${FileStorage__Smb__Server}
+      - FileStorage__Smb__ShareName=${FileStorage__Smb__ShareName}
+      - FileStorage__Smb__Domain=${FileStorage__Smb__Domain}
+      - FileStorage__Smb__Username=${FileStorage__Smb__Username}
+      - FileStorage__Smb__Password=${FileStorage__Smb__Password}
+      - FileStorage__Smb__BasePath=${FileStorage__Smb__BasePath}
+      - FileStorage__Smb__TransportType=${FileStorage__Smb__TransportType:-DirectTcp}
+      - FileStorage__Smb__AuthenticationMethod=${FileStorage__Smb__AuthenticationMethod:-NTLMv2}
+      - FileStorage__Smb__BufferSize=${FileStorage__Smb__BufferSize:-65536}
+      - FileStorage__Smb__MaxConcurrentSessions=${FileStorage__Smb__MaxConcurrentSessions:-16}
+      - FileStorage__Smb__ConnectTimeoutMs=${FileStorage__Smb__ConnectTimeoutMs:-10000}
+      - FileStorage__Smb__MaxRetryAttempts=${FileStorage__Smb__MaxRetryAttempts:-3}
+      - FileStorage__Smb__InitialRetryDelayMs=${FileStorage__Smb__InitialRetryDelayMs:-1000}
+      - FileStorage__Smb__VerifyAfterWrite=${FileStorage__Smb__VerifyAfterWrite:-true}
+      - FileStorage__Smb__ProbeFile=${FileStorage__Smb__ProbeFile}
+      - FileStorage__Smb__DiagnosticsEnabled=${FileStorage__Smb__DiagnosticsEnabled:-false}
       # File Service Client Configuration
       - FileServicesClient__Username=${FileServicesClient__Username:-JcInterfaceClient}
       - FileServicesClient__Password=${FileServicesClient__Password}

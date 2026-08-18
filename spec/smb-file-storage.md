@@ -1,6 +1,6 @@
 # SMB Secure File Storage for Accepted Exhibits
 
-**Status:** Stage 1 cleared to build — see [Environment](#environment--confirmed-2026-08-17)
+**Status:** Stage 1 built — awaiting the VPN run that answers domain / share name / base path
 **Date:** 2026-08-14 (updated 2026-08-17)
 **JIRA:** TBD
 **Reference implementation:** `C:\Development\bcgov\jasper\transitory-documents-api` (read-only, SMBLibrary)
@@ -300,8 +300,8 @@ assumes `System.IO`.
 | R3 | `CES.Business/FileStorage/AcceptedPathBuilder.cs` | Add `BuildSubmissionFolderRelativePath(...)`. `BuildCanonicalRelativePath` now delegates to it, so the folder path and its canonical prefix cannot drift. | ✅ **Done** — also removed the inline duplicate that was in `WriteMetadataAsync` |
 | R5 | `CES.API/Program.cs` | Replaced the hard-coded `AddScoped<IFileStorage, LocalFileStorage>()` with `AddFileStorage(configuration)`, which switches on both provider settings. | ✅ **Done** — the "`Provider` is read then ignored" trap is gone |
 | R2 | `CES.Business/FileStorage/AcceptedMetadataWriter.cs` | Extract `byte[] Serialize(AcceptedMetadata)`. `WriteAsync` keeps its signature and calls it. | Stage 3 — the SMB writer needs the bytes, not a local temp+rename |
-| R4 | `CES.API/configuration/StorageOptions.cs` | Add `public SmbOptions Smb { get; set; }`. | Stage 1 |
-| R6 | `CES.API/CES.API.csproj` | `<PackageReference Include="SMBLibrary" Version="1.5.3" />` | Stage 1 |
+| R4 | `CES.API/configuration/StorageOptions.cs` | Add `public SmbOptions Smb { get; set; }`. | ✅ **Done** — also bound on its own as `IOptions<SmbOptions>` so the SMB types don't take the whole storage config |
+| R6 | `CES.API/CES.API.csproj` | `<PackageReference Include="SMBLibrary" Version="1.5.3" />` | ✅ **Done** |
 
 `IFileStorage` itself is **unchanged** — which is why `InMemoryFileStorage`, both `Mock<IFileStorage>`
 suites and all 389 backend tests passed the provider split without a single assertion changing.
@@ -315,16 +315,41 @@ suites and all 389 backend tests passed the provider split without a single asse
 Read-only account obtained, hostname resolves, port 445 reachable. See
 [Environment](#environment--confirmed-2026-08-17).
 
-### Stage 1 — Prove we can connect and read
+### Stage 1 — Prove we can connect and read ✅ built 2026-08-17
 
 The minimum that proves the network path, the credentials and the config binding, without touching
 `IFileStorage` at all.
 
-**Ships:**
-- `SMBLibrary` package reference (R6).
-- `SmbOptions` + binding under `FileStorage:Smb` (R4).
-- `ISmbSessionFactory` / `SmbSessionFactory` / `SmbSession` / `SmbPath`.
-- `GET /api/dev/smb/health` on `DeveloperController`, gated to Development **and** the admin role.
+**Shipped:**
+- `SMBLibrary` 1.5.3 package reference (R6).
+- `SmbOptions` + binding under `FileStorage:Smb` (R4). `Password` is `[JsonIgnore]`d and excluded
+  from `ToString()`, so it cannot reach a diagnostic response or a log line by accident.
+- `SmbConstants` / `SmbException` / `SmbPath` / `SmbSession` / `ISmbSessionFactory` /
+  `SmbSessionFactory`, plus `ISmbDiagnosticsService` / `SmbDiagnosticsService` and the
+  `SmbHealthResponse` shape.
+- `GET /api/dev/smb/health` on `DeveloperController`, gated to the admin role **and** to
+  Development-or-`DiagnosticsEnabled`. It returns **404** when disabled rather than 403, so it does
+  not advertise itself.
+- `FileStorage__Smb__*` in `docker-compose.yaml` (both `api` and `api-dev`) and `.env.template`,
+  pulled forward from Stage 4 because the exit criteria are measured from inside the container.
+
+**Deviations from the draft above, all deliberate:**
+- **`ISmbSessionFactory` has two entry points**, not one: `ConnectAsync` (connect + login) and
+  `OpenShareAsync` (+ tree connect). The diagnostic genuinely needs the half-built form — with the
+  share name unknown, `ListShares` runs on a logged-in session that was never tree-connected, and
+  that is how the share name gets discovered.
+- **Retry is narrower than "connect / login / tree-connect".** `SmbException.IsRetryable` is true
+  only when the server never answered (`Status is null`). A returned `NTStatus` is a real answer —
+  a wrong domain or a wrong share is not transient, and retrying it just triples the wait before the
+  operator sees the actual reason.
+- **`MaxConcurrentSessions` is enforced in the factory now**, not deferred to Stage 2. The slot is
+  an `IDisposable` handed to the `SmbSession`, so it is released by the same `Dispose()` that tears
+  the session down — which is exactly the property the Stage 2 abandoned-download test needs.
+- **The session factory is a singleton** (the semaphore is process-wide); the sessions it hands out
+  are per-operation and disposed by the caller.
+- **SMB infrastructure is registered regardless of `AcceptedProvider`.** The point of the diagnostic
+  is to prove the share works *before* switching the accepted store onto it. Nothing contacts the
+  network at boot.
 
 The endpoint is deliberately **progressive**: each step runs only if the previous one succeeded, and
 every step reports its own outcome. One call should tell us exactly how far we got, because the
@@ -484,6 +509,16 @@ discovers both. Nothing here needs to be chased with the file-services team befo
 > Per the project testing rule: **this section is a proposal.** No tests will be written until you
 > confirm the functionality and the coverage below.
 
+> **Stage 1 tests are deliberately deferred (decided 2026-08-17).** They will be written *after* the
+> first VPN run against the real share, not before. The diagnostic's response shape and its
+> step-gating exist to answer questions we have not asked the server yet; if what the server says
+> forces a change, tests written now would be written twice. What is queued for that pass:
+> `SmbPath` (join, empty `BasePath`, separator normalisation, traversal guards, ancestor chain),
+> `SmbOptions` transport/auth parsing and password redaction, `SmbDiagnosticsService` against a
+> mocked `ISmbSessionFactory` (step gating, skip reasons, nothing secret in the output), and the
+> `/api/dev/smb/health` gate returning 404 / 403 / 200. All of it was exercised by hand for this
+> build; none of it is guarded by a regression test yet.
+
 ### Existing coverage that must keep passing
 
 `CES.API.Tests/Fixtures/InMemoryFileStorage.cs` implements `IFileStorage` for integration tests.
@@ -531,16 +566,36 @@ not started it.
 ### Manual validation steps (for you)
 
 1. **Stage 1.** Connect to the ministry VPN first — without it the hostname does not resolve.
-   `./manage debug` with `FileStorage__Smb__*` populated (leave `ShareName` and `BasePath` empty on
-   the first run), then `GET http://localhost:9080/api/dev/smb/health`.
+   Copy the `FileStorage__Smb__*` block out of `.env.template` into `.env` and fill in `Server`,
+   `Username`, `Password` and `Domain`; leave `ShareName`, `BasePath` and `ProbeFile` empty on the
+   first run. Then `./manage debug`.
+
+   The endpoint requires the **Admin** role, so it cannot be opened straight from the address bar.
+   The `smb` folder of the [Bruno collection](../Bruno/bcgov/smb/) does the token handling: run
+   **Login (dev bypass)** once (it needs `username` / `password` on the active environment set to
+   `admin@gov.bc.ca`, and stashes the JWT in a runtime variable), then **SMB health**
+   after each `.env` change. Its assertions are this stage's exit criteria, and its post-response
+   script prints the step-by-step transcript plus a suggested next move. Failing that, sign in at
+   http://localhost:9080, lift the bearer token and
+   `curl -H "Authorization: Bearer <token>" http://localhost:9080/api/dev/smb/health`.
+   A **404** means the gate rejected it (not Development, and `DiagnosticsEnabled` not set); a
+   **401/403** means the token is missing or not an admin's.
+
    - If `login.ok` is false, re-run with `FileStorage__Smb__Domain` set to `IDIR`, then `PROVJUD`,
-     then empty. Only if all three fail on all three NTLM variants does [Q2](#deferred-questions) fire.
-   - Read the share name out of `steps.listShares.shares`, put it in `.env`, re-run.
+     then empty — it is an environment variable, so `./manage stop && ./manage debug` is enough, no
+     rebuild. `login.domain` echoes back which value the run actually used. Only if all three fail
+     on all three `AuthenticationMethod` variants does [Q2](#deferred-questions) fire.
+   - Read the share name out of `steps.listShares.shares`, put it in `.env`, re-run. If `listShares`
+     itself returns `STATUS_ACCESS_DENIED`, that is informative rather than fatal — the run still
+     continues to `treeConnect`, and the share name has to come from the file-services team instead.
    - Read the folder layout out of `steps.listBasePath.entries`, decide `BasePath`, re-run.
+     `truncated: true` means the folder holds more names than the diagnostic reports.
+   - Optionally set `FileStorage__Smb__ProbeFile` to a small file under `BasePath` and re-run to
+     exercise a real read (`probeRead` reports bytes + SHA256, capped at 1 MiB).
    - Confirm the password appears nowhere in the response or in `docker logs`.
 2. **Stage 2.** Place a known file on the share at a path matching an existing `StoredFiles`
-   row's `CanonicalPath`, set `FileStorage__Provider=Smb`, restart, then view and download that
-   exhibit from the admin UI. Scrub a video partway through to exercise range requests.
+   row's `CanonicalPath`, set `FileStorage__AcceptedProvider=Smb`, restart, then view and download
+   that exhibit from the admin UI. Scrub a video partway through to exercise range requests.
 3. **Stage 3.** `GET /api/dev/smb/health?write=true` — confirm the scratch file is created,
    verified, read back and deleted. Then upload a new exhibit and classify it Marked. Confirm on
    the share: the exhibit file appears under `{loc}\{room}\{date}\{subId}\`, `metadata.json` sits
