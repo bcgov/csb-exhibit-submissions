@@ -138,7 +138,7 @@ services:
         dotnet watch run --project /opt/app-root/src/api/CES.API/CES.API.csproj --urls='http://+:8080';"
 
   db:
-    image: postgres:16
+    image: postgres:18
     environment:
       - POSTGRES_USER=${POSTGRESQL_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRESQL_PASSWORD:-postgres}
@@ -146,7 +146,7 @@ services:
     ports:
       - 5432:5432
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
     healthcheck:
       test: [
           "CMD-SHELL",
