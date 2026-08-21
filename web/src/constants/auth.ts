@@ -16,14 +16,21 @@ export const SECONDS_TO_MS = 1000;
 /** localStorage key for the dev-bypass token. Unused on the Keycloak path. */
 export const BYPASS_TOKEN_STORAGE_KEY = 'jwt_token';
 
+function normalizeBooleanString(value?: string): string | undefined {
+  return value === 'true' || value === 'false' ? value : undefined;
+}
+
 /**
  * Dev-bypass mode: the mock username/password login, default-on so routine work needs
- * no Keycloak client and no secret. `VITE_*` is baked in at Vite build, so in production
- * this resolves to a constant; flipping it still requires a restart, not a refresh.
+ * no Keycloak client and no secret. Release containers read the value from runtime
+ * configuration injected into index.html at startup; Vite env remains the fallback for
+ * the dev server and tests.
  *
  * Exposed as a function, read at call time, so it is not frozen at module load — that keeps
  * it stubbable per-test under the non-isolated Vitest pool.
  */
 export function isDevAuthBypass(): boolean {
-  return import.meta.env.VITE_DEV_AUTH_BYPASS !== 'false';
+  const runtimeValue =
+    typeof window === 'undefined' ? undefined : window.__CES_CONFIG__?.VITE_DEV_AUTH_BYPASS;
+  return (normalizeBooleanString(runtimeValue) ?? import.meta.env.VITE_DEV_AUTH_BYPASS) !== 'false';
 }

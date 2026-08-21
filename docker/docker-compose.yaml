@@ -5,6 +5,7 @@ services:
     environment:
       - API_URL=${API_URL:-http://api:8080/api/}
       - WEB_BASE_HREF=${WEB_BASE_HREF:-/}
+      - VITE_DEV_AUTH_BYPASS=${VITE_DEV_AUTH_BYPASS:-true}
     ports:
       - 9080:8080
     depends_on:
@@ -147,11 +148,10 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test:
-        [
+      test: [
           "CMD-SHELL",
           "pg_isready -U ${POSTGRESQL_USER:-postgres} -d
-            ${POSTGRESQL_DATABASE:-cesdb}",
+          ${POSTGRESQL_DATABASE:-cesdb}",
         ]
       interval: 10s
       timeout: 5s

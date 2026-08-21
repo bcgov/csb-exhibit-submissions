@@ -4,12 +4,13 @@
 # Since we have a single web image, doesn't make sense to build the web-artifacts twice.
 # Perhaps webpack 5 will have some sort of fix for this.
 echo "---> Replacing public path /S2I_INJECT_PUBLIC_PATH/ -> $WEB_BASE_HREF in Vue artifacts..."
+echo "---> Replacing runtime auth mode __CES_VITE_DEV_AUTH_BYPASS__ -> ${VITE_DEV_AUTH_BYPASS:-true} in Vue artifacts..."
 FILES="/tmp/app/dist/index.html
 /tmp/app/dist/assets/*.*"
 for f in $FILES
 do
 	#tmp=$(sed "s|/S2I_INJECT_PUBLIC_PATH/|$WEB_BASE_HREF|g" "$f");
-	tmp=$(tr -d '\0' < "$f" | sed "s|/S2I_INJECT_PUBLIC_PATH/|$WEB_BASE_HREF|g")
+	tmp=$(tr -d '\0' < "$f" | sed "s|/S2I_INJECT_PUBLIC_PATH/|$WEB_BASE_HREF|g; s|__CES_VITE_DEV_AUTH_BYPASS__|${VITE_DEV_AUTH_BYPASS:-true}|g")
 	printf "%s" "$tmp" > "$f";
 done
 
