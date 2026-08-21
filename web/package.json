@@ -22,14 +22,14 @@
     "@bcgov/bc-sans": "^2.1.0",
     "@bcgov/design-tokens": "^5.0.0",
     "@mdi/js": "^7.4.47",
-    "axios": "^1.18.1",
+    "axios": "^1.19.0",
     "bootstrap": "^5.3.8",
     "dropzone": "^6.0.0-beta.2",
     "jwt-decode": "^4.0.0",
-    "pinia": "^3.0.4",
-    "vue": "^3.5.39",
-    "vue-router": "^5.1.0",
-    "vuetify": "^4.1.4"
+    "pinia": "^4.0.3",
+    "vue": "^3.5.41",
+    "vue-router": "^5.2.0",
+    "vuetify": "^4.1.11"
   },
   "devDependencies": {
     "@tsconfig/node24": "^24.0.4",
@@ -52,14 +52,16 @@
     "jsdom": "^29.1.1",
     "msw": "^2.15.0",
     "typescript": "~6.0.3",
-    "vite-plugin-vue-devtools": "^8.1.5",
+    "vite-plugin-vue-devtools": "^8.2.1",
     "vue-tsc": "^3.3.7",
     "vite": "^8.1.5",
     "vitest": "^4.1.7"
   },
   "overrides": {
+    "brace-expansion": "^5.0.9",
     "minimatch": "^10.2.4",
-    "nanoid": "^3.3.17"
+    "nanoid": "^3.3.17",
+    "vite-plugin-inspect": "^12.0.2"
   },
   "engines": {
     "node": "^20.19.0 || >=22.13.0"
