@@ -55,7 +55,7 @@
     "vite-plugin-vue-devtools": "^8.2.1",
     "vue-tsc": "^3.3.8",
     "vite": "^8.1.5",
-    "vitest": "^4.1.7"
+    "vitest": "^5.0.0"
   },
   "overrides": {
     "brace-expansion": "^5.0.9",
