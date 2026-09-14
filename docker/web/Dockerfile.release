@@ -16,8 +16,10 @@ ARG VUE_ON_NGINX_SRC
 
 ENV STI_SCRIPTS_PATH=/usr/libexec/s2i
 
+# Keep inherited Alpine packages current, including the libuuid security fix.
 # Required for HTTP Basic feature and bash-based S2I scripts
-RUN apk add --no-cache openssl ca-certificates bash
+RUN apk upgrade --no-cache \
+	&& apk add --no-cache openssl ca-certificates bash
 
 # Copy our OpenShift s2i scripts over to default location
 COPY ${VUE_ON_NGINX_SRC}/s2i/bin/ /usr/libexec/s2i/

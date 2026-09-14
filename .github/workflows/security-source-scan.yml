@@ -37,7 +37,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Upload Trivy source SARIF
-        uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        uses: github/codeql-action/upload-sarif@37f2634a92ba38a0926ef79a0748ac8ae7d95ab2 # v4.37.8
         with:
           sarif_file: trivy-source.sarif
           category: trivy-source
